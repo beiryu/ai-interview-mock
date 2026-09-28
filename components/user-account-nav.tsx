@@ -1,7 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
+import type { SessionUser } from "@/lib/auth"
+import { authClient } from "@/lib/auth-client"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,8 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { authClient } from "@/lib/auth-client"
-import type { SessionUser } from "@/lib/auth"
 import { UserAvatar } from "@/components/user-avatar"
 
 interface UserAccountNavProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -18,11 +19,12 @@ interface UserAccountNavProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function UserAccountNav({ user }: UserAccountNavProps) {
+  const router = useRouter()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
         <UserAvatar
-          user={{ name: user.name || null, image: user.image || null }}
+          user={{ name: user.name, image: user.image || null }}
           className="size-8"
         />
       </DropdownMenuTrigger>
@@ -54,7 +56,7 @@ export function UserAccountNav({ user }: UserAccountNavProps) {
             event.preventDefault()
             authClient.signOut({
               fetchOptions: {
-                onSuccess: () => window.location.assign("/login"),
+                onSuccess: () => router.push("/login"),
               },
             })
           }}
