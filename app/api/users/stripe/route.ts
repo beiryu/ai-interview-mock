@@ -1,7 +1,7 @@
-import { getServerSession } from "next-auth/next"
+import { headers } from "next/headers"
 import { z } from "zod"
 
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { stripe } from "@/lib/stripe"
 import { PRO_PLAN_PRICE_ID, getUserSubscriptionPlan } from "@/lib/subscription"
 import { absoluteUrl } from "@/lib/utils"
@@ -10,7 +10,7 @@ const billingUrl = absoluteUrl("/dashboard/billing")
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth.api.getSession({ headers: headers() })
 
     if (!session?.user || !session?.user.email) {
       return new Response(null, { status: 403 })

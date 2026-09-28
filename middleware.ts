@@ -1,45 +1,35 @@
-import { NextResponse } from "next/server"
-import { getToken } from "next-auth/jwt"
-import { withAuth } from "next-auth/middleware"
+import { NextRequest, NextResponse } from "next/server"
+import { getSessionCookie } from "better-auth/cookies"
 
-export default withAuth(
-  async function middleware(req) {
-    const token = await getToken({ req })
-    const isAuth = !!token
-    const isAuthPage =
-      req.nextUrl.pathname.startsWith("/login") ||
-      req.nextUrl.pathname.startsWith("/register")
+// Optimistic redirect based on the session cookie only; pages and route
+// handlers still validate the session via getCurrentUser().
+export default function middleware(req: NextRequest) {
+  const isAuth = !!getSessionCookie(req)
+  const isAuthPage =
+    req.nextUrl.pathname.startsWith("/login") ||
+    req.nextUrl.pathname.startsWith("/register")
 
-    if (isAuthPage) {
-      if (isAuth) {
-        return NextResponse.redirect(new URL("/dashboard", req.url))
-      }
-
-      return null
+  if (isAuthPage) {
+    if (isAuth) {
+      return NextResponse.redirect(new URL("/dashboard", req.url))
     }
 
-    if (!isAuth) {
-      let from = req.nextUrl.pathname
-      if (req.nextUrl.search) {
-        from += req.nextUrl.search
-      }
-
-      return NextResponse.redirect(
-        new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
-      )
-    }
-  },
-  {
-    callbacks: {
-      async authorized() {
-        // This is a work-around for handling redirect on auth pages.
-        // We return true here so that the middleware function above
-        // is always called.
-        return true
-      },
-    },
+    return NextResponse.next()
   }
-)
+
+  if (!isAuth) {
+    let from = req.nextUrl.pathname
+    if (req.nextUrl.search) {
+      from += req.nextUrl.search
+    }
+
+    return NextResponse.redirect(
+      new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
+    )
+  }
+
+  return NextResponse.next()
+}
 
 export const config = {
   matcher: ["/dashboard/:path*", "/editor/:path*", "/login", "/register"],

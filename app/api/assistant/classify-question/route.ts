@@ -1,12 +1,12 @@
+import { headers } from "next/headers"
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
 
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { ConfigService } from "@/lib/config/config.service"
 import openai from "@/lib/openai"
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions)
+  const session = await auth.api.getSession({ headers: headers() })
   if (!session?.user?.id) {
     return new Response("Unauthorized", { status: 401 })
   }

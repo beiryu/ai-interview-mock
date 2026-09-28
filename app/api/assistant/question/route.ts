@@ -1,17 +1,17 @@
+import { headers } from "next/headers"
 import {
   MemorySession,
   OpenAIResponsesCompactionSession,
   run,
   type AgentInputItem,
 } from "@openai/agents"
-import { getServerSession } from "next-auth"
 
 import { createAnswerCoachAgent } from "@/lib/agents/interview-agents"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { getOrCreateVectorStore } from "@/lib/openai/vector-store-service"
 
 export async function POST(req: Request) {
-  const authSession = await getServerSession(authOptions)
+  const authSession = await auth.api.getSession({ headers: headers() })
   if (!authSession?.user?.id) {
     return new Response("Unauthorized", { status: 401 })
   }

@@ -1,7 +1,7 @@
 import { useRouter } from "next/navigation"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { signOut } from "next-auth/react"
 
+import { authClient } from "@/lib/auth-client"
 import { toast } from "@/components/ui/use-toast"
 
 const deleteAccount = async (userId: string): Promise<void> => {
@@ -32,7 +32,8 @@ export function useDeleteAccount() {
       queryClient.clear()
 
       // Sign out and redirect
-      await signOut({ callbackUrl: "/" })
+      await authClient.signOut()
+      router.push("/")
     },
     onError: (error) => {
       toast({

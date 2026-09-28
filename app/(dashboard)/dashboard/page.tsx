@@ -8,7 +8,6 @@ import {
   Wrench,
 } from "lucide-react"
 
-import { authOptions } from "@/lib/auth"
 import { getCurrentUser } from "@/lib/session"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -24,7 +23,7 @@ export default async function DashboardPage() {
   const user = await getCurrentUser()
 
   if (!user) {
-    redirect(authOptions?.pages?.signIn || "/login")
+    redirect("/login")
   }
 
   return (

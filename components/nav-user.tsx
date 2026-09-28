@@ -9,9 +9,9 @@ import {
   LogOut,
   Sparkles,
 } from "lucide-react"
-import { User } from "next-auth"
-import { signOut } from "next-auth/react"
 
+import { authClient } from "@/lib/auth-client"
+import type { SessionUser } from "@/lib/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/sidebar"
 
 interface NavUserProps {
-  user: User
+  user: SessionUser
 }
 
 export function NavUser({ user }: NavUserProps) {
@@ -103,8 +103,10 @@ export function NavUser({ user }: NavUserProps) {
               className="cursor-pointer"
               onSelect={(event) => {
                 event.preventDefault()
-                signOut({
-                  callbackUrl: `${window.location.origin}/login`,
+                authClient.signOut({
+                  fetchOptions: {
+                    onSuccess: () => window.location.assign("/login"),
+                  },
                 })
               }}
             >

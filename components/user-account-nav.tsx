@@ -1,8 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { User } from "next-auth"
-import { signOut } from "next-auth/react"
 
 import {
   DropdownMenu,
@@ -11,10 +9,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { authClient } from "@/lib/auth-client"
+import type { SessionUser } from "@/lib/auth"
 import { UserAvatar } from "@/components/user-avatar"
 
 interface UserAccountNavProps extends React.HTMLAttributes<HTMLDivElement> {
-  user: Pick<User, "name" | "image" | "email">
+  user: Pick<SessionUser, "name" | "image" | "email">
 }
 
 export function UserAccountNav({ user }: UserAccountNavProps) {
@@ -52,8 +52,10 @@ export function UserAccountNav({ user }: UserAccountNavProps) {
           className="cursor-pointer"
           onSelect={(event) => {
             event.preventDefault()
-            signOut({
-              callbackUrl: `${window.location.origin}/login`,
+            authClient.signOut({
+              fetchOptions: {
+                onSuccess: () => window.location.assign("/login"),
+              },
             })
           }}
         >

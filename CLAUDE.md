@@ -32,13 +32,13 @@ Environment: copy `.env.example` to `.env.local` and fill in values.
 - `app/(marketing)` — Public pages (home, pricing, blog)
 - `app/api` — Route handlers for posts, auth, Stripe webhooks, user settings
 
-**Middleware** (`middleware.ts`) protects `/dashboard`, `/editor`, `/login`, `/register` routes via NextAuth session checks.
+**Middleware** (`middleware.ts`) protects `/dashboard`, `/editor`, `/login`, `/register` with an optimistic Better Auth session-cookie check; pages and route handlers still validate via `getCurrentUser()`.
 
-**Database** (Prisma + PostgreSQL): `User`, `Account`, `Session`, `Post`, `VerificationToken` models. The `Post` model stores content as JSON (Editor.js block format).
+**Database** (Prisma 7 + PostgreSQL via `@prisma/adapter-pg`): client is generated to `lib/generated/prisma` (import types from `@/lib/generated/prisma/client`, enums from `.../enums`); datasource URL lives in `prisma.config.ts`. Auth tables (`User`, `Account`, `Session`, `Verification`) follow the Better Auth schema.
 
 **Payments**: Stripe checkout and billing portal; webhook handler under `app/api/webhooks/stripe`.
 
-**Auth**: NextAuth with GitHub OAuth. Session data is extended with `id` and `stripeSubscriptionStatus` in `types/next-auth.d.ts`.
+**Auth**: Better Auth (`lib/auth.ts`) with GitHub OAuth and magic link (Resend). Handler at `app/api/auth/[...all]`; client helpers in `lib/auth-client.ts`; server code uses `getCurrentUser()` from `lib/session.ts` or `auth.api.getSession({ headers })`.
 
 **Config** (`/config`): Site metadata, dashboard nav, docs nav, and marketing nav are centralized here — update these when adding new routes/pages.
 
@@ -50,4 +50,4 @@ Environment: copy `.env.example` to `.env.local` and fill in values.
 - UI primitives live in `components/ui/` (Radix-based, unstyled) — these are composable building blocks, not page-level components
 - `lib/utils.ts` exports `cn()` (clsx + tailwind-merge) for conditional classnames
 - API routes validate request bodies with Zod schemas defined inline
-- `lib/auth.ts` exports `authOptions` and `getCurrentUser()` helper used across server components
+- `lib/auth.ts` exports `auth` and the `SessionUser` type; `lib/session.ts` exports `getCurrentUser()` used across server components

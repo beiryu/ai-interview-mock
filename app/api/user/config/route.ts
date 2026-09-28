@@ -1,15 +1,15 @@
+import { headers } from "next/headers"
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
 
 import {
   CURRENT_SCHEMA_VERSION,
   UserConfigSchema,
 } from "@/config/schemas/user-config.schema"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
+  const session = await auth.api.getSession({ headers: headers() })
   if (!session?.user?.id) {
     return new Response("Unauthorized", { status: 401 })
   }
@@ -36,7 +36,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const session = await getServerSession(authOptions)
+  const session = await auth.api.getSession({ headers: headers() })
   if (!session?.user?.id) {
     return new Response("Unauthorized", { status: 401 })
   }

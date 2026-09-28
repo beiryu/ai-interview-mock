@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
-import { authOptions } from "@/lib/auth"
 import { getCurrentUser } from "@/lib/session"
 import { Card } from "@/components/ui/card"
 import { ChatWithDocuments } from "@/components/chat/chat-with-documents"
@@ -17,7 +16,7 @@ export default async function LangChainToolsPage() {
   const user = await getCurrentUser()
 
   if (!user) {
-    redirect(authOptions?.pages?.signIn || "/login")
+    redirect("/login")
   }
 
   return (

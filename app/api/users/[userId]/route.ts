@@ -1,8 +1,8 @@
+import { headers } from "next/headers"
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
 import { z } from "zod"
 
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { UserProfileSchema } from "@/lib/validations/user"
 
@@ -17,7 +17,7 @@ export async function GET(
   context: z.infer<typeof routeContextSchema>
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth.api.getSession({ headers: headers() })
 
     if (!session) {
       return new Response("Unauthorized", { status: 403 })
@@ -54,7 +54,7 @@ export async function PATCH(
     const { params } = routeContextSchema.parse(context)
 
     // Ensure user is authentication and has access to this user.
-    const session = await getServerSession(authOptions)
+    const session = await auth.api.getSession({ headers: headers() })
     if (!session?.user || params.userId !== session?.user.id) {
       return new Response(null, { status: 403 })
     }
@@ -94,7 +94,7 @@ export async function DELETE(
     const { params } = routeContextSchema.parse(context)
 
     // Ensure user is authenticated and has access to this user
-    const session = await getServerSession(authOptions)
+    const session = await auth.api.getSession({ headers: headers() })
     if (!session?.user || params.userId !== session?.user.id) {
       return new Response(null, { status: 403 })
     }

@@ -1,8 +1,8 @@
 import { useRouter } from "next/navigation"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useSession } from "next-auth/react"
 
 import { UserProfile } from "@/lib/validations/user"
+import { authClient } from "@/lib/auth-client"
 import { toast } from "@/components/ui/use-toast"
 
 interface UpdateProfilePayload extends UserProfile {
@@ -29,16 +29,13 @@ const updateProfile = async ({
 export function useUpdateProfile() {
   const queryClient = useQueryClient()
   const router = useRouter()
-  const { update } = useSession()
 
   return useMutation({
     mutationFn: updateProfile,
-    onSuccess: async (_, variables) => {
-      // Update session with new data
-      await update({
-        name: variables.name,
-        email: variables.email,
-      })
+    onSuccess: async () => {
+      // Profile is updated directly in the DB; bypass the session cookie
+      // cache so the new name/email show up immediately
+      await authClient.getSession({ query: { disableCookieCache: true } })
 
       toast({
         description: "Your profile has been updated successfully.",

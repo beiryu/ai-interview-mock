@@ -14,7 +14,6 @@ import {
   Send,
   Settings2,
 } from "lucide-react"
-import { User } from "next-auth"
 
 import {
   Sidebar,
@@ -25,6 +24,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import type { SessionUser } from "@/lib/auth"
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -115,7 +115,7 @@ const data = {
 export function AppSidebar({
   user,
   ...props
-}: React.ComponentProps<typeof Sidebar> & { user: User }) {
+}: React.ComponentProps<typeof Sidebar> & { user: SessionUser }) {
   const pathname = usePathname()
 
   // Dynamically determine which navigation item is active based on current path

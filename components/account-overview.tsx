@@ -2,8 +2,8 @@
 
 import * as React from "react"
 import type { User } from "@/lib/generated/prisma/client"
+import { authClient } from "@/lib/auth-client"
 import { formatDistance } from "date-fns"
-import { useSession } from "next-auth/react"
 
 import { Badge } from "@/components/ui/badge"
 import {
@@ -24,7 +24,7 @@ interface AccountOverviewProps {
 }
 
 export function AccountOverview({ user }: AccountOverviewProps) {
-  const { data: session } = useSession()
+  const { data: session } = authClient.useSession()
 
   return (
     <Card>
@@ -102,12 +102,12 @@ export function AccountOverview({ user }: AccountOverviewProps) {
                 <Icons.user className="size-3" />
                 <span>User ID: {user.id}</span>
               </div>
-              {session.expires && (
+              {session.session.expiresAt && (
                 <div className="flex items-center space-x-2">
                   <Icons.settings className="size-3" />
                   <span>
                     Session expires:{" "}
-                    {new Date(session.expires).toLocaleDateString()}
+                    {new Date(session.session.expiresAt).toLocaleDateString()}
                   </span>
                 </div>
               )}

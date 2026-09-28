@@ -3,10 +3,10 @@
 import * as React from "react"
 import { useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { signIn } from "next-auth/react"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 
+import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 import { userAuthSchema } from "@/lib/validations/auth"
 import { buttonVariants } from "@/components/ui/button"
@@ -34,15 +34,14 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   async function onSubmit(data: FormData) {
     setIsLoading(true)
 
-    const signInResult = await signIn("email", {
+    const { error } = await authClient.signIn.magicLink({
       email: data.email.toLowerCase(),
-      redirect: false,
-      callbackUrl: searchParams?.get("from") || "/dashboard",
+      callbackURL: searchParams?.get("from") || "/dashboard",
     })
 
     setIsLoading(false)
 
-    if (!signInResult?.ok) {
+    if (error) {
       return toast({
         title: "Something went wrong.",
         description: "Your sign in request failed. Please try again.",
@@ -103,7 +102,10 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         className={cn(buttonVariants({ variant: "outline" }))}
         onClick={() => {
           setIsGitHubLoading(true)
-          signIn("github")
+          authClient.signIn.social({
+            provider: "github",
+            callbackURL: searchParams?.get("from") || "/dashboard",
+          })
         }}
         disabled={isLoading || isGitHubLoading}
       >

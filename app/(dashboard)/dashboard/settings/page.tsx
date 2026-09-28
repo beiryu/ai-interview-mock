@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation"
 
-import { authOptions } from "@/lib/auth"
 import { getCurrentUser } from "@/lib/session"
 import { DashboardHeader } from "@/components/header"
 import SettingTabs from "@/components/setting-tabs"
@@ -15,7 +14,7 @@ export default async function SettingsPage() {
   const user = await getCurrentUser()
 
   if (!user) {
-    redirect(authOptions?.pages?.signIn || "/login")
+    redirect("/login")
   }
 
   return (

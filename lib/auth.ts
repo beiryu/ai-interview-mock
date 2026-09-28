@@ -1,7 +1,7 @@
-import { PrismaAdapter } from "@next-auth/prisma-adapter"
-import { NextAuthOptions } from "next-auth"
-import EmailProvider from "next-auth/providers/email"
-import GitHubProvider from "next-auth/providers/github"
+import { betterAuth } from "better-auth"
+import { prismaAdapter } from "better-auth/adapters/prisma"
+import { nextCookies } from "better-auth/next-js"
+import { magicLink } from "better-auth/plugins"
 import { Resend } from "resend"
 
 import { env } from "@/env.mjs"
@@ -11,50 +11,46 @@ import { EmailTemplate } from "@/components/email-template"
 
 const resend = new Resend(env.RESEND_API_KEY)
 
-export const authOptions: NextAuthOptions = {
-  // huh any! I know.
-  // This is a temporary fix for prisma client.
-  // @see https://github.com/prisma/prisma/issues/16117
-  adapter: PrismaAdapter(db as any),
+export const auth = betterAuth({
+  baseURL: env.BETTER_AUTH_URL,
+  secret: env.BETTER_AUTH_SECRET,
+  database: prismaAdapter(db, { provider: "postgresql" }),
+  advanced: {
+    // Let Prisma's @default(cuid()) generate ids, matching existing rows
+    database: { generateId: false },
+  },
+  user: {
+    additionalFields: {
+      phone: { type: "string", required: false, input: false },
+    },
+  },
   session: {
-    strategy: "jwt",
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
-  pages: {
-    signIn: "/login",
-  },
-  providers: [
-    GitHubProvider({
+  socialProviders: {
+    github: {
       clientId: env.GITHUB_CLIENT_ID,
       clientSecret: env.GITHUB_CLIENT_SECRET,
-    }),
-    EmailProvider({
-      from: env.SMTP_FROM,
-      sendVerificationRequest: async ({ identifier, url, provider }) => {
+    },
+  },
+  plugins: [
+    magicLink({
+      sendMagicLink: async ({ email, url }) => {
         const user = await db.user.findUnique({
-          where: {
-            email: identifier,
-          },
-          select: {
-            emailVerified: true,
-          },
+          where: { email },
+          select: { emailVerified: true },
         })
 
-        // Determine email type based on whether user is verified
-        // const emailType = user?.emailVerified ? "sign-in" : "activation"
-        const emailType = "sign-in"
-
-        // Create email subject based on email type
         const subject = user?.emailVerified
           ? `Sign in to ${siteConfig.name}`
           : `Activate your ${siteConfig.name} account`
 
-        // Send email using Resend with React template
         const { error } = await resend.emails.send({
-          from: provider.from as string,
-          to: identifier,
-          subject: subject,
+          from: env.SMTP_FROM,
+          to: email,
+          subject,
           react: EmailTemplate({
-            type: emailType as "sign-in" | "activation",
+            type: "sign-in",
             url,
             productName: siteConfig.name,
           }),
@@ -69,38 +65,9 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+    // Must be last: lets server actions set auth cookies
+    nextCookies(),
   ],
-  callbacks: {
-    async session({ token, session }) {
-      if (token) {
-        session.user.id = token.id
-        session.user.name = token.name
-        session.user.email = token.email
-        session.user.image = token.picture
-      }
+})
 
-      return session
-    },
-    async jwt({ token, user }) {
-      const dbUser = await db.user.findFirst({
-        where: {
-          email: token.email,
-        },
-      })
-
-      if (!dbUser) {
-        if (user) {
-          token.id = user?.id
-        }
-        return token
-      }
-
-      return {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        picture: dbUser.image,
-      }
-    },
-  },
-}
+export type SessionUser = typeof auth.$Infer.Session.user

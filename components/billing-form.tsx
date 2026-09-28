@@ -1,10 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { useSession } from "next-auth/react"
 
 import { UserSubscriptionPlan } from "types"
 import { cn, formatDate } from "@/lib/utils"
+import { authClient } from "@/lib/auth-client"
 import { buttonVariants } from "@/components/ui/button"
 import {
   Card,
@@ -30,7 +30,7 @@ export function BillingForm({
 }: BillingFormProps) {
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
 
-  const { data: session } = useSession()
+  const { data: session } = authClient.useSession()
 
   async function onSubmit(event) {
     event.preventDefault()
