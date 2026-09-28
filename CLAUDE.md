@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pnpm install          # Install dependencies (postinstall runs prisma generate)
-pnpm dev              # Run contentlayer + next dev concurrently
-pnpm build            # contentlayer build + next build
+pnpm dev              # Run next dev
+pnpm build            # next build
 pnpm lint             # Run ESLint
 pnpm start            # Start production server
 ```
@@ -28,14 +28,11 @@ Environment: copy `.env.example` to `.env.local` and fill in values.
 
 - `app/(auth)` — Login/register pages, no layout shell
 - `app/(dashboard)` — Protected pages (sidebar layout), requires auth
-- `app/(docs)` — MDX-based documentation with table of contents
 - `app/(editor)` — Editor.js-based post editor
 - `app/(marketing)` — Public pages (home, pricing, blog)
 - `app/api` — Route handlers for posts, auth, Stripe webhooks, user settings
 
 **Middleware** (`middleware.ts`) protects `/dashboard`, `/editor`, `/login`, `/register` routes via NextAuth session checks.
-
-**Content layer** (`contentlayer.config.js`) processes MDX files in `/content/{authors,blog,docs,guides,pages}` into typed collections — these are statically generated at build time.
 
 **Database** (Prisma + PostgreSQL): `User`, `Account`, `Session`, `Post`, `VerificationToken` models. The `Post` model stores content as JSON (Editor.js block format).
 

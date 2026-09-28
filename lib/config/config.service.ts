@@ -1,4 +1,3 @@
-import { env } from "@/env.mjs"
 import { DEEPGRAM_DEFAULTS } from "@/config/defaults/deepgram"
 import { INTERVIEW_DEFAULTS } from "@/config/defaults/interview"
 import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
@@ -24,8 +23,6 @@ export interface ResolvedConfig {
       temperature: number
       timeoutMs: number
     }
-    realtime: { model: string; voice: string; baseURL: string }
-    transcribe: { model: string }
     agent: { answerCoachModel: string }
     cache: { prevResponseTtlSec: number }
   }
@@ -41,7 +38,6 @@ export interface ResolvedConfig {
   interview: {
     silenceThresholdMs: number
     silenceCheckIntervalMs: number
-    vad: { silenceDurationMs: number; threshold: number }
   }
 }
 
@@ -50,17 +46,11 @@ function buildBaseConfig(): ResolvedConfig {
     openai: {
       chat: { ...OPENAI_DEFAULTS.chat },
       classify: { ...OPENAI_DEFAULTS.classify },
-      realtime: {
-        ...OPENAI_DEFAULTS.realtime,
-        baseURL:
-          env.OPENAI_BASE_URL ?? OPENAI_DEFAULTS.realtime.baseFallbackURL,
-      },
-      transcribe: { ...OPENAI_DEFAULTS.transcribe },
       agent: { ...OPENAI_DEFAULTS.agent },
       cache: { ...OPENAI_DEFAULTS.cache },
     },
     deepgram: { ...DEEPGRAM_DEFAULTS },
-    interview: { ...INTERVIEW_DEFAULTS, vad: { ...INTERVIEW_DEFAULTS.vad } },
+    interview: { ...INTERVIEW_DEFAULTS },
   }
 }
 
@@ -107,8 +97,6 @@ export class ConfigService {
             schemaVersion: CURRENT_SCHEMA_VERSION,
             chatModel: null,
             chatTemperature: null,
-            realtimeModel: null,
-            realtimeVoice: null,
             deepgramModel: null,
             deepgramLanguage: null,
             silenceThresholdMs: null,
@@ -140,10 +128,6 @@ export class ConfigService {
     if (userConfig.chatModel) base.openai.chat.model = userConfig.chatModel
     if (userConfig.chatTemperature != null)
       base.openai.chat.temperature = userConfig.chatTemperature
-    if (userConfig.realtimeModel)
-      base.openai.realtime.model = userConfig.realtimeModel
-    if (userConfig.realtimeVoice)
-      base.openai.realtime.voice = userConfig.realtimeVoice
     if (userConfig.deepgramModel) base.deepgram.model = userConfig.deepgramModel
     if (userConfig.deepgramLanguage)
       base.deepgram.language = userConfig.deepgramLanguage

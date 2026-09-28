@@ -9,8 +9,6 @@ const CHAT_MODELS = [
   "gpt-4.1",
 ] as const
 
-const REALTIME_MODELS = ["gpt-4o-realtime-preview"] as const
-const REALTIME_VOICES = ["alloy", "echo", "shimmer", "verse", "ash"] as const
 const DEEPGRAM_MODELS = ["nova-3", "nova-2"] as const
 
 /** Prisma nullable columns use `null`; Zod `.optional()` only allows `undefined`. */
@@ -36,14 +34,6 @@ export const UserConfigSchemaV1 = z.object({
     z.enum(CHAT_MODELS).optional().nullable()
   ),
   chatTemperature: z.number().min(0).max(1).optional().nullable(),
-  realtimeModel: z.preprocess(
-    (val) => nullableEnum(REALTIME_MODELS, val),
-    z.enum(REALTIME_MODELS).optional().nullable()
-  ),
-  realtimeVoice: z.preprocess(
-    (val) => nullableEnum(REALTIME_VOICES, val),
-    z.enum(REALTIME_VOICES).optional().nullable()
-  ),
 
   // Deepgram
   deepgramModel: z.preprocess(

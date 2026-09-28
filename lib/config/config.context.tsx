@@ -25,16 +25,11 @@ function buildClientBase(): ResolvedConfig {
     openai: {
       chat: { ...OPENAI_DEFAULTS.chat },
       classify: { ...OPENAI_DEFAULTS.classify },
-      realtime: {
-        ...OPENAI_DEFAULTS.realtime,
-        baseURL: OPENAI_DEFAULTS.realtime.baseFallbackURL,
-      },
-      transcribe: { ...OPENAI_DEFAULTS.transcribe },
       agent: { ...OPENAI_DEFAULTS.agent },
       cache: { ...OPENAI_DEFAULTS.cache },
     },
     deepgram: { ...DEEPGRAM_DEFAULTS },
-    interview: { ...INTERVIEW_DEFAULTS, vad: { ...INTERVIEW_DEFAULTS.vad } },
+    interview: { ...INTERVIEW_DEFAULTS },
   }
 }
 
@@ -48,18 +43,13 @@ function applyUserConfig(
     openai: {
       ...base.openai,
       chat: { ...base.openai.chat },
-      realtime: { ...base.openai.realtime },
     },
     deepgram: { ...base.deepgram },
-    interview: { ...base.interview, vad: { ...base.interview.vad } },
+    interview: { ...base.interview },
   }
   if (userConfig.chatModel) result.openai.chat.model = userConfig.chatModel
   if (userConfig.chatTemperature != null)
     result.openai.chat.temperature = userConfig.chatTemperature
-  if (userConfig.realtimeModel)
-    result.openai.realtime.model = userConfig.realtimeModel
-  if (userConfig.realtimeVoice)
-    result.openai.realtime.voice = userConfig.realtimeVoice
   if (userConfig.deepgramModel) result.deepgram.model = userConfig.deepgramModel
   if (userConfig.deepgramLanguage)
     result.deepgram.language = userConfig.deepgramLanguage
@@ -110,14 +100,7 @@ export function ConfigProvider({
     })
     if (!res.ok) throw new Error("Failed to update config")
     const updated: UserConfig = await res.json()
-    setResolvedConfig((prev) => {
-      const merged = applyUserConfig(buildClientBase(), updated)
-      // Preserve server-resolved OpenAI base URL (env) after API round-trip
-      if (prev?.openai.realtime.baseURL) {
-        merged.openai.realtime.baseURL = prev.openai.realtime.baseURL
-      }
-      return merged
-    })
+    setResolvedConfig(applyUserConfig(buildClientBase(), updated))
   }
 
   function updatePrivateKeys(keys: Partial<PrivateKeys>) {

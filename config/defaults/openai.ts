@@ -12,16 +12,6 @@ export const OPENAI_DEFAULTS = {
     temperature: 0,
     timeoutMs: 2000,
   },
-  realtime: {
-    model: "gpt-4o-realtime-preview",
-    voice: "alloy",
-    // env.OPENAI_BASE_URL (required in env.mjs) always wins at runtime.
-    // baseFallbackURL is only reached in local dev before .env.local is populated.
-    baseFallbackURL: "https://api.openai.com/v1",
-  },
-  transcribe: {
-    model: "gpt-4o-transcribe",
-  },
   agent: {
     answerCoachModel: "gpt-4.1-mini",
   },
