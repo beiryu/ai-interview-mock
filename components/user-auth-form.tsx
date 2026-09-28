@@ -24,7 +24,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormData>({
+  } = useForm({
     resolver: zodResolver(userAuthSchema),
   })
   const [isLoading, setIsLoading] = React.useState<boolean>(false)

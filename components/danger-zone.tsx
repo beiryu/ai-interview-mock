@@ -43,7 +43,7 @@ export function DangerZone({ userId, className }: DangerZoneProps) {
     register,
     watch,
     formState: { errors },
-  } = useForm<DeleteAccount>({
+  } = useForm({
     resolver: zodResolver(DeleteAccountSchema),
   })
 

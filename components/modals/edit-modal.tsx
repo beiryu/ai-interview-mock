@@ -58,7 +58,7 @@ export default function EditDialog({ interview }: EditProps) {
 
   const router = useRouter()
 
-  const form = useForm<UpdateInterviewRequest>({
+  const form = useForm({
     resolver: zodResolver(UpdateInterviewRequestSchema),
     defaultValues: {
       id: interview.id,

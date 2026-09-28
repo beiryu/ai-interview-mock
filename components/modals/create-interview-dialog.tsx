@@ -40,7 +40,7 @@ export function CreateInterviewDialog() {
 
   const { mutate: createInterview, isPending } = useCreateInterview()
 
-  const form = useForm<CreateInterviewRequest>({
+  const form = useForm({
     resolver: zodResolver(CreateInterviewRequestSchema),
     defaultValues: {
       name: "",

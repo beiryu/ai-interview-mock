@@ -24,7 +24,7 @@ interface EditorProps {
 type FormData = z.infer<typeof postPatchSchema>
 
 export function Editor({ post }: EditorProps) {
-  const { register, handleSubmit } = useForm<FormData>({
+  const { register, handleSubmit } = useForm({
     resolver: zodResolver(postPatchSchema),
   })
   const ref = React.useRef<EditorJS>()

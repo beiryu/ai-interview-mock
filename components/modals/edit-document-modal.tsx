@@ -6,7 +6,6 @@ import { z } from "zod"
 
 import {
   Document,
-  UpdateDocumentRequest,
   UpdateDocumentRequestSchema,
 } from "@/lib/validations/document"
 import { useUpdateDocument } from "@/hooks/api/document/useUpdateDocument"
@@ -71,14 +70,19 @@ type EditDocumentProps = {
   onClose?: () => void
 }
 
+// `type` is shown in the form but is not part of the update payload
+const EditDocumentFormSchema = UpdateDocumentRequestSchema.extend({
+  type: z.string().optional(),
+})
+
 export default function EditDocumentDialog({
   document,
   onClose,
 }: EditDocumentProps) {
   const { mutate: updateDocument, isPending } = useUpdateDocument()
 
-  const form = useForm<UpdateDocumentRequest & { type: string }>({
-    resolver: zodResolver(UpdateDocumentRequestSchema),
+  const form = useForm({
+    resolver: zodResolver(EditDocumentFormSchema),
     defaultValues: {
       title: document.title,
       content: document.content,
@@ -87,7 +91,7 @@ export default function EditDocumentDialog({
     },
   })
 
-  function onSubmit(values: UpdateDocumentRequest & { type: string }) {
+  function onSubmit(values: z.infer<typeof EditDocumentFormSchema>) {
     // Remove type from the values as it's not part of UpdateDocumentRequest
     const { type, ...updateData } = values
 

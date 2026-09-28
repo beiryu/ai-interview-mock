@@ -39,7 +39,7 @@ export function UserProfileForm({
     handleSubmit,
     register,
     formState: { errors },
-  } = useForm<UserProfile>({
+  } = useForm({
     resolver: zodResolver(UserProfileSchema),
     defaultValues: {
       name: user?.name || "",

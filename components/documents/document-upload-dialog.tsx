@@ -100,7 +100,7 @@ export function DocumentUploadDialog() {
     useState<ProcessingStage | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
 
-  const form = useForm<CreateDocumentRequest>({
+  const form = useForm({
     resolver: zodResolver(CreateDocumentRequestSchema),
     defaultValues: {
       title: "",
