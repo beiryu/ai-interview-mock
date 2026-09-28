@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { User } from "@prisma/client"
+import type { User } from "@/lib/generated/prisma/client"
 import { formatDistance } from "date-fns"
 import { useSession } from "next-auth/react"
 

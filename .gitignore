@@ -37,4 +37,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.contentlayer
+# prisma client (generated on postinstall)
+/lib/generated/

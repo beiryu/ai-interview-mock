@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { DocumentType } from "@prisma/client"
+import { DocumentType } from "@/lib/generated/prisma/enums"
 import { z } from "zod"
 
 import { db } from "@/lib/db"

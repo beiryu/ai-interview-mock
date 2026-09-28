@@ -1,4 +1,4 @@
-import { DocumentType } from "@prisma/client"
+import { DocumentType } from "@/lib/generated/prisma/enums"
 import { z } from "zod"
 
 export const DocumentSchema = z.object({

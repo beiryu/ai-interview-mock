@@ -1,4 +1,4 @@
-import { User } from "@prisma/client"
+import type { User } from "@/lib/generated/prisma/client"
 import { useQuery } from "@tanstack/react-query"
 
 const getUser = async (userId: string): Promise<User | null> => {

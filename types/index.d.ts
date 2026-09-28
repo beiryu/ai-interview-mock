@@ -1,4 +1,4 @@
-import { User } from "@prisma/client"
+import type { User } from "@/lib/generated/prisma/client"
 
 export type NavItem = {
   title: string
