@@ -6,12 +6,13 @@ import { db } from "@/lib/db"
 import { UpdateInterviewSessionRequestSchema } from "@/lib/validations/interview-session"
 
 interface Params {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
-export async function PUT(req: Request, { params }: Params) {
+export async function PUT(req: Request, props: Params) {
+  const params = await props.params
   try {
-    const session = await auth.api.getSession({ headers: headers() })
+    const session = await auth.api.getSession({ headers: await headers() })
     if (!session) {
       return new NextResponse("Unauthorized", { status: 403 })
     }

@@ -8,7 +8,7 @@ import { CreateInterviewRequestSchema } from "@/lib/validations/interview"
 
 export async function POST(req: Request) {
   try {
-    const session = await auth.api.getSession({ headers: headers() })
+    const session = await auth.api.getSession({ headers: await headers() })
 
     if (!session) {
       return new NextResponse("Unauthorized", { status: 403 })
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
-    const session = await auth.api.getSession({ headers: headers() })
+    const session = await auth.api.getSession({ headers: await headers() })
 
     if (!session) {
       return new NextResponse("Unauthorized", { status: 403 })

@@ -6,7 +6,7 @@ import { db } from "@/lib/db"
 
 export async function POST(req: Request) {
   try {
-    const session = await auth.api.getSession({ headers: headers() })
+    const session = await auth.api.getSession({ headers: await headers() })
     if (!session) {
       return new NextResponse("Unauthorized", { status: 403 })
     }

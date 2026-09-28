@@ -4,38 +4,24 @@ import "./env.mjs"
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ["avatars.githubusercontent.com"],
-  },
-  experimental: {
-    serverComponentsExternalPackages: [
-      "@prisma/client",
-      "@openai/agents",
-      "@openai/agents-core",
-      "@openai/agents-openai",
+    remotePatterns: [
+      { protocol: "https", hostname: "avatars.githubusercontent.com" },
     ],
   },
-  webpack(config) {
-    const fileLoaderRule = config.module.rules.find((rule) =>
-      rule.test?.test?.(".svg")
-    )
-
-    config.module.rules.push(
-      {
-        ...fileLoaderRule,
-        test: /\.svg$/i,
-        resourceQuery: /url/,
+  serverExternalPackages: [
+    "@prisma/client",
+    "@openai/agents",
+    "@openai/agents-core",
+    "@openai/agents-openai",
+  ],
+  turbopack: {
+    rules: {
+      // Import .svg files as React components
+      "*.svg": {
+        loaders: ["@svgr/webpack"],
+        as: "*.js",
       },
-      {
-        test: /\.svg$/i,
-        issuer: fileLoaderRule.issuer,
-        resourceQuery: { not: [...fileLoaderRule.resourceQuery.not, /url/] },
-        use: ["@svgr/webpack"],
-      }
-    )
-
-    fileLoaderRule.exclude = /\.svg$/i
-
-    return config
+    },
   },
 }
 

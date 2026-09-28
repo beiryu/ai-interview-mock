@@ -5,10 +5,11 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import EditorJS from "@editorjs/editorjs"
 import { zodResolver } from "@hookform/resolvers/zod"
-import type { Post } from "@/lib/generated/prisma/client"
 import { useForm } from "react-hook-form"
 import TextareaAutosize from "react-textarea-autosize"
 import * as z from "zod"
+
+import type { Post } from "@/lib/generated/prisma/client"
 
 import "@/styles/editor.css"
 import { cn } from "@/lib/utils"
@@ -27,7 +28,7 @@ export function Editor({ post }: EditorProps) {
   const { register, handleSubmit } = useForm({
     resolver: zodResolver(postPatchSchema),
   })
-  const ref = React.useRef<EditorJS>()
+  const ref = React.useRef<EditorJS | undefined>(undefined)
   const router = useRouter()
   const [isSaving, setIsSaving] = React.useState<boolean>(false)
   const [isMounted, setIsMounted] = React.useState<boolean>(false)

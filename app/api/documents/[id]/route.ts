@@ -10,16 +10,17 @@ import {
 import { getCurrentUser } from "@/lib/session"
 
 interface Params {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 /**
  * GET /api/documents/[id]
  * Get a specific document
  */
-export async function GET(req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, props: Params) {
+  const params = await props.params
   try {
     const user = await getCurrentUser()
     if (!user?.id) {
@@ -48,7 +49,8 @@ export async function GET(req: NextRequest, { params }: Params) {
  * DELETE /api/documents/[id]
  * Delete a document and remove its file from OpenAI
  */
-export async function DELETE(req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, props: Params) {
+  const params = await props.params
   try {
     const user = await getCurrentUser()
     if (!user?.id) {
@@ -105,7 +107,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
  * PUT /api/documents/[id]
  * Update a document — removes old OpenAI file, uploads new one
  */
-export async function PUT(req: NextRequest, { params }: Params) {
+export async function PUT(req: NextRequest, props: Params) {
+  const params = await props.params
   try {
     const user = await getCurrentUser()
     if (!user?.id) {

@@ -12,12 +12,13 @@ const routeContextSchema = z.object({
   }),
 })
 
-export async function GET(
-  req: Request,
-  context: z.infer<typeof routeContextSchema>
-) {
+type RouteContext = {
+  params: Promise<z.infer<typeof routeContextSchema>["params"]>
+}
+
+export async function GET(req: Request, context: RouteContext) {
   try {
-    const session = await auth.api.getSession({ headers: headers() })
+    const session = await auth.api.getSession({ headers: await headers() })
 
     if (!session) {
       return new Response("Unauthorized", { status: 403 })
@@ -25,7 +26,7 @@ export async function GET(
 
     const user = await db.user.findFirst({
       where: {
-        id: context.params.userId,
+        id: (await context.params).userId,
       },
       select: {
         id: true,
@@ -45,16 +46,15 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  req: Request,
-  context: z.infer<typeof routeContextSchema>
-) {
+export async function PATCH(req: Request, context: RouteContext) {
   try {
     // Validate the route context.
-    const { params } = routeContextSchema.parse(context)
+    const { params } = routeContextSchema.parse({
+      params: await context.params,
+    })
 
     // Ensure user is authentication and has access to this user.
-    const session = await auth.api.getSession({ headers: headers() })
+    const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user || params.userId !== session?.user.id) {
       return new Response(null, { status: 403 })
     }
@@ -85,16 +85,15 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  req: Request,
-  context: z.infer<typeof routeContextSchema>
-) {
+export async function DELETE(req: Request, context: RouteContext) {
   try {
     // Validate the route context
-    const { params } = routeContextSchema.parse(context)
+    const { params } = routeContextSchema.parse({
+      params: await context.params,
+    })
 
     // Ensure user is authenticated and has access to this user
-    const session = await auth.api.getSession({ headers: headers() })
+    const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user || params.userId !== session?.user.id) {
       return new Response(null, { status: 403 })
     }

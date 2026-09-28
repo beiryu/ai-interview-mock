@@ -1,7 +1,7 @@
 "use client"
 
 import { ReactNode } from "react"
-import { ReactLenis } from "@studio-freight/react-lenis"
+import { ReactLenis } from "lenis/react"
 
 type Props = {
   children?: ReactNode

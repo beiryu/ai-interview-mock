@@ -57,7 +57,7 @@ export function LiveInterviewPlaygroundV2({
   const { mutateAsync: updateSession } = useUpdateInterviewSession()
 
   const [timer, setTimer] = useState("00:00")
-  const timerRef = useRef<NodeJS.Timeout>()
+  const timerRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const cleanupRef = useRef<(() => void) | null>(null)
   /** DB id of the active InterviewSession (not the parent interview's id). */
   const interviewSessionIdRef = useRef<string | null>(null)

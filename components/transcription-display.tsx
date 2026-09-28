@@ -3,7 +3,10 @@ import { useInterviewSessionStore } from "@/stores/interview-session.store"
 
 import { TranscriptionMessage } from "./transcription-message"
 
-const useScrollToTop = (ref: React.RefObject<HTMLElement>, deps: unknown[]) => {
+const useScrollToTop = (
+  ref: React.RefObject<HTMLElement | null>,
+  deps: unknown[]
+) => {
   useEffect(() => {
     if (ref.current) {
       ref.current.scrollTop = 0

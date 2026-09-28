@@ -8,10 +8,11 @@ import { UpdateInterviewRequestSchema } from "@/lib/validations/interview"
 
 export async function GET(
   req: Request,
-  { params }: { params: { interviewId: string } }
+  props: { params: Promise<{ interviewId: string }> }
 ) {
+  const params = await props.params
   try {
-    const session = await auth.api.getSession({ headers: headers() })
+    const session = await auth.api.getSession({ headers: await headers() })
 
     if (!session) {
       return new NextResponse("Unauthorized", { status: 403 })
@@ -34,10 +35,11 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { interviewId: string } }
+  props: { params: Promise<{ interviewId: string }> }
 ) {
+  const params = await props.params
   try {
-    const session = await auth.api.getSession({ headers: headers() })
+    const session = await auth.api.getSession({ headers: await headers() })
 
     if (!session) {
       return new NextResponse("Unauthorized", { status: 403 })
@@ -72,10 +74,11 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { interviewId: string } }
+  props: { params: Promise<{ interviewId: string }> }
 ) {
+  const params = await props.params
   try {
-    const session = await auth.api.getSession({ headers: headers() })
+    const session = await auth.api.getSession({ headers: await headers() })
 
     if (!session) {
       return new NextResponse("Unauthorized", { status: 403 })

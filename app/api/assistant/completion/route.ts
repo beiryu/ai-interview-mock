@@ -9,7 +9,7 @@ import { buildPrompt, buildSummarizerPrompt } from "@/lib/utils"
 // Note: runtime = "edge" removed — ConfigService requires Node.js (Prisma)
 
 export async function POST(req: Request) {
-  const session = await auth.api.getSession({ headers: headers() })
+  const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user?.id) {
     return new Response("Unauthorized", { status: 401 })
   }

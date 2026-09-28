@@ -11,7 +11,7 @@ import { auth } from "@/lib/auth"
 import { getOrCreateVectorStore } from "@/lib/openai/vector-store-service"
 
 export async function POST(req: Request) {
-  const authSession = await auth.api.getSession({ headers: headers() })
+  const authSession = await auth.api.getSession({ headers: await headers() })
   if (!authSession?.user?.id) {
     return new Response("Unauthorized", { status: 401 })
   }

@@ -32,8 +32,8 @@ export function useDeepgramConnection(
   const [connection, setConnection] = useState<LiveClient | null>(null)
 
   const connectionRef = useRef<LiveClient | null>(null)
-  const keepAliveInterval = useRef<NodeJS.Timeout>()
-  const silenceInterval = useRef<NodeJS.Timeout>()
+  const keepAliveInterval = useRef<NodeJS.Timeout | undefined>(undefined)
+  const silenceInterval = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const cleanupConnection = useCallback(() => {
     if (keepAliveInterval.current) clearInterval(keepAliveInterval.current)

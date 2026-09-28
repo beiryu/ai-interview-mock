@@ -241,7 +241,7 @@ export default function EditDialog({ interview }: EditProps) {
                         }
                         onSelect={(date) => field.onChange(date?.toISOString())}
                         disabled={(date) => date < new Date()}
-                        initialFocus
+                        autoFocus
                       />
                     </PopoverContent>
                   </Popover>

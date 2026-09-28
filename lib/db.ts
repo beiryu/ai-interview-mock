@@ -3,7 +3,6 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@/lib/generated/prisma/client"
 
 declare global {
-  // eslint-disable-next-line no-var
   var cachedPrisma: PrismaClient
 }
 

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   BadgeCheck,
   Bell,
@@ -10,8 +11,8 @@ import {
   Sparkles,
 } from "lucide-react"
 
-import { authClient } from "@/lib/auth-client"
 import type { SessionUser } from "@/lib/auth"
+import { authClient } from "@/lib/auth-client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ interface NavUserProps {
 }
 
 export function NavUser({ user }: NavUserProps) {
+  const router = useRouter()
   const { isMobile } = useSidebar()
 
   return (
@@ -105,7 +107,7 @@ export function NavUser({ user }: NavUserProps) {
                 event.preventDefault()
                 authClient.signOut({
                   fetchOptions: {
-                    onSuccess: () => window.location.assign("/login"),
+                    onSuccess: () => router.push("/login"),
                   },
                 })
               }}

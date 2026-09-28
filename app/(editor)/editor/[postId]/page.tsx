@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation"
-import type { Post, User } from "@/lib/generated/prisma/client"
 
 import { db } from "@/lib/db"
+import type { Post, User } from "@/lib/generated/prisma/client"
 import { getCurrentUser } from "@/lib/session"
 import { Editor } from "@/components/editor"
 
@@ -14,10 +14,11 @@ async function getPostForUser(postId: Post["id"], userId: User["id"]) {
 }
 
 interface EditorPageProps {
-  params: { postId: string }
+  params: Promise<{ postId: string }>
 }
 
-export default async function EditorPage({ params }: EditorPageProps) {
+export default async function EditorPage(props: EditorPageProps) {
+  const params = await props.params
   const user = await getCurrentUser()
 
   if (!user) {

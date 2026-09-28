@@ -3,7 +3,7 @@ import { getSessionCookie } from "better-auth/cookies"
 
 // Optimistic redirect based on the session cookie only; pages and route
 // handlers still validate the session via getCurrentUser().
-export default function middleware(req: NextRequest) {
+export default function proxy(req: NextRequest) {
   const isAuth = !!getSessionCookie(req)
   const isAuthPage =
     req.nextUrl.pathname.startsWith("/login") ||
