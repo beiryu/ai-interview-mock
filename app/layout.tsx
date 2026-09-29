@@ -1,6 +1,7 @@
 import { Outfit as FontOutfit } from "next/font/google"
 
 import "@/styles/globals.css"
+import { env } from "@/env.mjs"
 import { siteConfig } from "@/config/defaults/site"
 import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/toaster"
@@ -18,7 +19,7 @@ interface RootLayoutProps {
 }
 
 export const metadata = {
-  metadataBase: new URL(siteConfig.url),
+  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
   title: {
     default: siteConfig.name,
     template: `%s | ${siteConfig.name}`,

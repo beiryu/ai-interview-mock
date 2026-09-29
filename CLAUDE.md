@@ -9,6 +9,7 @@ pnpm install          # Install dependencies (postinstall runs prisma generate)
 pnpm dev              # Run next dev
 pnpm build            # next build
 pnpm lint             # Run ESLint
+pnpm typecheck        # tsc --noEmit
 pnpm start            # Start production server
 ```
 
@@ -20,7 +21,7 @@ pnpm prisma migrate dev   # Run migrations
 pnpm prisma studio        # Open Prisma Studio GUI
 ```
 
-Environment: copy `.env.example` to `.env.local` and fill in values. `ALLOWED_EMAILS` lists who may sign in (single-user app).
+Environment: copy `.env.example` to `.env` and fill in values (the Prisma CLI reads `.env` via `prisma.config.ts`). `ALLOWED_EMAILS` lists who may sign in (single-user app).
 
 ## Architecture
 

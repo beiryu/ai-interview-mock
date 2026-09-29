@@ -12,6 +12,7 @@ import {
   Settings2,
 } from "lucide-react"
 
+import { siteConfig } from "@/config/defaults/site"
 import type { SessionUser } from "@/lib/auth"
 import {
   Sidebar,
@@ -57,7 +58,7 @@ export function AppSidebar({
                   <Podcast className="size-4" />
                 </div>
                 <span className="truncate font-semibold">
-                  Let&apos;s Talk Wise
+                  {siteConfig.name}
                 </span>
               </Link>
             </SidebarMenuButton>
