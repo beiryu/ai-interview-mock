@@ -16,8 +16,8 @@ export const OPENAI_DEFAULTS = {
   },
   agent: {
     answerCoachModel: "gpt-4.1-mini",
-    // 1–3 spoken sentences; a cap keeps the tail latency bounded
-    maxTokens: 220,
+    // 3 key points + 1–3 spoken sentences; a cap keeps tail latency bounded
+    maxTokens: 260,
   },
 } as const
 

@@ -6,6 +6,7 @@ import { useChatDocumentStore } from "@/stores/chat-document-store"
 import { Clock, FileText, Zap } from "lucide-react"
 
 import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
+import { useCopilotHotkeys } from "@/hooks/use-copilot-hotkeys"
 import { useInterviewSessionLifecycle } from "@/hooks/use-interview-session-lifecycle"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,6 +25,7 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 import DocumentSelector from "@/components/chat/document-selector"
 import StreamingChat from "@/components/chat/streaming-chat"
+import { CopilotStatus } from "@/components/copilot-status"
 import { LiveInterviewResponses } from "@/components/live-interview-responses"
 import MicOnlyRecorder from "@/components/mic-only-recorder"
 import { MicrophoneConnectionStatus } from "@/components/microphone-connection-status"
@@ -42,6 +44,7 @@ export function LiveInterviewPlaygroundV2({
   const router = useRouter()
   const { data: interview } = useGetInterview(interviewId)
   const { startedAt, finish } = useInterviewSessionLifecycle(interviewId)
+  useCopilotHotkeys()
   const {
     clearDocumentSelection,
     clearActiveSession,
@@ -173,9 +176,7 @@ export function LiveInterviewPlaygroundV2({
                 className="flex min-h-0 flex-col"
               >
                 <div className="flex h-10 shrink-0 items-center justify-between border-b px-4">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    AI Suggestions
-                  </span>
+                  <CopilotStatus />
                   <div className="flex items-center gap-2">
                     <Button
                       variant={fastMode ? "default" : "outline"}
