@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation"
 
-import { ConfigProvider } from "@/lib/config/config.context"
-import { ConfigService } from "@/lib/config/config.service"
 import { getCurrentUser } from "@/lib/session"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -26,30 +24,26 @@ export default async function DashboardLayout({
     return notFound()
   }
 
-  const initialConfig = await ConfigService.forUser(user.id)
-
   return (
-    <ConfigProvider initialConfig={initialConfig}>
-      <SidebarProvider>
-        <AppSidebar user={user} />
-        <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center gap-2">
-            <div className="flex items-center gap-2 px-4 w-full">
-              <SidebarTrigger className="-ml-1" />
-              <Separator orientation="vertical" className="mr-2 h-4" />
-              <BreadcrumbNav />
-              <div className="ml-auto">
-                <ModeToggle />
-              </div>
-            </div>
-          </header>
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-            <div className="min-h-screen flex-1 rounded-xl md:min-h-min">
-              {children}
+    <SidebarProvider>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2">
+          <div className="flex items-center gap-2 px-4 w-full">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <BreadcrumbNav />
+            <div className="ml-auto">
+              <ModeToggle />
             </div>
           </div>
-        </SidebarInset>
-      </SidebarProvider>
-    </ConfigProvider>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="min-h-screen flex-1 rounded-xl md:min-h-min">
+            {children}
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

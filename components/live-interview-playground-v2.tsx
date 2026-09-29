@@ -24,7 +24,6 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 import DocumentSelector from "@/components/chat/document-selector"
 import StreamingChat from "@/components/chat/streaming-chat"
-import { InterviewSettingsSheet } from "@/components/interview-settings-sheet"
 import { LiveInterviewResponses } from "@/components/live-interview-responses"
 import MicOnlyRecorder from "@/components/mic-only-recorder"
 import { MicrophoneConnectionStatus } from "@/components/microphone-connection-status"
@@ -109,7 +108,6 @@ export function LiveInterviewPlaygroundV2({
             <SessionTimer startedAt={startedAt} />
           </div>
           <div className="flex items-center gap-2">
-            <InterviewSettingsSheet />
             <MicOnlyRecorder contextTerms={contextTerms} />
             <Button
               variant="destructive"

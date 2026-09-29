@@ -43,7 +43,7 @@ Environment: copy `.env.example` to `.env` and fill in values (the Prisma CLI re
 
 **AI**: OpenAI Responses API + per-user hosted vector store (`lib/openai/*`); answer coach agent in `lib/agents/interview-agents.ts`. No Redis — cached ids live in Postgres.
 
-**Config** (`/config`): Operator defaults (OpenAI, Deepgram, interview), site metadata and the user-config schema.
+**Config** (`/config/defaults`): all tuning lives here as constants — OpenAI models, Soniox STT params, turn-taking thresholds, site metadata. There is no per-user config.
 
 **Environment validation** (`env.mjs`): All env vars are validated with Zod at startup. Add new variables here when introducing new integrations.
 

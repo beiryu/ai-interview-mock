@@ -5,7 +5,7 @@ import {
   useInterviewSessionStore,
 } from "@/stores/interview-session.store"
 
-import { useConfig } from "@/lib/config/config.hooks"
+import { STT_DEFAULTS } from "@/config/defaults/stt"
 import { SonioxStream, type SttStatus } from "@/lib/stt/soniox-stream"
 import type { Role } from "@/lib/turn/turn-engine"
 import { useAudioCapture, type AudioFrame } from "@/hooks/use-audio-capture"
@@ -37,7 +37,6 @@ export function useLiveTranscriber(
   role: Role,
   options: { contextTerms?: string[] } = {}
 ) {
-  const { config } = useConfig()
   const setSttError = useInterviewSessionStore((s) => s.setSttError)
   const setMicrophoneStatus = useInterviewSessionStore(
     (s) => s.setMicrophoneStatus
@@ -46,11 +45,6 @@ export function useLiveTranscriber(
 
   const streamRef = useRef<SonioxStream | null>(null)
   const source = role === "interviewer" ? "tab" : "mic"
-
-  // Thresholds can change from the settings sheet mid-session
-  useEffect(() => {
-    turnEngine.setThresholds(config.interview)
-  }, [config.interview])
 
   const onFrame = useCallback(
     ({ pcm, rms }: AudioFrame) => {
@@ -75,7 +69,7 @@ export function useLiveTranscriber(
 
     const stream = new SonioxStream(
       fetchTemporaryKey,
-      { ...config.stt, contextTerms: options.contextTerms },
+      { ...STT_DEFAULTS, contextTerms: options.contextTerms },
       {
         onUpdate: (update) =>
           turnEngine.onTranscript(role, update, performance.now()),
@@ -101,7 +95,6 @@ export function useLiveTranscriber(
   }, [
     capture,
     closeStream,
-    config.stt,
     options.contextTerms,
     role,
     setMicrophoneStatus,

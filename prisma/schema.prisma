@@ -76,27 +76,8 @@ model User {
   interviewSessions InterviewSession[] @relation("UserInterviewSessions")
   documents         Document[]         @relation("UserDocuments")
   conversations     ChatConversation[] @relation("UserChatConversations")
-  userConfig        UserConfig?
 
   @@map("users")
-}
-
-// ─── User Config ──────────────────────────────────────────────────────────────
-
-model UserConfig {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  schemaVersion Int @default(1)
-
-  // Turn-taking pace preset: "fast" | "balanced" | "patient"
-  turnPace String?
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("user_configs")
 }
 
 // ─── Interviews ───────────────────────────────────────────────────────────────
