@@ -161,7 +161,7 @@ export function InterviewSettingsSheet() {
             onClick={handleApply}
             disabled={applying}
           >
-            {applying ? "Reconnecting…" : "Apply & Reconnect (Command + R)"}
+            {applying ? "Reconnecting…" : "Apply & reconnect"}
           </Button>
         </div>
       </SheetContent>

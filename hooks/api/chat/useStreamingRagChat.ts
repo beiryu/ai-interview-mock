@@ -50,8 +50,6 @@ export function useStreamingRagChat(options?: UseStreamingChatOptions) {
       let streamingMessageAdded = false
 
       try {
-        console.log("Starting streaming request for:", request.message)
-
         // Add optimistic user message immediately
         const optimisticUserMessage = {
           id: tempId,
@@ -101,21 +99,16 @@ export function useStreamingRagChat(options?: UseStreamingChatOptions) {
           const { done, value } = await reader.read()
 
           if (done) {
-            console.log("Streaming completed")
             break
           }
 
           const chunk = decoder.decode(value, { stream: true })
-          console.log("Raw chunk received:", chunk)
-
           // Parse SSE data
           const lines = chunk.split("\n")
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               try {
                 const data: StreamingChunk = JSON.parse(line.slice(6))
-                console.log("Parsed chunk:", data)
-
                 if (data.type === "content" && data.content) {
                   accumulatedContent += data.content
                   setCurrentStreamContent(accumulatedContent)
@@ -159,8 +152,6 @@ export function useStreamingRagChat(options?: UseStreamingChatOptions) {
                 }
 
                 if (data.type === "complete" && data.message) {
-                  console.log("Stream complete, final message:", data.message)
-
                   // Replace streaming message with final message
                   queryClient.setQueryData(
                     ["chatMessages", request.sessionId],

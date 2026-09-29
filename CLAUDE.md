@@ -20,25 +20,28 @@ pnpm prisma migrate dev   # Run migrations
 pnpm prisma studio        # Open Prisma Studio GUI
 ```
 
-Environment: copy `.env.example` to `.env.local` and fill in values.
+Environment: copy `.env.example` to `.env.local` and fill in values. `ALLOWED_EMAILS` lists who may sign in (single-user app).
 
 ## Architecture
 
-**Next.js 13 App Router** with route groups organizing the app into logical sections:
+**Next.js 16 App Router** (React 19, Turbopack) with route groups:
 
-- `app/(auth)` — Login/register pages, no layout shell
-- `app/(dashboard)` — Protected pages (sidebar layout), requires auth
-- `app/(editor)` — Editor.js-based post editor
+- `app/(auth)` — Login page, no layout shell
+- `app/(dashboard)` — Protected pages (sidebar layout): home, interviews (+ live session and past sessions), documents, document chat, settings
 - `app/api` — Route handlers for interviews, documents, chat/RAG, Deepgram, auth, user settings
 - `app/page.tsx` redirects `/` to `/dashboard` (personal-use app, no marketing site or payments)
 
-**Middleware** (`middleware.ts`) protects `/dashboard`, `/editor`, `/login`, `/register` with an optimistic Better Auth session-cookie check; pages and route handlers still validate via `getCurrentUser()`.
+**Proxy** (`proxy.ts`, Next 16's renamed middleware) protects `/dashboard` and `/login` with an optimistic Better Auth session-cookie check; pages and route handlers still validate via `getCurrentUser()` and scope queries by `userId`.
 
 **Database** (Prisma 7 + PostgreSQL via `@prisma/adapter-pg`): client is generated to `lib/generated/prisma` (import types from `@/lib/generated/prisma/client`, enums from `.../enums`); datasource URL lives in `prisma.config.ts`. Auth tables (`User`, `Account`, `Session`, `Verification`) follow the Better Auth schema.
 
-**Auth**: Better Auth (`lib/auth.ts`) with GitHub OAuth and magic link (Resend). Handler at `app/api/auth/[...all]`; client helpers in `lib/auth-client.ts`; server code uses `getCurrentUser()` from `lib/session.ts` or `auth.api.getSession({ headers })`.
+**Auth**: Better Auth (`lib/auth.ts`) with GitHub OAuth and magic link (Resend); a `databaseHooks.user.create.before` allowlist blocks sign-ups outside `ALLOWED_EMAILS`. Handler at `app/api/auth/[...all]`; client helpers in `lib/auth-client.ts`; server code uses `getCurrentUser()` from `lib/session.ts` or `auth.api.getSession({ headers })`.
 
-**Config** (`/config`): Operator defaults (OpenAI, Deepgram, interview), site metadata and the user-config schema live here — update these when adding new routes/pages.
+**Live interview flow**: the playground captures the meeting tab (`hooks/use-microphone.ts`, getDisplayMedia) and the candidate mic (`hooks/use-microphone-only.ts`), each streamed to Deepgram. Transcript and AI suggestions live in `stores/interview-session.store.ts`. `hooks/use-interview-session-lifecycle.ts` creates the `InterviewSession` row only once capture starts and persists the transcript (autosave, on end, `sendBeacon` on tab close).
+
+**AI**: OpenAI Responses API + per-user hosted vector store (`lib/openai/*`); answer coach agent in `lib/agents/interview-agents.ts`. No Redis — cached ids live in Postgres.
+
+**Config** (`/config`): Operator defaults (OpenAI, Deepgram, interview), site metadata and the user-config schema.
 
 **Environment validation** (`env.mjs`): All env vars are validated with Zod at startup. Add new variables here when introducing new integrations.
 

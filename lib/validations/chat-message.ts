@@ -4,16 +4,6 @@ export const RagChatRequestSchema = z.object({
   message: z.string().min(1, "Message is required"),
   selectedDocuments: z.array(z.string().min(1)).default([]),
   sessionId: z.string().optional(),
-  options: z
-    .object({
-      tonePreference: z
-        .enum(["professional", "conversational", "technical", "simple"])
-        .optional(),
-      includeCitations: z.boolean().optional(),
-      modelName: z.string().optional(),
-      temperature: z.number().min(0).max(2).optional(),
-    })
-    .optional(),
 })
 
 export type RagChatRequest = z.infer<typeof RagChatRequestSchema>

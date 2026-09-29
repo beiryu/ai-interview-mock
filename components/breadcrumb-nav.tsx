@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 import {
@@ -11,47 +12,57 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 
-const breadcrumbMap = {
-  "/dashboard/interviews": {
-    parent: { title: "Interview", href: "/dashboard/interviews" },
-    current: "Interview Sessions",
-  },
-  "/dashboard/tools": {
-    parent: { title: "AI Tools", href: "/dashboard/tools" },
-    current: "Speak with Buddy",
-  },
-  "/dashboard/documents": {
-    parent: { title: "Documents", href: "/dashboard/documents" },
-    current: "Resource Center",
-  },
-  "/dashboard/settings": {
-    parent: { title: "Settings", href: "/dashboard/settings" },
-    current: "User Settings",
-  },
-}
+const SECTIONS: { path: string; title: string }[] = [
+  { path: "/dashboard/interviews", title: "Interviews" },
+  { path: "/dashboard/documents", title: "Documents" },
+  { path: "/dashboard/chat", title: "Document Chat" },
+  { path: "/dashboard/settings", title: "Settings" },
+]
 
 export function BreadcrumbNav() {
   const pathname = usePathname() || ""
+  const section = SECTIONS.find((s) => pathname.startsWith(s.path))
 
-  const matchPath = Object.keys(breadcrumbMap).find((path) =>
-    pathname.startsWith(path)
-  )
-  const breadcrumb = breadcrumbMap[matchPath as keyof typeof breadcrumbMap]
+  if (!section) {
+    return (
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage>Home</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    )
+  }
 
-  if (!breadcrumb) return null
+  // Deeper interview pages: /dashboard/interviews/[id] and /[id]/sessions
+  const sub =
+    section.path === "/dashboard/interviews" && pathname !== section.path
+      ? pathname.endsWith("/sessions")
+        ? "Past sessions"
+        : "Live session"
+      : null
 
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        <BreadcrumbItem className="hidden md:block">
-          <BreadcrumbLink href={breadcrumb.parent.href}>
-            {breadcrumb.parent.title}
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator className="hidden md:block" />
-        <BreadcrumbItem>
-          <BreadcrumbPage>{breadcrumb.current}</BreadcrumbPage>
-        </BreadcrumbItem>
+        {sub ? (
+          <>
+            <BreadcrumbItem className="hidden md:block">
+              <BreadcrumbLink asChild>
+                <Link href={section.path}>{section.title}</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator className="hidden md:block" />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{sub}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        ) : (
+          <BreadcrumbItem>
+            <BreadcrumbPage>{section.title}</BreadcrumbPage>
+          </BreadcrumbItem>
+        )}
       </BreadcrumbList>
     </Breadcrumb>
   )

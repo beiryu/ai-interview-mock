@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: "Chat with your uploaded documents using RAG.",
 }
 
-export default async function LangChainToolsPage() {
+export default async function DocumentChatPage() {
   const user = await getCurrentUser()
 
   if (!user) {
@@ -23,7 +23,7 @@ export default async function LangChainToolsPage() {
     <DashboardShell>
       <DashboardHeader
         heading="Document Chat"
-        text="Interact with your documents using RAG."
+        text="Ask questions grounded in your resume, JDs and notes."
       />
       <Card className="h-[calc(100vh-12rem)] overflow-hidden bg-background p-0">
         <ChatWithDocuments />

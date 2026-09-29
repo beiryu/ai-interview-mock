@@ -58,7 +58,6 @@ export default function StreamingChat() {
     cancelStream,
   } = useStreamingRagChat({
     onChunkReceived: (chunk) => {
-      console.log("Received chunk:", chunk)
       // Auto-scroll on new chunk
       if (scrollAreaRef.current) {
         const scrollContainer = scrollAreaRef.current.querySelector(
@@ -70,8 +69,6 @@ export default function StreamingChat() {
       }
     },
     onComplete: (completedMessage) => {
-      console.log("Streaming complete:", completedMessage)
-
       // Set the session ID if this is a new conversation
       if (!activeSessionId && completedMessage.conversationId) {
         setActiveSession(completedMessage.conversationId)
@@ -115,16 +112,10 @@ export default function StreamingChat() {
     const trimmedMessage = message.trim()
     setMessage("")
 
-    console.log("Sending streaming message:", trimmedMessage)
-
     sendStreamingMessage({
       message: trimmedMessage,
       selectedDocuments,
       sessionId: activeSessionId,
-      options: {
-        includeCitations: true,
-        tonePreference: "professional",
-      },
     })
   }
 

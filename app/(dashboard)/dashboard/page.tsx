@@ -1,22 +1,31 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import {
-  CalendarIcon,
-  FileText,
-  MessageSquare,
-  Settings,
-  Wrench,
-} from "lucide-react"
+import { CalendarClock, FileText, History } from "lucide-react"
 
+import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { DashboardHeader } from "@/components/header"
+import { CreateInterviewDialog } from "@/components/modals/create-interview-dialog"
 import { DashboardShell } from "@/components/shell"
 
 export const metadata = {
-  title: "Dashboard",
+  title: "Home",
+}
+
+const dateTime = (date: Date) =>
+  date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })
+
+function EmptyLine({ children }: { children: React.ReactNode }) {
+  return <p className="py-4 text-sm text-muted-foreground">{children}</p>
 }
 
 export default async function DashboardPage() {
@@ -26,128 +35,128 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
+  const [upcoming, recentSessions, documentCount, indexedCount] =
+    await Promise.all([
+      db.interview.findMany({
+        where: { userId: user.id, scheduledAt: { gte: new Date() } },
+        orderBy: { scheduledAt: "asc" },
+        take: 5,
+      }),
+      db.interviewSession.findMany({
+        where: { userId: user.id },
+        orderBy: { startedAt: "desc" },
+        take: 5,
+        include: { interview: { select: { id: true, name: true } } },
+      }),
+      db.document.count({ where: { userId: user.id } }),
+      db.document.count({
+        where: { userId: user.id, openaiFileId: { not: null } },
+      }),
+    ])
+
   return (
     <DashboardShell>
       <DashboardHeader
-        heading="Dashboard"
-        text={`Welcome back, ${user.name || "there"}!`}
-      />
+        heading={user.name ? `Hi, ${user.name}` : "Home"}
+        text="Your upcoming interviews and recent sessions."
+      >
+        <CreateInterviewDialog />
+      </DashboardHeader>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium text-lg">Interviews</h3>
-            <MessageSquare className="size-5 text-muted-foreground" />
-          </div>
-          <p className="text-muted-foreground mb-4">
-            Practice interviews with AI assistant feedback.
-          </p>
-          <Link
-            className={cn(
-              buttonVariants({ variant: "outline", className: "w-full" })
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="text-lg">Upcoming</CardTitle>
+              <CardDescription>
+                Interviews with a scheduled time
+              </CardDescription>
+            </div>
+            <CalendarClock className="size-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="divide-y">
+            {upcoming.length === 0 ? (
+              <EmptyLine>Nothing scheduled.</EmptyLine>
+            ) : (
+              upcoming.map((interview) => (
+                <Link
+                  key={interview.id}
+                  href={`/dashboard/interviews/${interview.id}`}
+                  className="flex items-center justify-between gap-4 py-3 text-sm hover:underline"
+                >
+                  <span className="truncate font-medium">
+                    {interview.name}
+                    {interview.companyName && (
+                      <span className="font-normal text-muted-foreground">
+                        {" "}
+                        · {interview.companyName}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">
+                    {dateTime(interview.scheduledAt!)}
+                  </span>
+                </Link>
+              ))
             )}
-            href="/dashboard/interviews"
-          >
-            Start Interview
-          </Link>
+          </CardContent>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium text-lg">Documents</h3>
-            <FileText className="size-5 text-muted-foreground" />
-          </div>
-          <p className="text-muted-foreground mb-4">
-            Manage your documents for interview preparation.
-          </p>
-          <Link
-            className={cn(
-              buttonVariants({ variant: "outline", className: "w-full" })
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="text-lg">Recent sessions</CardTitle>
+              <CardDescription>Saved transcripts</CardDescription>
+            </div>
+            <History className="size-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="divide-y">
+            {recentSessions.length === 0 ? (
+              <EmptyLine>
+                No sessions yet. Launch an interview and share the meeting tab
+                to record one.
+              </EmptyLine>
+            ) : (
+              recentSessions.map((session) => (
+                <Link
+                  key={session.id}
+                  href={`/dashboard/interviews/${session.interview.id}/sessions`}
+                  className="flex items-center justify-between gap-4 py-3 text-sm hover:underline"
+                >
+                  <span className="truncate font-medium">
+                    {session.interview.name}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">
+                    {session.status === "completed"
+                      ? dateTime(session.startedAt)
+                      : "In progress"}
+                  </span>
+                </Link>
+              ))
             )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-lg">Documents</CardTitle>
+            <CardDescription>
+              {documentCount === 0
+                ? "Upload your resume and job descriptions so the answer coach can use them."
+                : `${indexedCount} of ${documentCount} documents are searchable by the answer coach.`}
+            </CardDescription>
+          </div>
+          <Link
             href="/dashboard/documents"
+            className={cn(buttonVariants({ variant: "outline" }), "gap-2")}
           >
-            View Documents
+            <FileText className="size-4" />
+            Manage
           </Link>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium text-lg">Tools</h3>
-            <Wrench className="size-5 text-muted-foreground" />
-          </div>
-          <p className="text-muted-foreground mb-4">
-            Use our tools to help you prepare for your interview.
-          </p>
-          <Link
-            className={cn(
-              buttonVariants({ variant: "outline", className: "w-full" })
-            )}
-            href="/dashboard/tools"
-          >
-            View Tools
-          </Link>
-        </Card>
-      </div>
-
-      <div className="mt-8">
-        <h2 className="font-medium text-xl mb-4">Getting Started</h2>
-        <div className="bg-muted rounded-lg p-6">
-          <ol className="space-y-4 list-decimal list-inside">
-            <li>
-              Upload your resume and documents in the{" "}
-              <a href="/dashboard/documents" className="font-medium underline">
-                Documents section
-              </a>
-            </li>
-            <li>
-              Create your first interview in the{" "}
-              <a href="/dashboard/interviews" className="font-medium underline">
-                Interviews section
-              </a>
-            </li>
-            <li>Practice with our AI interview coach and receive feedback</li>
-            <li>Review your performance in Analytics</li>
-          </ol>
-        </div>
-      </div>
-
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium text-lg">Upcoming Sessions</h3>
-            <CalendarIcon className="size-5 text-muted-foreground" />
-          </div>
-          <div className="text-center py-8 text-muted-foreground">
-            No upcoming sessions scheduled.
-          </div>
-          <Link
-            className={cn(
-              buttonVariants({ variant: "outline", className: "w-full" })
-            )}
-            href="/dashboard/interviews"
-          >
-            Schedule Practice
-          </Link>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium text-lg">Account Settings</h3>
-            <Settings className="size-5 text-muted-foreground" />
-          </div>
-          <p className="text-muted-foreground mb-4">
-            Manage your profile and preferences.
-          </p>
-          <Link
-            className={cn(
-              buttonVariants({ variant: "outline", className: "w-full" })
-            )}
-            href="/dashboard/settings"
-          >
-            Manage Settings
-          </Link>
-        </Card>
-      </div>
+        </CardHeader>
+      </Card>
     </DashboardShell>
   )
 }
