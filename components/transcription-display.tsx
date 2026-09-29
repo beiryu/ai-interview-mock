@@ -3,18 +3,6 @@ import { useInterviewSessionStore } from "@/stores/interview-session.store"
 
 import { TranscriptionMessage } from "./transcription-message"
 
-const useScrollToTop = (
-  ref: React.RefObject<HTMLElement | null>,
-  deps: unknown[]
-) => {
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.scrollTop = 0
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
-}
-
 export function TranscriptionDisplay() {
   const {
     messages,
@@ -30,16 +18,10 @@ export function TranscriptionDisplay() {
     interimRole === "interviewer" || !!interviewerBuffer
   const showCandidateSpeaking = interimRole === "candidate" || !!candidateBuffer
 
-  useScrollToTop(scrollRef, [
-    messages.length,
-    showInterviewerSpeaking,
-    showCandidateSpeaking,
-  ])
-
-  const now = new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  // Newest entries render at the top; keep them in view
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+  }, [messages.length, showInterviewerSpeaking, showCandidateSpeaking])
 
   const interviewerLiveText = [
     interviewerBuffer,
@@ -61,7 +43,6 @@ export function TranscriptionDisplay() {
         <div className="flex flex-col gap-2 p-4">
           {showInterviewerSpeaking && (
             <TranscriptionMessage
-              timestamp={now}
               type="speaking"
               role="interviewer"
               text={interviewerLiveText}
@@ -70,7 +51,6 @@ export function TranscriptionDisplay() {
 
           {showCandidateSpeaking && (
             <TranscriptionMessage
-              timestamp={now}
               type="speaking"
               role="candidate"
               text={candidateLiveText}

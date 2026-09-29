@@ -68,10 +68,3 @@ export type UserConfig = z.infer<typeof UserConfigSchema>
 export const configMigrations: Record<number, (data: unknown) => unknown> = {
   // example: 1: (data) => ({ ...(data as object), schemaVersion: 2, newField: "default" }),
 }
-
-// Private keys: client-only, never persisted to DB, never sent to server
-export const PrivateKeysSchema = z.object({
-  openaiApiKey: z.string().startsWith("sk-").optional(),
-  deepgramApiKey: z.string().min(32).optional(),
-})
-export type PrivateKeys = z.infer<typeof PrivateKeysSchema>

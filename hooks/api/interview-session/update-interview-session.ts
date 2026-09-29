@@ -1,5 +1,3 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-
 import { UpdateInterviewSessionRequest } from "@/lib/validations/interview-session"
 
 type UpdatePayload = UpdateInterviewSessionRequest & { id: string }
@@ -18,16 +16,3 @@ export const updateInterviewSession = async ({
   if (!response.ok) throw new Error("Failed to save session")
   return response.json()
 }
-
-const useUpdateInterviewSession = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: updateInterviewSession,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["interviews"] })
-    },
-  })
-}
-
-export default useUpdateInterviewSession

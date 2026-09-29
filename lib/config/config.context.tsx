@@ -1,23 +1,16 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useState } from "react"
 
 import { DEEPGRAM_DEFAULTS } from "@/config/defaults/deepgram"
 import { INTERVIEW_DEFAULTS } from "@/config/defaults/interview"
 import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
-import {
-  PrivateKeysSchema,
-  type PrivateKeys,
-  type UserConfig,
-} from "@/config/schemas/user-config.schema"
+import type { UserConfig } from "@/config/schemas/user-config.schema"
 import type { ResolvedConfig } from "@/lib/config/config.service"
 
-const PRIVATE_KEYS_STORAGE_KEY = "app:private-keys"
-
 interface ConfigContextValue {
-  config: ResolvedConfig & { privateKeys: PrivateKeys }
+  config: ResolvedConfig
   updateConfig: (patch: Partial<UserConfig>) => Promise<void>
-  updatePrivateKeys: (keys: Partial<PrivateKeys>) => void
 }
 
 function buildClientBase(): ResolvedConfig {
@@ -76,21 +69,6 @@ export function ConfigProvider({
   const [resolvedConfig, setResolvedConfig] = useState<ResolvedConfig>(
     initialConfig ?? buildClientBase()
   )
-  const [privateKeys, setPrivateKeys] = useState<PrivateKeys>({})
-
-  // Merge localStorage private keys after mount (client-only)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PRIVATE_KEYS_STORAGE_KEY)
-      if (raw) {
-        const parsed = PrivateKeysSchema.safeParse(JSON.parse(raw))
-        if (parsed.success) setPrivateKeys(parsed.data)
-      }
-    } catch {
-      /* ignore parse errors */
-    }
-  }, [])
-
   async function updateConfig(patch: Partial<UserConfig>) {
     const res = await fetch("/api/user/config", {
       method: "PUT",
@@ -102,26 +80,8 @@ export function ConfigProvider({
     setResolvedConfig(applyUserConfig(buildClientBase(), updated))
   }
 
-  function updatePrivateKeys(keys: Partial<PrivateKeys>) {
-    const merged = { ...privateKeys, ...keys }
-    const parsed = PrivateKeysSchema.safeParse(merged)
-    if (parsed.success) {
-      setPrivateKeys(parsed.data)
-      localStorage.setItem(
-        PRIVATE_KEYS_STORAGE_KEY,
-        JSON.stringify(parsed.data)
-      )
-    }
-  }
-
   return (
-    <ConfigContext.Provider
-      value={{
-        config: { ...resolvedConfig, privateKeys },
-        updateConfig,
-        updatePrivateKeys,
-      }}
-    >
+    <ConfigContext.Provider value={{ config: resolvedConfig, updateConfig }}>
       {children}
     </ConfigContext.Provider>
   )
@@ -130,13 +90,12 @@ export function ConfigProvider({
 export function useConfigContext() {
   const ctx = useContext(ConfigContext)
   if (!ctx) {
-    // Outside ConfigProvider: return operator defaults with empty private keys
+    // Outside ConfigProvider: return operator defaults
     return {
-      config: { ...buildClientBase(), privateKeys: {} as PrivateKeys },
+      config: buildClientBase(),
       updateConfig: async () => {
         throw new Error("ConfigProvider not mounted")
       },
-      updatePrivateKeys: () => {},
     }
   }
   return ctx

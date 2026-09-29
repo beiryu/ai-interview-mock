@@ -13,11 +13,6 @@ const eslintConfig = [
       "tailwindcss/no-custom-classname": "off",
       "tailwindcss/classnames-order": "off",
       "tailwindcss/no-unnecessary-arbitrary-value": "off",
-      // React Compiler rules (react-hooks v7) flag pre-existing patterns;
-      // keep them visible as warnings until those components are refactored.
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/refs": "warn",
-      "react-hooks/purity": "warn",
     },
     settings: {
       tailwindcss: {

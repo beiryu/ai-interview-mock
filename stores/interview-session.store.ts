@@ -3,7 +3,7 @@ import type { AgentInputItem } from "@openai/agents"
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 
-import { InterviewMessage, QuestionAnalysis } from "@/types/interview-message"
+import { InterviewMessage } from "@/types/interview-message"
 import { MicrophoneStatus } from "@/types/interview-session"
 
 interface InterviewSessionStore {
@@ -14,10 +14,8 @@ interface InterviewSessionStore {
   interimText: string
   interimRole: "interviewer" | "candidate" | null
   lastSpeakTime: number
-  isClassifying: boolean
 
   messages: InterviewMessage[]
-  currentAnalysis: QuestionAnalysis | null
 
   // Agent memory
   agentHistory: AgentInputItem[]
@@ -53,10 +51,8 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
       interimText: "",
       interimRole: null,
       lastSpeakTime: Date.now(),
-      isClassifying: false,
 
       messages: [],
-      currentAnalysis: null,
 
       // Agent memory
       agentHistory: [],
@@ -76,13 +72,11 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
           currentSessionId: null,
           sessionContext: "",
           messages: [],
-          currentAnalysis: null,
           agentHistory: [],
           interviewerBuffer: "",
           candidateBuffer: "",
           interimText: "",
           interimRole: null,
-          isClassifying: false,
         }),
 
       flushTranscript: async (role: "interviewer" | "candidate") => {
@@ -120,8 +114,6 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
         // Client-side word count gate — free, no LLM round-trip
         if (buffer.trim().split(/\s+/).length < 4) return
 
-        set({ isClassifying: true })
-
         const context = get()
           .messages.slice(Math.max(0, currentIndex - 3), currentIndex)
           .map((m) => ({ role: m.role, content: m.content }))
@@ -145,16 +137,10 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
               messages: s.messages.map((m) =>
                 m.id === messageId ? { ...m, questionAnalysis: null } : m
               ),
-              currentAnalysis:
-                s.currentAnalysis?.messageId === messageId
-                  ? null
-                  : s.currentAnalysis,
             }))
           }
         } catch {
           // Fail open: analysis already started, just let it run
-        } finally {
-          set({ isClassifying: false })
         }
       },
 
@@ -200,7 +186,6 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
           messages: state.messages.map((m) =>
             m.id === messageId ? { ...m, questionAnalysis: initialAnalysis } : m
           ),
-          currentAnalysis: initialAnalysis,
         }))
 
         const currentIndex = state.messages.findIndex((m) => m.id === messageId)

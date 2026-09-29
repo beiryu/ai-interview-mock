@@ -9,6 +9,7 @@ export function VideoPreview({ stream }: VideoPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
+    const video = videoRef.current
     let animationFrameId: number
 
     const drawVideoToCanvas = () => {
@@ -30,10 +31,10 @@ export function VideoPreview({ stream }: VideoPreviewProps) {
       animationFrameId = requestAnimationFrame(drawVideoToCanvas)
     }
 
-    if (stream && videoRef.current) {
-      videoRef.current.srcObject = stream
-      videoRef.current.onloadedmetadata = () => {
-        videoRef.current?.play()
+    if (stream && video) {
+      video.srcObject = stream
+      video.onloadedmetadata = () => {
+        video.play()
         animationFrameId = requestAnimationFrame(drawVideoToCanvas)
       }
     }
@@ -42,9 +43,8 @@ export function VideoPreview({ stream }: VideoPreviewProps) {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId)
       }
-      if (videoRef.current) {
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        videoRef.current.srcObject = null
+      if (video) {
+        video.srcObject = null
       }
     }
   }, [stream])

@@ -1,32 +1,21 @@
 "use client"
 
-import { useCallback, useEffect } from "react"
 import { Mic, MicOff } from "lucide-react"
 
-import { useDeepgramConnection } from "@/hooks/use-deepgram-connection"
+import {
+  useDeepgramAudioSender,
+  useDeepgramConnection,
+} from "@/hooks/use-deepgram-connection"
 import { useMicrophoneOnly } from "@/hooks/use-microphone-only"
-import { useQueue } from "@/hooks/use-queue"
 
 import { Button } from "./ui/button"
 
+/** Captures the candidate's microphone and streams it to Deepgram. */
 export default function MicOnlyRecorder() {
-  const { add, remove, first, size } = useQueue([])
   const { connection } = useDeepgramConnection("candidate")
-
-  const handleDataAvailable = useCallback(
-    (e: BlobEvent) => {
-      if (e.data.size > 0) add(e.data)
-    },
-    [add]
-  )
+  const handleDataAvailable = useDeepgramAudioSender(connection)
 
   const { micOpen, toggleMicrophone } = useMicrophoneOnly(handleDataAvailable)
-
-  useEffect(() => {
-    if (!connection || size === 0) return
-    connection.send(first)
-    remove()
-  }, [connection, size, first, remove])
 
   return (
     <Button

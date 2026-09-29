@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useInterviewSessionStore } from "@/stores/interview-session.store"
 
 import type { TranscriptEntry } from "@/lib/validations/interview-session"
+import { updateInterviewSession } from "@/hooks/api/interview-session/update-interview-session"
 import useCreateInterviewSession from "@/hooks/api/interview-session/useCreateInterviewSession"
-import { updateInterviewSession } from "@/hooks/api/interview-session/useUpdateInterviewSession"
 
 const AUTOSAVE_INTERVAL_MS = 30_000
 

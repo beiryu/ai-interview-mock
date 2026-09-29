@@ -14,7 +14,6 @@ interface ChatDocumentStore {
   activeSessionId: string | undefined
 
   // Document chat actions
-  selectDocument: (documentId: string) => void
   deselectDocument: (documentId: string) => void
   toggleDocument: (documentId: string) => void
   clearDocumentSelection: () => void
@@ -39,12 +38,6 @@ export const useChatDocumentStore = create<ChatDocumentStore>()((set) => ({
   activeSessionId: undefined,
 
   // Document chat actions
-  selectDocument: (documentId: string) =>
-    set((state) => ({
-      selectedDocuments: state.selectedDocuments.includes(documentId)
-        ? state.selectedDocuments
-        : [...state.selectedDocuments, documentId],
-    })),
 
   deselectDocument: (documentId: string) =>
     set((state) => ({

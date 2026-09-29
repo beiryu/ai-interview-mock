@@ -1,33 +1,21 @@
 "use client"
 
-import { useCallback, useEffect } from "react"
-
-import { useDeepgramConnection } from "@/hooks/use-deepgram-connection"
+import {
+  useDeepgramAudioSender,
+  useDeepgramConnection,
+} from "@/hooks/use-deepgram-connection"
 import { useMicrophone } from "@/hooks/use-microphone"
-import { useQueue } from "@/hooks/use-queue"
 
 import { RecordButton } from "./record-button"
 import { VideoPreview } from "./video-preview"
 
+/** Captures the meeting tab (interviewer side) and streams it to Deepgram. */
 export default function RecorderTranscriber() {
-  const { add, remove, first, size } = useQueue([])
   const { connection, status } = useDeepgramConnection("interviewer")
-
-  const handleDataAvailable = useCallback(
-    (e: BlobEvent) => {
-      if (e.data.size > 0) add(e.data)
-    },
-    [add]
-  )
+  const handleDataAvailable = useDeepgramAudioSender(connection)
 
   const { micOpen, userMedia, toggleMicrophone } =
     useMicrophone(handleDataAvailable)
-
-  useEffect(() => {
-    if (!connection || size === 0) return
-    connection.send(first)
-    remove()
-  }, [connection, size, first, remove])
 
   return (
     <div className="relative w-full">

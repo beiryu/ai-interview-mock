@@ -1,5 +1,4 @@
 import { useState } from "react"
-import { useCopyToClipboard } from "@uidotdev/usehooks"
 import { BookOpen, ChevronDown, Copy, FileText } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -81,8 +80,10 @@ export function ChatMessage({
 }
 
 function MessageActions({ content }: { content?: string }) {
-  const [copiedText, copyToClipboard] = useCopyToClipboard()
-  const hasCopiedText = Boolean(copiedText)
+  const [hasCopiedText, setHasCopiedText] = useState(false)
+  const copyToClipboard = (text: string) => {
+    void navigator.clipboard.writeText(text).then(() => setHasCopiedText(true))
+  }
 
   return (
     <div className="flex">

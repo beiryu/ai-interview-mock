@@ -1,7 +1,7 @@
 type TranscriptionMessageType = "buffer" | "interim" | "final" | "speaking"
 
 interface TranscriptionMessageProps {
-  timestamp: string
+  timestamp?: string
   text?: string
   type: TranscriptionMessageType
   role?: "interviewer" | "candidate"

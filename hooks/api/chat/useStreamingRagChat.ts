@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { v4 as uuidv4 } from "uuid"
 
 import { RagChatRequest } from "@/lib/validations/chat-message"
 
@@ -34,8 +33,8 @@ export function useStreamingRagChat(options?: UseStreamingChatOptions) {
   const sendStreamingMessage = useCallback(
     async (request: RagChatRequest) => {
       // Create temporary ID for optimistic UI
-      const tempId = uuidv4()
-      const streamingTempId = uuidv4()
+      const tempId = crypto.randomUUID()
+      const streamingTempId = crypto.randomUUID()
 
       setStreamingMessageId(streamingTempId)
       setCurrentStreamContent("")
