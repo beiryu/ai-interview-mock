@@ -13,9 +13,6 @@ export const OPENAI_DEFAULTS = {
   agent: {
     answerCoachModel: "gpt-4.1-mini",
   },
-  cache: {
-    prevResponseTtlSec: 86400,
-  },
 } as const
 
 export type OpenAIDefaults = typeof OPENAI_DEFAULTS

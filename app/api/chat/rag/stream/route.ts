@@ -3,17 +3,16 @@ import { z } from "zod"
 
 import { ConfigService } from "@/lib/config/config.service"
 import { db } from "@/lib/db"
-import { saveChatInteraction } from "@/lib/langchain/memory"
+import { saveChatInteraction } from "@/lib/chat/persistence"
 import {
   FileSearchSource,
   streamDocumentChatWithoutFileSearch,
   streamWithFileSearch,
 } from "@/lib/openai/file-search-stream"
 import {
-  getCachedUserDocs,
   getOrCreateVectorStore,
+  getUserDocs,
 } from "@/lib/openai/vector-store-service"
-import redis from "@/lib/redis"
 import { getCurrentUser } from "@/lib/session"
 import { RagChatRequestSchema } from "@/lib/validations/chat-message"
 
@@ -28,10 +27,9 @@ export async function POST(req: NextRequest) {
     }
 
     const config = await ConfigService.forUser(user.id)
-    const PREV_RESP_TTL = config.openai.cache.prevResponseTtlSec
 
     const body = await req.json()
-    const { message, selectedDocuments, sessionId, options } =
+    const { message, selectedDocuments, sessionId } =
       RagChatRequestSchema.parse(body)
 
     // Create or retrieve the chat conversation
@@ -51,44 +49,28 @@ export async function POST(req: NextRequest) {
       conversationId = conversation.id
     }
 
-    console.log("Starting streaming response for message:", message)
-
     const encoder = new TextEncoder()
     let fullResponse = ""
     let sources: FileSearchSource[] = []
 
-    // Run all setup queries in parallel — previousResponseId served from Redis
-    // to avoid a DB round-trip on every conversational turn.
-    const prevRespCacheKey = conversationId
-      ? `prev_resp:${conversationId}`
-      : null
-
     const hasDocSelection =
       Array.isArray(selectedDocuments) && selectedDocuments.length > 0
 
-    const cachedPrevRespId = prevRespCacheKey
-      ? await redis.get(prevRespCacheKey)
-      : null
-
     let vectorStoreId = ""
-    let userDocs: Awaited<ReturnType<typeof getCachedUserDocs>> = []
+    let userDocs: Awaited<ReturnType<typeof getUserDocs>> = []
 
     if (hasDocSelection) {
       ;[vectorStoreId, userDocs] = await Promise.all([
         getOrCreateVectorStore(user.id),
-        getCachedUserDocs(user.id, selectedDocuments),
+        getUserDocs(user.id, selectedDocuments),
       ])
     }
 
-    // Fall back to DB only on Redis miss (first turn or cache eviction)
-    let previousResponseId: string | null | undefined = cachedPrevRespId
-    if (!previousResponseId && conversationId) {
-      const conv = await db.chatConversation.findUnique({
-        where: { id: conversationId },
-        select: { previousResponseId: true },
-      })
-      previousResponseId = conv?.previousResponseId ?? null
-    }
+    const conversation = await db.chatConversation.findUnique({
+      where: { id: conversationId },
+      select: { previousResponseId: true },
+    })
+    const previousResponseId = conversation?.previousResponseId ?? null
 
     const fileIdToTitle = new Map(
       userDocs
@@ -150,12 +132,10 @@ export async function POST(req: NextRequest) {
                 conversationId,
               })
 
-              console.log("Streaming chunk:", chunk.content)
               controller.enqueue(encoder.encode(`data: ${data}\n\n`))
             }
           }
 
-          // Send complete event immediately — don't block on DB writes
           const finalData = JSON.stringify({
             type: "complete",
             message: {
@@ -166,33 +146,19 @@ export async function POST(req: NextRequest) {
             },
           })
 
+          // Store the response id before closing so the next turn can chain
+          // off it; the message rows are written after the client is unblocked.
+          if (newResponseId) {
+            await db.chatConversation.update({
+              where: { id: conversationId },
+              data: { previousResponseId: newResponseId },
+            })
+          }
+
           controller.enqueue(encoder.encode(`data: ${finalData}\n\n`))
           controller.close()
 
-          // Fire-and-forget: persist to DB and update Redis cache after the
-          // stream is already closed — client is unblocked immediately.
-          Promise.all([
-            saveChatInteraction(
-              user.id,
-              conversationId!,
-              message,
-              fullResponse,
-              sources
-            ).then((saved) => {
-              if (newResponseId && conversationId) {
-                const key = `prev_resp:${conversationId}`
-                return Promise.all([
-                  redis.set(key, newResponseId, "EX", PREV_RESP_TTL),
-                  db.chatConversation.update({
-                    where: { id: conversationId },
-                    data: { previousResponseId: newResponseId },
-                  }),
-                ])
-              }
-            }),
-          ]).catch((err) =>
-            console.error("Post-stream persistence error:", err)
-          )
+          saveChatInteraction(conversationId!, message, fullResponse, sources)
         } catch (error) {
           console.error("Error in streaming:", error)
           const errorData = JSON.stringify({

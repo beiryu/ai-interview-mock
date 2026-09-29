@@ -4,7 +4,6 @@ import { db } from "@/lib/db"
 import {
   addFileToVectorStore,
   getOrCreateVectorStore,
-  invalidateUserDocsCache,
   removeFileFromVectorStore,
 } from "@/lib/openai/vector-store-service"
 import { getCurrentUser } from "@/lib/session"
@@ -87,8 +86,6 @@ export async function DELETE(req: NextRequest, props: Params) {
     await db.document.delete({
       where: { id: params.id },
     })
-
-    await invalidateUserDocsCache(user.id)
 
     return NextResponse.json({
       success: true,
@@ -209,8 +206,6 @@ export async function PUT(req: NextRequest, props: Params) {
         },
       })
     }
-
-    await invalidateUserDocsCache(user.id)
 
     return NextResponse.json({
       success: true,

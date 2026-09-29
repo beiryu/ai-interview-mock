@@ -6,7 +6,6 @@ import { db } from "@/lib/db"
 import {
   addFileToVectorStore,
   getOrCreateVectorStore,
-  invalidateUserDocsCache,
 } from "@/lib/openai/vector-store-service"
 import { getCurrentUser } from "@/lib/session"
 import { CreateDocumentRequestSchema } from "@/lib/validations/document"
@@ -85,8 +84,6 @@ export async function POST(req: NextRequest) {
       where: { id: document.id },
       data: { openaiFileId },
     })
-
-    await invalidateUserDocsCache(user.id)
 
     return NextResponse.json({
       success: true,

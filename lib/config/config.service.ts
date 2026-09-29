@@ -22,7 +22,6 @@ export interface ResolvedConfig {
       timeoutMs: number
     }
     agent: { answerCoachModel: string }
-    cache: { prevResponseTtlSec: number }
   }
   deepgram: {
     model: string
@@ -45,7 +44,6 @@ function buildBaseConfig(): ResolvedConfig {
       chat: { ...OPENAI_DEFAULTS.chat },
       classify: { ...OPENAI_DEFAULTS.classify },
       agent: { ...OPENAI_DEFAULTS.agent },
-      cache: { ...OPENAI_DEFAULTS.cache },
     },
     deepgram: { ...DEEPGRAM_DEFAULTS },
     interview: { ...INTERVIEW_DEFAULTS },

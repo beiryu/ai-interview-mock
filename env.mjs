@@ -13,7 +13,6 @@ export const env = createEnv({
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_BASE_URL: z.string().min(1),
     DEEPGRAM_API_KEY: z.string().min(1),
-    REDIS_URL: z.string().min(1),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().min(1),
@@ -30,6 +29,5 @@ export const env = createEnv({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
     DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
-    REDIS_URL: process.env.REDIS_URL,
   },
 })
