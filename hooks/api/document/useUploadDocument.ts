@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { CreateDocumentRequest } from "@/lib/validations/document"
 
 const uploadDocument = async (document: CreateDocumentRequest) => {
-  // Create FormData for LangChain documents API
   const formData = new FormData()
 
   // Add text data

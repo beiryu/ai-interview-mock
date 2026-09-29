@@ -1,6 +1,6 @@
 /**
- * File Upload Utility for LangChain
- * Simplified for plain text handling with LangChain RAG pipeline
+ * Reads an uploaded plain-text file in the browser before it is sent to
+ * /api/documents (which indexes it in the user's OpenAI vector store).
  */
 
 import { toast } from "@/components/ui/use-toast"
@@ -31,14 +31,13 @@ export const handleFileUpload = async (
     return
   }
 
-  // Validate file type - only accept plain text for LangChain
+  // Only plain text is supported
   const allowedTypes = ["text/plain"]
 
   if (!allowedTypes.includes(file.type)) {
     toast({
       title: "Invalid file type",
-      description:
-        "Please upload a plain text (TXT) file for LangChain processing",
+      description: "Please upload a plain text (.txt) file",
       variant: "destructive",
     })
     onError("Invalid file type - only plain text files are supported")
@@ -50,7 +49,6 @@ export const handleFileUpload = async (
     let title = file.name.split(".").slice(0, -1).join(".")
     if (!title) title = file.name
 
-    // Process text file for LangChain
     const content = await file.text()
     onSuccess({
       title,
@@ -60,8 +58,8 @@ export const handleFileUpload = async (
     console.error("File upload error:", error)
 
     toast({
-      title: "LangChain text processing failed",
-      description: "Could not process the text file for LangChain.",
+      title: "Could not read the file",
+      description: "The text file could not be read. Please try again.",
       variant: "destructive",
     })
 

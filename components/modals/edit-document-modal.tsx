@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import {
+  DOCUMENT_TYPE_OPTIONS,
   Document,
   UpdateDocumentRequestSchema,
 } from "@/lib/validations/document"
@@ -36,34 +37,6 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { Icons } from "@/components/icons"
-
-const documentTypes = [
-  {
-    value: "RESUME",
-    label: "Resume",
-    description: "Your professional background and experience",
-  },
-  {
-    value: "JOB_DESCRIPTION",
-    label: "Job Description",
-    description: "Target position details and requirements",
-  },
-  {
-    value: "PORTFOLIO",
-    label: "Portfolio",
-    description: "Projects, accomplishments, and work samples",
-  },
-  {
-    value: "COVER_LETTER",
-    label: "Cover Letter",
-    description: "Personalized cover letter for specific roles",
-  },
-  {
-    value: "NOTES",
-    label: "Notes",
-    description: "Custom talking points and personal insights",
-  },
-] as const
 
 type EditDocumentProps = {
   document: Document
@@ -143,7 +116,7 @@ export default function EditDocumentDialog({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {documentTypes.map((type) => (
+                    {DOCUMENT_TYPE_OPTIONS.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         <div className="flex flex-row gap-1 cursor-pointer">
                           <div className="font-medium">{type.label}</div>

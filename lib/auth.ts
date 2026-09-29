@@ -55,21 +55,11 @@ export const auth = betterAuth({
         // Don't send mail to addresses that could never sign in
         if (!isAllowedEmail(email)) return
 
-        const user = await db.user.findUnique({
-          where: { email },
-          select: { emailVerified: true },
-        })
-
-        const subject = user?.emailVerified
-          ? `Sign in to ${siteConfig.name}`
-          : `Activate your ${siteConfig.name} account`
-
         const { error } = await resend.emails.send({
           from: env.SMTP_FROM,
           to: email,
-          subject,
+          subject: `Sign in to ${siteConfig.name}`,
           react: EmailTemplate({
-            type: "sign-in",
             url,
             productName: siteConfig.name,
           }),

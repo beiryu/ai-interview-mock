@@ -24,11 +24,6 @@
     --input: 220 13% 91%;
     --ring: 262.1 83.3% 57.8%;
     --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
     --sidebar-background: 262 20% 98%;
     --sidebar-foreground: 262 40% 25%;
     --sidebar-primary: 262 83% 58%;
@@ -59,11 +54,6 @@
     --border: 215 27.9% 16.9%;
     --input: 215 27.9% 16.9%;
     --ring: 263.4 70% 50.4%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
     --sidebar-background: 262 45% 15%;
     --sidebar-foreground: 262 30% 98%;
     --sidebar-primary: 262 70% 50%;
@@ -85,28 +75,9 @@
   }
 }
 
-svg.lucide {
-  width: 1rem !important;
-  height: 1rem !important;
-}
-
-@layer components {
-  .ctaBaseStyling {
-    @apply px-4 py-2 rounded-lg font-medium inline-flex justify-center items-center gap-x-1 tracking-tight;
-  }
-  .cta-primary {
-    @apply bg-white text-black;
-  }
-  .cta-secondary {
-    @apply bg-primary/20 text-white;
-  }
-  .cta-tertiary {
-    @apply bg-transparent text-black;
-  }
-  .logo-ticker-image {
-    @apply h-8 w-auto;
-  }
-  .desktopNavList li a {
-    @apply opacity-60 hover:opacity-100 transition-all;
-  }
+/* Default lucide icons to 16px without beating size-* utilities
+   (:where() has zero specificity). */
+:where(svg.lucide) {
+  width: 1rem;
+  height: 1rem;
 }

@@ -3,12 +3,13 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 
 import { FileUploadResult, handleFileUpload } from "@/lib/file-upload"
 import {
   CreateDocumentRequest,
   CreateDocumentRequestSchema,
+  DOCUMENT_TYPE_OPTIONS,
 } from "@/lib/validations/document"
 import useUploadDocument from "@/hooks/api/document/useUploadDocument"
 import { Button } from "@/components/ui/button"
@@ -31,7 +32,6 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Progress } from "@/components/ui/progress"
 import {
   Select,
   SelectContent,
@@ -44,61 +44,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { Icons } from "@/components/icons"
 
-const documentTypes = [
-  {
-    value: "RESUME",
-    label: "Resume",
-    description: "Your professional background and experience",
-  },
-  {
-    value: "JOB_DESCRIPTION",
-    label: "Job Description",
-    description: "Target position details and requirements",
-  },
-  {
-    value: "PORTFOLIO",
-    label: "Portfolio",
-    description: "Projects, accomplishments, and work samples",
-  },
-  {
-    value: "COVER_LETTER",
-    label: "Cover Letter",
-    description: "Personalized cover letter for specific roles",
-  },
-  {
-    value: "NOTES",
-    label: "Notes",
-    description: "Custom talking points and personal insights",
-  },
-] as const
-
-type ProcessingStage =
-  | "uploading"
-  | "processing"
-  | "chunking"
-  | "embedding"
-  | "indexing"
-  | "complete"
-
-const processingStages: Record<
-  ProcessingStage,
-  { label: string; progress: number }
-> = {
-  uploading: { label: "Uploading document...", progress: 20 },
-  processing: { label: "Processing document content...", progress: 40 },
-  chunking: { label: "Creating document chunks for RAG...", progress: 60 },
-  embedding: { label: "Generating embeddings...", progress: 80 },
-  indexing: { label: "Indexing in vector store...", progress: 90 },
-  complete: { label: "Document ready for RAG queries!", progress: 100 },
-}
-
 export function DocumentUploadDialog() {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [uploadMethod, setUploadMethod] = useState<"text" | "file">("text")
-  const [processingStage, setProcessingStage] =
-    useState<ProcessingStage | null>(null)
-  const [uploadProgress, setUploadProgress] = useState(0)
 
   const form = useForm({
     resolver: zodResolver(CreateDocumentRequestSchema),
@@ -115,72 +64,35 @@ export function DocumentUploadDialog() {
       type: undefined,
       content: "",
     })
-    setProcessingStage(null)
-    setUploadProgress(0)
     setUploadMethod("text")
-  }
-
-  const simulateProcessingStages = async () => {
-    const stages: ProcessingStage[] = [
-      "uploading",
-      "processing",
-      "chunking",
-      "embedding",
-      "indexing",
-      "complete",
-    ]
-
-    for (const stage of stages) {
-      setProcessingStage(stage)
-      setUploadProgress(processingStages[stage].progress)
-      // Add small delays to simulate processing steps
-      if (stage !== "complete") {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-      }
-    }
   }
 
   const { mutate: uploadDocument, isPending } = useUploadDocument()
 
-  const onSubmit = async (data: CreateDocumentRequest) => {
-    setProcessingStage("uploading")
+  const content = useWatch({ control: form.control, name: "content" })
 
-    try {
-      // Start processing animation
-      const processingPromise = simulateProcessingStages()
-
-      uploadDocument(data, {
-        onSuccess: () => {
-          setIsOpen(false)
-          resetForm()
-          toast({
-            title: "Document processed successfully",
-            description: `Your ${documentTypes
-              .find((t) => t.value === data.type)
-              ?.label.toLowerCase()} has been processed and indexed for queries.`,
-          })
-          router.refresh()
-        },
-        onError: (error: any) => {
-          setProcessingStage(null)
-          setUploadProgress(0)
-
-          toast({
-            title: "Upload failed",
-            description:
-              error instanceof Error
-                ? error.message
-                : "Something went wrong. Please try again.",
-            variant: "destructive",
-          })
-        },
-      })
-
-      // Wait for processing animation to complete
-      await processingPromise
-    } catch (error) {
-      console.error("Error uploading document:", error)
-    }
+  const onSubmit = (data: CreateDocumentRequest) => {
+    uploadDocument(data, {
+      onSuccess: () => {
+        setIsOpen(false)
+        resetForm()
+        toast({
+          title: "Document uploaded",
+          description: `Your ${DOCUMENT_TYPE_OPTIONS.find(
+            (t) => t.value === data.type
+          )?.label.toLowerCase()} is indexed and available to the answer coach.`,
+        })
+        router.refresh()
+      },
+      onError: (error: Error) => {
+        toast({
+          title: "Upload failed",
+          description:
+            error.message || "Something went wrong. Please try again.",
+          variant: "destructive",
+        })
+      },
+    })
   }
 
   const handleFileUploadEvent = async (
@@ -211,8 +123,8 @@ export function DocumentUploadDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" effect="gooeyRight">
-          <Icons.add className="mr-2 size-4" />
+        <Button>
+          <Icons.add className="size-4" />
           Upload Document
         </Button>
       </DialogTrigger>
@@ -220,24 +132,10 @@ export function DocumentUploadDialog() {
         <DialogHeader>
           <DialogTitle>Upload Document</DialogTitle>
           <DialogDescription>
-            Add a new document to your knowledge base for enhanced search and
-            question answering capabilities.
+            Uploaded documents are indexed so the answer coach and document chat
+            can cite them.
           </DialogDescription>
         </DialogHeader>
-
-        {processingStage && (
-          <div className="mb-6 p-4 border rounded-lg bg-muted/50">
-            <div className="flex items-center space-x-3">
-              <Icons.spinner className="size-4 animate-spin" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">
-                  {processingStages[processingStage].label}
-                </p>
-                <Progress value={uploadProgress} className="mt-2" />
-              </div>
-            </div>
-          </div>
-        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -258,7 +156,7 @@ export function DocumentUploadDialog() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {documentTypes.map((type) => (
+                      {DOCUMENT_TYPE_OPTIONS.map((type) => (
                         <SelectItem key={type.value} value={type.value}>
                           <div className="flex flex-row gap-1 cursor-pointer">
                             <div className="font-medium">{type.label}</div>
@@ -338,8 +236,8 @@ export function DocumentUploadDialog() {
                 </TabsContent>
 
                 <TabsContent value="file" className="space-y-4">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Icons.post className="mx-auto size-12 text-gray-400" />
+                  <div className="rounded-lg border-2 border-dashed border-input p-6 text-center">
+                    <Icons.post className="mx-auto size-12 text-muted-foreground" />
                     <div className="mt-4">
                       <label
                         htmlFor="file-upload"
@@ -347,10 +245,10 @@ export function DocumentUploadDialog() {
                           isPending ? "pointer-events-none opacity-50" : ""
                         }`}
                       >
-                        <span className="mt-2 block text-sm font-medium text-gray-900">
+                        <span className="mt-2 block text-sm font-medium">
                           Click to upload a file
                         </span>
-                        <span className="mt-1 block text-sm text-gray-500">
+                        <span className="mt-1 block text-sm text-muted-foreground">
                           Plain text (TXT) files up to 10MB
                         </span>
                       </label>
@@ -365,11 +263,11 @@ export function DocumentUploadDialog() {
                       />
                     </div>
                   </div>
-                  {form.watch("content") && (
+                  {content && (
                     <div className="mt-4">
                       <FormLabel>Extracted Content Preview</FormLabel>
                       <Textarea
-                        value={form.watch("content")}
+                        value={content}
                         onChange={(e) =>
                           form.setValue("content", e.target.value)
                         }
@@ -396,7 +294,7 @@ export function DocumentUploadDialog() {
                 {isPending && (
                   <Icons.spinner className="mr-2 size-4 animate-spin" />
                 )}
-                {isPending ? "Processing document..." : "Upload Document"}
+                {isPending ? "Uploading & indexing…" : "Upload Document"}
               </Button>
             </DialogFooter>
           </form>
