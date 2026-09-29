@@ -93,8 +93,6 @@ export class ConfigService {
           where: { userId },
           data: {
             schemaVersion: CURRENT_SCHEMA_VERSION,
-            chatModel: null,
-            chatTemperature: null,
             endpointMaxDelayMs: null,
             endpointSensitivity: null,
             turnMaxSilenceMs: null,
@@ -121,9 +119,6 @@ export class ConfigService {
     }
 
     // Merge user overrides onto base (right-side wins, undefined/null falls back to default)
-    if (userConfig.chatModel) base.openai.chat.model = userConfig.chatModel
-    if (userConfig.chatTemperature != null)
-      base.openai.chat.temperature = userConfig.chatTemperature
     if (userConfig.endpointMaxDelayMs != null)
       base.stt.endpointMaxDelayMs = userConfig.endpointMaxDelayMs
     if (userConfig.endpointSensitivity != null)

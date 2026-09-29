@@ -22,8 +22,6 @@ export async function GET() {
   if (!row) {
     return NextResponse.json({
       schemaVersion: CURRENT_SCHEMA_VERSION,
-      chatModel: null,
-      chatTemperature: null,
       endpointMaxDelayMs: null,
       endpointSensitivity: null,
       turnMaxSilenceMs: null,
@@ -52,8 +50,6 @@ export async function PUT(req: Request) {
   // Partial update: only fields present in the request change
   const data = parsed.data
   const fields = [
-    "chatModel",
-    "chatTemperature",
     "endpointMaxDelayMs",
     "endpointSensitivity",
     "turnMaxSilenceMs",
@@ -71,8 +67,6 @@ export async function PUT(req: Request) {
     update: configFields,
     select: {
       schemaVersion: true,
-      chatModel: true,
-      chatTemperature: true,
       endpointMaxDelayMs: true,
       endpointSensitivity: true,
       turnMaxSilenceMs: true,

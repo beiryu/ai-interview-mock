@@ -90,10 +90,6 @@ model UserConfig {
 
   schemaVersion Int @default(1)
 
-  // OpenAI
-  chatModel       String?
-  chatTemperature Float?
-
   // Speech-to-text (Soniox)
   endpointMaxDelayMs  Int?
   endpointSensitivity Float?

@@ -32,16 +32,9 @@ function applyUserConfig(
   if (!userConfig) return base
   const result = {
     ...base,
-    openai: {
-      ...base.openai,
-      chat: { ...base.openai.chat },
-    },
     stt: { ...base.stt },
     interview: { ...base.interview },
   }
-  if (userConfig.chatModel) result.openai.chat.model = userConfig.chatModel
-  if (userConfig.chatTemperature != null)
-    result.openai.chat.temperature = userConfig.chatTemperature
   if (userConfig.endpointMaxDelayMs != null)
     result.stt.endpointMaxDelayMs = userConfig.endpointMaxDelayMs
   if (userConfig.endpointSensitivity != null)
