@@ -25,7 +25,7 @@ import { UserAvatar } from "@/components/user-avatar"
 interface UserProfileFormProps extends React.HTMLAttributes<HTMLFormElement> {
   user: Pick<
     User,
-    "id" | "name" | "email" | "phone" | "image" | "emailVerified"
+    "id" | "name" | "email" | "image" | "emailVerified"
   >
 }
 
@@ -43,8 +43,6 @@ export function UserProfileForm({
     resolver: zodResolver(UserProfileSchema),
     defaultValues: {
       name: user?.name || "",
-      email: user?.email || "",
-      phone: user?.phone || "",
     },
   })
 
@@ -65,7 +63,7 @@ export function UserProfileForm({
         <CardHeader>
           <CardTitle>Profile Information</CardTitle>
           <CardDescription>
-            Update your personal information and profile details.
+            Your display name. Email comes from your sign-in method.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -75,22 +73,19 @@ export function UserProfileForm({
               user={{ name: user.name, image: user.image }}
               className="size-20"
             />
-            <div className="space-y-2">
-              <Button variant="outline" size="sm" disabled>
-                Change avatar
-              </Button>
-              <p className="text-sm text-muted-foreground">
-                JPG, GIF or PNG. 1MB max.
-              </p>
+            <div className="text-sm text-muted-foreground">
+              {user.image
+                ? "Avatar from your GitHub account"
+                : "Sign in with GitHub to use your GitHub avatar"}
             </div>
           </div>
 
           {/* Name Field */}
           <div className="grid gap-2">
-            <Label htmlFor="name">Full Name</Label>
+            <Label htmlFor="name">Name</Label>
             <Input
               id="name"
-              placeholder="Enter your full name"
+              placeholder="Your name"
               className="max-w-md"
               {...register("name")}
             />
@@ -101,13 +96,14 @@ export function UserProfileForm({
 
           {/* Email Field */}
           <div className="grid gap-2">
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
-              placeholder="Enter your email"
               className="max-w-md"
-              {...register("email")}
+              value={user.email}
+              readOnly
+              disabled
             />
             <div className="flex items-center space-x-2">
               {user.emailVerified ? (
@@ -122,24 +118,6 @@ export function UserProfileForm({
                 </>
               )}
             </div>
-            {errors?.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-
-          {/* Phone Field */}
-          <div className="grid gap-2">
-            <Label htmlFor="phone">Phone Number (Optional)</Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="Enter your phone number"
-              className="max-w-md"
-              {...register("phone")}
-            />
-            {errors?.phone && (
-              <p className="text-sm text-destructive">{errors.phone.message}</p>
-            )}
           </div>
         </CardContent>
         <CardFooter>

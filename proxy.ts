@@ -5,9 +5,7 @@ import { getSessionCookie } from "better-auth/cookies"
 // handlers still validate the session via getCurrentUser().
 export default function proxy(req: NextRequest) {
   const isAuth = !!getSessionCookie(req)
-  const isAuthPage =
-    req.nextUrl.pathname.startsWith("/login") ||
-    req.nextUrl.pathname.startsWith("/register")
+  const isAuthPage = req.nextUrl.pathname.startsWith("/login")
 
   if (isAuthPage) {
     if (isAuth) {

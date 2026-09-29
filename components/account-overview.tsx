@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import type { User } from "@/lib/generated/prisma/client"
-import { authClient } from "@/lib/auth-client"
 import { formatDistance } from "date-fns"
 
 import { Badge } from "@/components/ui/badge"
@@ -19,34 +18,18 @@ import { Icons } from "@/components/icons"
 interface AccountOverviewProps {
   user: Pick<
     User,
-    "id" | "name" | "email" | "emailVerified" | "createdAt" | "updatedAt"
+    "emailVerified" | "createdAt" | "updatedAt"
   >
 }
 
 export function AccountOverview({ user }: AccountOverviewProps) {
-  const { data: session } = authClient.useSession()
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Account Overview</CardTitle>
-        <CardDescription>Your account information and status.</CardDescription>
+        <CardDescription>Your account details.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Account Status */}
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Account Status</span>
-          <Badge
-            variant="secondary"
-            className="flex items-center space-x-1 text-green-600"
-          >
-            <Icons.check className="size-3" />
-            <span>Active</span>
-          </Badge>
-        </div>
-
-        <Separator />
-
         {/* Email Verification */}
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Email Verification</span>
@@ -91,29 +74,6 @@ export function AccountOverview({ user }: AccountOverviewProps) {
           </span>
         </div>
 
-        <Separator />
-
-        {/* Session Info */}
-        {session && (
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Current Session</span>
-            <div className="text-sm text-muted-foreground space-y-1">
-              <div className="flex items-center space-x-2">
-                <Icons.user className="size-3" />
-                <span>User ID: {user.id}</span>
-              </div>
-              {session.session.expiresAt && (
-                <div className="flex items-center space-x-2">
-                  <Icons.settings className="size-3" />
-                  <span>
-                    Session expires:{" "}
-                    {new Date(session.session.expiresAt).toLocaleDateString()}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   )

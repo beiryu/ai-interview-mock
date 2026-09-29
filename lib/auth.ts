@@ -11,6 +11,16 @@ import { EmailTemplate } from "@/components/email-template"
 
 const resend = new Resend(env.RESEND_API_KEY)
 
+const allowedEmails = new Set(
+  env.ALLOWED_EMAILS.split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+)
+
+function isAllowedEmail(email: string) {
+  return allowedEmails.has(email.toLowerCase())
+}
+
 export const auth = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
   secret: env.BETTER_AUTH_SECRET,
@@ -19,9 +29,15 @@ export const auth = betterAuth({
     // Let Prisma's @default(cuid()) generate ids, matching existing rows
     database: { generateId: false },
   },
-  user: {
-    additionalFields: {
-      phone: { type: "string", required: false, input: false },
+  databaseHooks: {
+    user: {
+      create: {
+        // Personal-use app: only allowlisted emails may get an account,
+        // whether they arrive via magic link or GitHub.
+        before: async (user) => {
+          if (!isAllowedEmail(user.email)) return false
+        },
+      },
     },
   },
   session: {
@@ -36,6 +52,9 @@ export const auth = betterAuth({
   plugins: [
     magicLink({
       sendMagicLink: async ({ email, url }) => {
+        // Don't send mail to addresses that could never sign in
+        if (!isAllowedEmail(email)) return
+
         const user = await db.user.findUnique({
           where: { email },
           select: { emailVerified: true },

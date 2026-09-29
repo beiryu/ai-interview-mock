@@ -18,20 +18,20 @@ type RouteContext = {
 
 export async function GET(req: Request, context: RouteContext) {
   try {
+    const { userId } = await context.params
     const session = await auth.api.getSession({ headers: await headers() })
 
-    if (!session) {
+    if (!session?.user || userId !== session.user.id) {
       return new Response("Unauthorized", { status: 403 })
     }
 
-    const user = await db.user.findFirst({
+    const user = await db.user.findUnique({
       where: {
-        id: (await context.params).userId,
+        id: userId,
       },
       select: {
         id: true,
         name: true,
-        phone: true,
         image: true,
         email: true,
         emailVerified: true,
@@ -70,8 +70,6 @@ export async function PATCH(req: Request, context: RouteContext) {
       },
       data: {
         name: payload.name,
-        phone: payload.phone,
-        email: payload.email,
       },
     })
 
@@ -81,32 +79,6 @@ export async function PATCH(req: Request, context: RouteContext) {
       return new Response(JSON.stringify(error.issues), { status: 422 })
     }
 
-    return new Response(null, { status: 500 })
-  }
-}
-
-export async function DELETE(req: Request, context: RouteContext) {
-  try {
-    // Validate the route context
-    const { params } = routeContextSchema.parse({
-      params: await context.params,
-    })
-
-    // Ensure user is authenticated and has access to this user
-    const session = await auth.api.getSession({ headers: await headers() })
-    if (!session?.user || params.userId !== session?.user.id) {
-      return new Response(null, { status: 403 })
-    }
-
-    // Delete the user and all related data (CASCADE should handle most relations)
-    await db.user.delete({
-      where: {
-        id: session.user.id,
-      },
-    })
-
-    return new Response(null, { status: 200 })
-  } catch (error) {
     return new Response(null, { status: 500 })
   }
 }
