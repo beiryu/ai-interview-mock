@@ -2,6 +2,11 @@ import { INTERVIEW_DEFAULTS } from "@/config/defaults/interview"
 import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
 import { STT_DEFAULTS } from "@/config/defaults/stt"
 import {
+  DEFAULT_TURN_PACE,
+  applyTurnPace,
+  type TurnPace,
+} from "@/config/defaults/turn-pace"
+import {
   CURRENT_SCHEMA_VERSION,
   UserConfigSchema,
   configMigrations,
@@ -9,6 +14,7 @@ import {
 import { db } from "@/lib/db"
 
 export interface ResolvedConfig {
+  turnPace: TurnPace
   openai: {
     chat: {
       model: string
@@ -42,6 +48,7 @@ export interface ResolvedConfig {
 
 function buildBaseConfig(): ResolvedConfig {
   return {
+    turnPace: DEFAULT_TURN_PACE,
     openai: {
       chat: { ...OPENAI_DEFAULTS.chat },
       classify: { ...OPENAI_DEFAULTS.classify },
@@ -93,9 +100,7 @@ export class ConfigService {
           where: { userId },
           data: {
             schemaVersion: CURRENT_SCHEMA_VERSION,
-            endpointMaxDelayMs: null,
-            endpointSensitivity: null,
-            turnMaxSilenceMs: null,
+            turnPace: null,
           },
         })
       } catch {
@@ -119,12 +124,12 @@ export class ConfigService {
     }
 
     // Merge user overrides onto base (right-side wins, undefined/null falls back to default)
-    if (userConfig.endpointMaxDelayMs != null)
-      base.stt.endpointMaxDelayMs = userConfig.endpointMaxDelayMs
-    if (userConfig.endpointSensitivity != null)
-      base.stt.endpointSensitivity = userConfig.endpointSensitivity
-    if (userConfig.turnMaxSilenceMs != null)
-      base.interview.turnMaxSilenceMs = userConfig.turnMaxSilenceMs
+    if (userConfig.turnPace) {
+      return applyTurnPace(
+        { ...base, turnPace: userConfig.turnPace },
+        userConfig.turnPace
+      )
+    }
 
     return base
   }

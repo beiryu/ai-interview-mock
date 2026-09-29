@@ -90,12 +90,8 @@ model UserConfig {
 
   schemaVersion Int @default(1)
 
-  // Speech-to-text (Soniox)
-  endpointMaxDelayMs  Int?
-  endpointSensitivity Float?
-
-  // Turn taking
-  turnMaxSilenceMs Int?
+  // Turn-taking pace preset: "fast" | "balanced" | "patient"
+  turnPace String?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

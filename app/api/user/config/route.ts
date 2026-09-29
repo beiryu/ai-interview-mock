@@ -22,9 +22,7 @@ export async function GET() {
   if (!row) {
     return NextResponse.json({
       schemaVersion: CURRENT_SCHEMA_VERSION,
-      endpointMaxDelayMs: null,
-      endpointSensitivity: null,
-      turnMaxSilenceMs: null,
+      turnPace: null,
     })
   }
 
@@ -49,11 +47,7 @@ export async function PUT(req: Request) {
 
   // Partial update: only fields present in the request change
   const data = parsed.data
-  const fields = [
-    "endpointMaxDelayMs",
-    "endpointSensitivity",
-    "turnMaxSilenceMs",
-  ] as const
+  const fields = ["turnPace"] as const
   const configFields: Record<string, unknown> = {
     schemaVersion: data.schemaVersion ?? CURRENT_SCHEMA_VERSION,
   }
@@ -67,9 +61,7 @@ export async function PUT(req: Request) {
     update: configFields,
     select: {
       schemaVersion: true,
-      endpointMaxDelayMs: true,
-      endpointSensitivity: true,
-      turnMaxSilenceMs: true,
+      turnPace: true,
     },
   })
 

@@ -1,11 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { Settings2 } from "lucide-react"
+import { Check, Settings2 } from "lucide-react"
 
+import {
+  TURN_PACES,
+  TURN_PACE_PRESETS,
+  type TurnPace,
+} from "@/config/defaults/turn-pace"
 import { useConfig } from "@/lib/config/config.hooks"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import {
   Sheet,
   SheetContent,
@@ -14,156 +19,81 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 
-interface SliderFieldProps {
-  label: string
-  hint: string
-  value: number
-  min: number
-  max: number
-  step: number
-  format: (value: number) => string
-  onChange: (value: number) => void
-}
-
-function SliderField({
-  label,
-  hint,
-  value,
-  min,
-  max,
-  step,
-  format,
-  onChange,
-}: SliderFieldProps) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium">{label}</Label>
-        <span className="text-xs tabular-nums text-muted-foreground">
-          {format(value)}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-foreground"
-      />
-      <p className="text-[11px] leading-snug text-muted-foreground">{hint}</p>
-    </div>
-  )
-}
-
-const ms = (value: number) => `${value}ms`
-
 export function InterviewSettingsSheet() {
   const { config, updateConfig } = useConfig()
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving] = useState<TurnPace | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const [maxSilence, setMaxSilence] = useState(
-    config.interview.turnMaxSilenceMs
-  )
-  const [endpointDelay, setEndpointDelay] = useState(
-    config.stt.endpointMaxDelayMs
-  )
-  const [sensitivity, setSensitivity] = useState(config.stt.endpointSensitivity)
-
-  // Reset local state to current config when sheet opens
-  function handleOpenChange(value: boolean) {
-    if (value) {
-      setMaxSilence(config.interview.turnMaxSilenceMs)
-      setEndpointDelay(config.stt.endpointMaxDelayMs)
-      setSensitivity(config.stt.endpointSensitivity)
-    }
-    setOpen(value)
-  }
-
-  async function handleSave() {
-    setSaving(true)
+  async function choose(pace: TurnPace) {
+    if (pace === config.turnPace) return
+    setSaving(pace)
+    setError(null)
     try {
-      await updateConfig({
-        turnMaxSilenceMs: maxSilence,
-        endpointMaxDelayMs: endpointDelay,
-        endpointSensitivity: sensitivity,
-      })
-      setOpen(false)
-    } catch (err) {
-      console.error("Failed to update transcription settings:", err)
+      await updateConfig({ turnPace: pace })
+    } catch {
+      setError("Could not save. Try again.")
     } finally {
-      setSaving(false)
+      setSaving(null)
     }
   }
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
+    <Sheet>
       <SheetTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
           className="size-7"
-          title="Turn-taking settings"
+          title="Answer pace"
         >
           <Settings2 className="size-3.5" />
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-80 p-0">
         <SheetHeader className="border-b px-4 py-3">
-          <SheetTitle className="text-sm">Turn-taking</SheetTitle>
+          <SheetTitle className="text-sm">Answer pace</SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-6 px-4 py-5">
-          <p className="text-xs text-muted-foreground">
-            Vietnamese and English are recognized automatically. Increase the
-            delays if questions get cut off; decrease them for faster answers.
+        <div className="space-y-2 px-4 py-5">
+          <p className="pb-2 text-xs text-muted-foreground">
+            How long to wait before treating the interviewer&apos;s question as
+            finished. Vietnamese and English are recognized automatically.
           </p>
 
-          <SliderField
-            label="Max silence before answering"
-            hint="Answer after this much interviewer silence even if the question sounds unfinished. Applies immediately."
-            value={maxSilence}
-            min={1000}
-            max={5000}
-            step={100}
-            format={ms}
-            onChange={setMaxSilence}
-          />
+          {TURN_PACES.map((pace) => {
+            const preset = TURN_PACE_PRESETS[pace]
+            const selected = pace === config.turnPace
+            return (
+              <button
+                key={pace}
+                type="button"
+                onClick={() => choose(pace)}
+                disabled={saving !== null}
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-md border p-3 text-left transition-colors hover:bg-accent disabled:opacity-60",
+                  selected && "border-primary bg-accent"
+                )}
+              >
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{preset.label}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {preset.description}
+                  </div>
+                  <div className="mt-1 text-[10px] tabular-nums text-muted-foreground/70">
+                    complete question after {preset.interview.completeCommitMs}
+                    ms · at most {preset.interview.turnMaxSilenceMs / 1000}s
+                  </div>
+                </div>
+                {selected && <Check className="mt-0.5 text-primary" />}
+              </button>
+            )
+          })}
 
-          <SliderField
-            label="End-of-turn max delay"
-            hint="Longest the speech model waits before deciding the interviewer finished. Applies to the next capture."
-            value={endpointDelay}
-            min={500}
-            max={3000}
-            step={100}
-            format={ms}
-            onChange={setEndpointDelay}
-          />
-
-          <SliderField
-            label="End-of-turn sensitivity"
-            hint="Higher ends turns sooner; lower tolerates longer thinking pauses. Applies to the next capture."
-            value={sensitivity}
-            min={-1}
-            max={1}
-            step={0.1}
-            format={(value) => value.toFixed(1)}
-            onChange={setSensitivity}
-          />
-        </div>
-
-        <div className="border-t px-4 py-3">
-          <Button
-            size="sm"
-            className="w-full text-xs"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? "Saving…" : "Save"}
-          </Button>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <p className="pt-2 text-[11px] text-muted-foreground">
+            Takes effect immediately; the speech model&apos;s part applies the
+            next time you share the tab.
+          </p>
         </div>
       </SheetContent>
     </Sheet>

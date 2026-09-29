@@ -5,6 +5,7 @@ import { createContext, useContext, useState } from "react"
 import { INTERVIEW_DEFAULTS } from "@/config/defaults/interview"
 import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
 import { STT_DEFAULTS } from "@/config/defaults/stt"
+import { DEFAULT_TURN_PACE, applyTurnPace } from "@/config/defaults/turn-pace"
 import type { UserConfig } from "@/config/schemas/user-config.schema"
 import type { ResolvedConfig } from "@/lib/config/config.service"
 
@@ -15,6 +16,7 @@ interface ConfigContextValue {
 
 function buildClientBase(): ResolvedConfig {
   return {
+    turnPace: DEFAULT_TURN_PACE,
     openai: {
       chat: { ...OPENAI_DEFAULTS.chat },
       classify: { ...OPENAI_DEFAULTS.classify },
@@ -29,19 +31,11 @@ function applyUserConfig(
   base: ResolvedConfig,
   userConfig: UserConfig | null
 ): ResolvedConfig {
-  if (!userConfig) return base
-  const result = {
-    ...base,
-    stt: { ...base.stt },
-    interview: { ...base.interview },
-  }
-  if (userConfig.endpointMaxDelayMs != null)
-    result.stt.endpointMaxDelayMs = userConfig.endpointMaxDelayMs
-  if (userConfig.endpointSensitivity != null)
-    result.stt.endpointSensitivity = userConfig.endpointSensitivity
-  if (userConfig.turnMaxSilenceMs != null)
-    result.interview.turnMaxSilenceMs = userConfig.turnMaxSilenceMs
-  return result
+  if (!userConfig?.turnPace) return base
+  return applyTurnPace(
+    { ...base, turnPace: userConfig.turnPace },
+    userConfig.turnPace
+  )
 }
 
 const ConfigContext = createContext<ConfigContextValue | null>(null)

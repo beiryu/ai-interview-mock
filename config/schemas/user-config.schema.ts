@@ -1,17 +1,15 @@
 import { z } from "zod"
 
+import { TURN_PACES } from "@/config/defaults/turn-pace"
+
 export const CURRENT_SCHEMA_VERSION = 1
 
 // V1 — initial schema. Never delete historical versions; migrations depend on them.
 export const UserConfigSchemaV1 = z.object({
   schemaVersion: z.literal(1).default(1),
 
-  // Speech-to-text (Soniox)
-  endpointMaxDelayMs: z.number().int().min(500).max(3000).optional().nullable(),
-  endpointSensitivity: z.number().min(-1).max(1).optional().nullable(),
-
-  // Turn taking
-  turnMaxSilenceMs: z.number().int().min(1000).max(5000).optional().nullable(),
+  // Turn-taking pace preset (config/defaults/turn-pace.ts)
+  turnPace: z.enum(TURN_PACES).optional().nullable(),
 })
 
 // Current schema alias — update this alias when adding V2+
