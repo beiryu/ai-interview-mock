@@ -2,46 +2,53 @@ import { z } from "zod"
 
 export const InterviewSchema = z.object({
   id: z.string(),
-
   name: z.string(),
-  status: z.string(),
-  priority: z.string(),
-  dueDate: z.string(),
-  type: z.string(),
-  jobTitle: z.string(),
-  companyName: z.string(),
-  notes: z.string().optional().nullable(),
-
+  companyName: z.string().nullable(),
+  jobTitle: z.string().nullable(),
+  scheduledAt: z.string().nullable(),
+  notes: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  _count: z.object({ sessions: z.number() }).optional(),
 })
 
-export const CreateInterviewRequestSchema = z.object({
-  name: z.string(),
-  type: z.string(),
-  status: z.string(),
-  priority: z.string(),
-  dueDate: z.string(),
-  jobTitle: z.string(),
-  companyName: z.string(),
-  notes: z.string().optional(),
+// Shared by the create and edit forms; empty strings mean "not set".
+export const InterviewFormSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(120),
+  companyName: z.string().trim().max(120).optional(),
+  jobTitle: z.string().trim().max(120).optional(),
+  // ISO timestamp (converted from datetime-local in the browser), or "" when unset
+  scheduledAt: z.string().optional(),
+  notes: z.string().max(5000).optional(),
 })
 
-export const UpdateInterviewRequestSchema = z.object({
-  id: z.string(),
-
-  name: z.string().optional(),
-  status: z.string().optional(),
-  priority: z.string().optional(),
-  dueDate: z.string().optional(),
-  type: z.string().optional(),
-  notes: z.string().optional(),
-})
+export const CreateInterviewRequestSchema = InterviewFormSchema
+export const UpdateInterviewRequestSchema = InterviewFormSchema.partial()
 
 export type Interview = z.infer<typeof InterviewSchema>
+export type InterviewFormValues = z.infer<typeof InterviewFormSchema>
 export type CreateInterviewRequest = z.infer<
   typeof CreateInterviewRequestSchema
 >
 export type UpdateInterviewRequest = z.infer<
   typeof UpdateInterviewRequestSchema
->
+> & { id: string }
+
+/** Normalizes form values into Prisma data (empty -> null). */
+export function toInterviewData(values: Partial<InterviewFormValues>) {
+  const orNull = (v: string | undefined) =>
+    v === undefined ? undefined : v.trim() === "" ? null : v.trim()
+
+  return {
+    name: values.name,
+    companyName: orNull(values.companyName),
+    jobTitle: orNull(values.jobTitle),
+    notes: orNull(values.notes),
+    scheduledAt:
+      values.scheduledAt === undefined
+        ? undefined
+        : values.scheduledAt
+        ? new Date(values.scheduledAt)
+        : null,
+  }
+}

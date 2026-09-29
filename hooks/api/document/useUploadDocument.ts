@@ -18,11 +18,6 @@ const uploadDocument = async (document: CreateDocumentRequest) => {
     `${document.title.replace(/\s+/g, "_")}.txt`
   )
 
-  // Add metadata if available
-  if (document.metadata) {
-    formData.append("metadata", JSON.stringify(document.metadata))
-  }
-
   // Send as multipart/form-data (no Content-Type header needed)
   const response = await fetch("/api/documents", {
     method: "POST",

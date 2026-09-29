@@ -2,9 +2,9 @@
 
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import type { User } from "@/lib/generated/prisma/client"
 import { useForm } from "react-hook-form"
 
+import type { User } from "@/lib/generated/prisma/client"
 import { cn } from "@/lib/utils"
 import { UserProfile, UserProfileSchema } from "@/lib/validations/user"
 import { useUpdateProfile } from "@/hooks/api/user/useUpdateProfile"
@@ -23,10 +23,7 @@ import { Icons } from "@/components/icons"
 import { UserAvatar } from "@/components/user-avatar"
 
 interface UserProfileFormProps extends React.HTMLAttributes<HTMLFormElement> {
-  user: Pick<
-    User,
-    "id" | "name" | "email" | "image" | "emailVerified"
-  >
+  user: Pick<User, "id" | "name" | "email" | "image" | "emailVerified">
 }
 
 export function UserProfileForm({

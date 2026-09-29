@@ -1,18 +1,9 @@
 import { z } from "zod"
 
-export const InterviewSessionSchema = z.object({
-  id: z.string(),
-  analysis: z.record(z.string(), z.any()),
-  metadata: z.record(z.string(), z.any()),
-  completionRate: z.number(),
-  performanceScore: z.number(),
-  feedbackSummary: z.string(),
-  duration: z.number(),
-  status: z.string(),
-  sessionContext: z.string().optional().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  interviewId: z.string(),
+export const TranscriptEntrySchema = z.object({
+  role: z.enum(["interviewer", "candidate"]),
+  text: z.string(),
+  at: z.string(),
 })
 
 export const CreateInterviewSessionRequestSchema = z.object({
@@ -20,14 +11,23 @@ export const CreateInterviewSessionRequestSchema = z.object({
 })
 
 export const UpdateInterviewSessionRequestSchema = z.object({
-  id: z.string(),
-  status: z.string(),
+  status: z.enum(["in_progress", "completed"]).optional(),
+  transcript: z.array(TranscriptEntrySchema).optional(),
+  endedAt: z.string().optional(),
 })
 
-export type InterviewSession = z.infer<typeof InterviewSessionSchema>
+export type TranscriptEntry = z.infer<typeof TranscriptEntrySchema>
 export type CreateInterviewSessionRequest = z.infer<
   typeof CreateInterviewSessionRequestSchema
 >
 export type UpdateInterviewSessionRequest = z.infer<
   typeof UpdateInterviewSessionRequestSchema
 >
+
+export type InterviewSessionSummary = {
+  id: string
+  status: string
+  startedAt: string
+  endedAt: string | null
+  transcript: TranscriptEntry[] | null
+}

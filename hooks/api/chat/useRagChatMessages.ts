@@ -1,5 +1,6 @@
-import type { ChatMessage } from "@/lib/generated/prisma/client"
 import { useQuery } from "@tanstack/react-query"
+
+import type { ChatMessage } from "@/lib/generated/prisma/client"
 
 // Fetch messages for a conversation
 const getSessionMessages = async (

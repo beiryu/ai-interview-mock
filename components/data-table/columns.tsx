@@ -1,161 +1,99 @@
 "use client"
 
+import Link from "next/link"
 import { ColumnDef } from "@tanstack/react-table"
 import { Play } from "lucide-react"
 
+import { cn } from "@/lib/utils"
 import { Interview } from "@/lib/validations/interview"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { buttonVariants } from "@/components/ui/button"
 
-import { priority_options, status_options, type_options } from "../filters"
 import { DataTableColumnHeader } from "./data-table-column-header"
 import { DataTableRowActions } from "./data-table-row-actions"
 
+const muted = <span className="text-muted-foreground">—</span>
+
 export const columns: ColumnDef<Interview>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value: any) =>
-          table.toggleAllPageRowsSelected(!!value)
-        }
-        aria-label="Select all"
-        className="translate-y-[2px]"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value: any) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        className="translate-y-[2px]"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "id",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ID" />
-    ),
-    cell: ({ row }) => (
-      <div className="w-[80px] truncate">{row.getValue("id")}</div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
   {
     accessorKey: "name",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Name" />
     ),
-    cell: ({ row }) => {
-      const type = type_options.find((type) => type.value === row.original.type)
-
-      return (
-        <div className="flex space-x-2">
-          {type && <Badge variant="outline">{type.label}</Badge>}
-          <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("name")}
-          </span>
-        </div>
-      )
-    },
+    cell: ({ row }) => (
+      <span className="max-w-[360px] truncate font-medium">
+        {row.original.name}
+      </span>
+    ),
+    enableHiding: false,
   },
   {
-    accessorKey: "status",
+    accessorKey: "companyName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
+      <DataTableColumnHeader column={column} title="Company" />
     ),
-    cell: ({ row }) => {
-      const status = status_options.find(
-        (status) => status.value === row.getValue("status")
-      )
-
-      if (!status) {
-        return null
-      }
-
-      return (
-        <div className="flex w-[100px] items-center">
-          {status.icon && (
-            <status.icon className="mr-2 size-4 text-muted-foreground" />
-          )}
-          <span>{status.label}</span>
-        </div>
-      )
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
-    },
+    cell: ({ row }) => row.original.companyName || muted,
   },
   {
-    accessorKey: "priority",
+    accessorKey: "jobTitle",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Priority" />
+      <DataTableColumnHeader column={column} title="Role" />
     ),
-    cell: ({ row }) => {
-      const priority = priority_options.find(
-        (priority) => priority.value === row.getValue("priority")
-      )
-
-      if (!priority) {
-        return null
-      }
-
-      return (
-        <div className="flex items-center">
-          {priority.icon && (
-            <priority.icon className="mr-2 size-4 text-muted-foreground" />
-          )}
-          <span>{priority.label}</span>
-        </div>
-      )
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
-    },
+    cell: ({ row }) => row.original.jobTitle || muted,
   },
   {
-    accessorKey: "dueDate",
+    accessorKey: "scheduledAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Due Date" />
+      <DataTableColumnHeader column={column} title="Scheduled" />
     ),
     cell: ({ row }) => {
-      const field = row.getValue("dueDate") as string
-      return <div>{new Date(field).toLocaleDateString()}</div>
+      const value = row.original.scheduledAt
+      if (!value) return muted
+      return new Date(value).toLocaleString([], {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    },
+    sortingFn: "datetime",
+  },
+  {
+    id: "sessions",
+    accessorFn: (interview) => interview._count?.sessions ?? 0,
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Sessions" />
+    ),
+    cell: ({ row }) => {
+      const count = row.original._count?.sessions ?? 0
+      if (count === 0) return muted
+      return (
+        <Link
+          href={`/dashboard/interviews/${row.original.id}/sessions`}
+          className="underline-offset-4 hover:underline"
+        >
+          {count}
+        </Link>
+      )
     },
   },
   {
     id: "launch",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Playground" />
+    cell: ({ row }) => (
+      <Link
+        href={`/dashboard/interviews/${row.original.id}`}
+        className={cn(
+          buttonVariants({ variant: "secondary", size: "sm" }),
+          "gap-2"
+        )}
+      >
+        <Play className="size-4" />
+        Launch
+      </Link>
     ),
-    cell: ({ row }) => {
-      const interview = row.original
-
-      return (
-        <Button
-          variant="secondary"
-          effect="gooeyRight"
-          size="sm"
-          className="flex items-center gap-2"
-          onClick={() => {
-            window.location.href = `/dashboard/interviews/${interview.id}`
-          }}
-        >
-          <Play className="size-4" />
-          Launch
-        </Button>
-      )
-    },
     enableSorting: false,
+    enableHiding: false,
   },
   {
     id: "actions",
     cell: ({ row }) => <DataTableRowActions row={row} />,
+    enableHiding: false,
   },
 ]

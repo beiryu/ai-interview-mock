@@ -116,17 +116,15 @@ model Interview {
   userId      String
   user        User               @relation("UserInterviews", fields: [userId], references: [id], onDelete: Cascade)
   name        String
-  type        String
-  status      String
-  priority    String
-  dueDate     DateTime
-  jobTitle    String
-  companyName String
+  companyName String?
+  jobTitle    String?
+  scheduledAt DateTime?
   notes       String?            @db.Text
   sessions    InterviewSession[]
   createdAt   DateTime           @default(now()) @map("created_at")
-  updatedAt   DateTime           @default(now()) @map("updated_at")
+  updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at")
 
+  @@index([userId])
   @@map("interviews")
 }
 
@@ -136,15 +134,18 @@ model InterviewSession {
   interview      Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
   userId         String
   user           User      @relation("UserInterviewSessions", fields: [userId], references: [id], onDelete: Cascade)
-  title          String?
+  /// "in_progress" | "completed"
   status         String    @default("in_progress")
-  transcripts    String?   @db.Text
+  /// Array of { role: "interviewer" | "candidate", text: string, at: ISO string }
+  transcript     Json?
   sessionContext String?   @db.Text
-  feedback       Json?
-  duration       Int?
+  startedAt      DateTime  @default(now())
+  endedAt        DateTime?
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
+  @@index([interviewId])
+  @@index([userId])
   @@map("interview_sessions")
 }
 
@@ -157,12 +158,11 @@ model Document {
   title        String
   type         DocumentType
   content      String       @db.Text
-  metadata     Json?
-  fileUrl      String?
   openaiFileId String?      @map("openai_file_id")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
+  @@index([userId])
   @@map("documents")
 }
 
@@ -179,6 +179,7 @@ model ChatConversation {
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
 
+  @@index([userId])
   @@map("chat_conversations")
 }
 
@@ -191,6 +192,7 @@ model ChatMessage {
   sources        Json[]
   createdAt      DateTime         @default(now()) @map("created_at")
 
+  @@index([conversationId])
   @@map("chat_messages")
 }
 
@@ -203,7 +205,6 @@ enum DocumentType {
   JOB_DESCRIPTION
   NOTES
   PROJECT_DOCUMENTATION
-  TRANSCRIPT
 }
 
 enum MessageRole {

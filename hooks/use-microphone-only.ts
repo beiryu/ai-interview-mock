@@ -1,5 +1,4 @@
-import { useCallback, useState } from "react"
-import { useInterviewSessionStore } from "@/stores/interview-session.store"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 interface UseMicrophoneReturn {
   micOpen: boolean
@@ -8,52 +7,53 @@ interface UseMicrophoneReturn {
   toggleMicrophone: () => Promise<void>
 }
 
+/**
+ * Captures the candidate's own microphone. Deliberately does not touch the
+ * shared microphoneStatus, which reflects the meeting-tab capture.
+ */
 export function useMicrophoneOnly(
   onDataAvailable: (data: BlobEvent) => void
 ): UseMicrophoneReturn {
   const [micOpen, setMicOpen] = useState(false)
   const [microphone, setMicrophone] = useState<MediaRecorder | null>(null)
   const [userMedia, setUserMedia] = useState<MediaStream | null>(null)
+  const mediaRef = useRef<MediaStream | null>(null)
 
-  const { setMicrophoneStatus } = useInterviewSessionStore()
+  const stop = useCallback(() => {
+    mediaRef.current?.getTracks().forEach((track) => track.stop())
+    mediaRef.current = null
+    setMicrophone((recorder) => {
+      if (recorder?.state !== "inactive") recorder?.stop()
+      return null
+    })
+    setUserMedia(null)
+    setMicOpen(false)
+  }, [])
+
+  // Turn the mic off if the playground unmounts
+  useEffect(() => stop, [stop])
 
   const toggleMicrophone = useCallback(async () => {
     if (microphone && userMedia) {
-      microphone.stop()
-      userMedia.getTracks().forEach((t) => t.stop())
-      setMicrophone(null)
-      setUserMedia(null)
-      setMicrophoneStatus("disconnected")
+      stop()
       return
     }
 
     try {
-      setMicrophoneStatus("connecting")
-
       const media = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaRef.current = media
 
       const mic = new MediaRecorder(media)
-      mic.start(500)
-
-      mic.onstart = () => {
-        setMicOpen(true)
-        setMicrophoneStatus("connected")
-      }
-
-      mic.onstop = () => {
-        setMicOpen(false)
-        setMicrophoneStatus("disconnected")
-      }
-
+      mic.onstart = () => setMicOpen(true)
       mic.ondataavailable = onDataAvailable
+      mic.start(500)
 
       setUserMedia(media)
       setMicrophone(mic)
     } catch (error) {
       console.error("Error accessing microphone:", error)
-      setMicrophoneStatus("disconnected")
     }
-  }, [microphone, userMedia, onDataAvailable, setMicrophoneStatus])
+  }, [microphone, userMedia, onDataAvailable, stop])
 
   return {
     micOpen,

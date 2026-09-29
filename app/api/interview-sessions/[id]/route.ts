@@ -1,24 +1,26 @@
-import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 
-import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { getCurrentUser } from "@/lib/session"
 import { UpdateInterviewSessionRequestSchema } from "@/lib/validations/interview-session"
 
 interface Params {
   params: Promise<{ id: string }>
 }
 
-export async function PUT(req: Request, props: Params) {
-  const params = await props.params
+// PUT is used by the client; POST accepts the same body so the page can save
+// via navigator.sendBeacon (which only sends POST) when the tab is closed.
+async function update(req: Request, props: Params) {
+  const { id } = await props.params
   try {
-    const session = await auth.api.getSession({ headers: await headers() })
-    if (!session) {
-      return new NextResponse("Unauthorized", { status: 403 })
+    const user = await getCurrentUser()
+    if (!user) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const json = await req.json()
-    const parsed = UpdateInterviewSessionRequestSchema.safeParse(json)
+    const parsed = UpdateInterviewSessionRequestSchema.safeParse(
+      await req.json()
+    )
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.flatten() },
@@ -26,20 +28,23 @@ export async function PUT(req: Request, props: Params) {
       )
     }
 
-    if (parsed.data.id !== params.id) {
-      return new NextResponse("Session id mismatch", { status: 400 })
-    }
-
     const existing = await db.interviewSession.findFirst({
-      where: { id: params.id, userId: session.user.id },
+      where: { id, userId: user.id },
+      select: { id: true },
     })
     if (!existing) {
       return new NextResponse("Not found", { status: 404 })
     }
 
+    const { status, transcript, endedAt } = parsed.data
     const updatedSession = await db.interviewSession.update({
-      where: { id: params.id },
-      data: { status: parsed.data.status },
+      where: { id },
+      data: {
+        status,
+        transcript,
+        endedAt: endedAt ? new Date(endedAt) : undefined,
+      },
+      select: { id: true, status: true, startedAt: true, endedAt: true },
     })
 
     return NextResponse.json(updatedSession)
@@ -47,3 +52,5 @@ export async function PUT(req: Request, props: Params) {
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
+
+export { update as PUT, update as POST }

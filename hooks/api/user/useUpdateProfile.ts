@@ -1,8 +1,8 @@
 import { useRouter } from "next/navigation"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
-import { UserProfile } from "@/lib/validations/user"
 import { authClient } from "@/lib/auth-client"
+import { UserProfile } from "@/lib/validations/user"
 import { toast } from "@/components/ui/use-toast"
 
 interface UpdateProfilePayload extends UserProfile {

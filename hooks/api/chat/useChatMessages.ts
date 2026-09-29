@@ -1,5 +1,9 @@
-import type { ChatConversation, ChatMessage } from "@/lib/generated/prisma/client"
 import { useQuery } from "@tanstack/react-query"
+
+import type {
+  ChatConversation,
+  ChatMessage,
+} from "@/lib/generated/prisma/client"
 
 export type Conversation = ChatConversation & {
   messages: ChatMessage[]

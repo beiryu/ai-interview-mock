@@ -126,27 +126,14 @@ export async function PUT(req: NextRequest, props: Params) {
     const contentType = req.headers.get("content-type") || ""
     let newTitle: string = existingDocument.title
     let newContent: string = existingDocument.content
-    let newMetadata: Record<string, any> = {}
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await req.formData()
       newTitle = (formData.get("title") as string) || existingDocument.title
-      const metadataStr = formData.get("metadata") as string
       const file = formData.get("file") as File
 
       if (!file) {
         return NextResponse.json({ error: "No file provided" }, { status: 400 })
-      }
-
-      if (metadataStr) {
-        try {
-          newMetadata = JSON.parse(metadataStr)
-        } catch {
-          return NextResponse.json(
-            { error: "Invalid metadata format" },
-            { status: 400 }
-          )
-        }
       }
 
       const buffer = Buffer.from(await file.arrayBuffer())
@@ -155,7 +142,6 @@ export async function PUT(req: NextRequest, props: Params) {
       const body = await req.json()
       newTitle = body.title || existingDocument.title
       newContent = body.content || existingDocument.content
-      newMetadata = body.metadata || {}
     }
 
     const contentChanged = newContent !== existingDocument.content
@@ -193,17 +179,13 @@ export async function PUT(req: NextRequest, props: Params) {
           title: newTitle,
           content: newContent,
           openaiFileId: newOpenaiFileId,
-          metadata: newMetadata || existingDocument.metadata || {},
         },
       })
     } else {
-      // No content change — just update title/metadata
+      // No content change — just update the title
       await db.document.update({
         where: { id: params.id },
-        data: {
-          title: newTitle,
-          metadata: newMetadata || existingDocument.metadata || {},
-        },
+        data: { title: newTitle },
       })
     }
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { DocumentType } from "@/lib/generated/prisma/enums"
 import { z } from "zod"
 
 import { db } from "@/lib/db"
+import { DocumentType } from "@/lib/generated/prisma/enums"
 import {
   addFileToVectorStore,
   getOrCreateVectorStore,
@@ -14,7 +14,6 @@ import { CreateDocumentRequestSchema } from "@/lib/validations/document"
 const DocumentUploadSchema = z.object({
   title: z.string().min(1, "Title is required"),
   type: z.nativeEnum(DocumentType),
-  metadata: z.record(z.string(), z.any()).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -62,11 +61,6 @@ export async function POST(req: NextRequest) {
         title,
         type,
         content: textContent,
-        metadata: {
-          documentTitle: title,
-          documentType: type,
-          userId: user.id,
-        },
       },
     })
 

@@ -15,6 +15,7 @@ const createInterview = async (
     },
     body: JSON.stringify(payload),
   })
+  if (!response.ok) throw new Error("Failed to create interview")
   return response.json()
 }
 

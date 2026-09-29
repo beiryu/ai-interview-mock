@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 const deleteInterview = async (id: string): Promise<void> => {
-  await fetch(`/api/interviews/${id}`, {
+  const response = await fetch(`/api/interviews/${id}`, {
     method: "DELETE",
   })
+  if (!response.ok) throw new Error("Failed to delete interview")
 }
 
 export function useDeleteInterview() {

@@ -36,6 +36,7 @@ const documentTypeLabels = {
   PORTFOLIO: "Portfolio",
   COVER_LETTER: "Cover Letter",
   NOTES: "Notes",
+  PROJECT_DOCUMENTATION: "Project Docs",
 }
 
 const documentTypeColors = {
@@ -47,6 +48,8 @@ const documentTypeColors = {
   COVER_LETTER:
     "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
   NOTES: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+  PROJECT_DOCUMENTATION:
+    "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
 }
 
 const documentTypeIcons = {
@@ -55,6 +58,7 @@ const documentTypeIcons = {
   PORTFOLIO: Icons.folder,
   COVER_LETTER: Icons.mail,
   NOTES: Icons.fileText,
+  PROJECT_DOCUMENTATION: Icons.folder,
 }
 
 const getDocumentIcon = (type: string) => {
@@ -77,24 +81,11 @@ export function DocumentsListV2() {
     setSearchQuery,
     typeFilter,
     setTypeFilter,
-    getDocumentStats,
   } = useGetDocuments()
-
-  const stats = getDocumentStats()
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-20"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -130,42 +121,6 @@ export function DocumentsListV2() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-row justify-between items-center">
-              <div className="flex flex-row items-center space-x-2">
-                <Icons.post className="size-5 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Total Documents</p>
-              </div>
-              <p className="text-2xl font-bold">{stats.total}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {Object.entries(documentTypeLabels)
-          .map(([type, label]) => {
-            const IconComponent = getDocumentIcon(type)
-            return (
-              <Card key={type}>
-                <CardContent className="p-6">
-                  <div className="flex flex-row justify-between items-center">
-                    <div className="flex flex-row items-center space-x-2">
-                      <IconComponent className="size-5 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">{label}</p>
-                    </div>
-                    <p className="text-2xl font-bold">
-                      {stats.byType[type] || 0}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })
-          .slice(0, 3)}
-      </div>
-
       {/* Filters */}
       <div className="flex items-center justify-between space-x-4">
         <div className="flex items-center space-x-4 flex-1">

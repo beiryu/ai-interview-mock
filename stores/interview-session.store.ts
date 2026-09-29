@@ -4,7 +4,7 @@ import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 
 import { InterviewMessage, QuestionAnalysis } from "@/types/interview-message"
-import { InterviewSession, MicrophoneStatus } from "@/types/interview-session"
+import { MicrophoneStatus } from "@/types/interview-session"
 
 interface InterviewSessionStore {
   // Transcription states
@@ -23,12 +23,14 @@ interface InterviewSessionStore {
   agentHistory: AgentInputItem[]
 
   // Session states
-  currentSession: InterviewSession | null
+  currentSessionId: string | null
   sessionContext: string
 
   setMicrophoneStatus: (status: MicrophoneStatus) => void
-  setCurrentSessionId: (sessionId: string | null) => void
-  setSessionContext: (ctx: string) => void
+  /** Attach a freshly created DB session (id + context for the coach). */
+  startSession: (sessionId: string, sessionContext: string) => void
+  /** Clear everything from the previous session (transcript, answers, memory). */
+  resetSession: () => void
   processTranscript: (
     transcript: string,
     isFinal: boolean,
@@ -60,36 +62,28 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
       agentHistory: [],
 
       // Session states
-      currentSession: null,
+      currentSessionId: null,
       sessionContext: "",
 
       // Actions
       setMicrophoneStatus: (status) => set({ microphoneStatus: status }),
-      setSessionContext: (ctx) => set({ sessionContext: ctx }),
 
-      setCurrentSessionId: (sessionId) => {
-        if (sessionId) {
-          set((state) => ({
-            currentSession: {
-              id: sessionId,
+      startSession: (sessionId, sessionContext) =>
+        set({ currentSessionId: sessionId, sessionContext }),
 
-              completionRate: 0,
-              performanceScore: 0,
-              feedbackSummary: "",
-              duration: 0,
-              status: "active",
-
-              createdAt: new Date(),
-              updatedAt: new Date(),
-
-              interviewId: "",
-              messages: state.messages,
-            },
-          }))
-        } else {
-          set({ currentSession: null, agentHistory: [], sessionContext: "" })
-        }
-      },
+      resetSession: () =>
+        set({
+          currentSessionId: null,
+          sessionContext: "",
+          messages: [],
+          currentAnalysis: null,
+          agentHistory: [],
+          interviewerBuffer: "",
+          candidateBuffer: "",
+          interimText: "",
+          interimRole: null,
+          isClassifying: false,
+        }),
 
       flushTranscript: async (role: "interviewer" | "candidate") => {
         const state = get()
@@ -113,7 +107,7 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
               questionAnalysis: null,
               createdAt: new Date(),
               updatedAt: new Date(),
-              sessionId: state.currentSession?.id ?? "",
+              sessionId: state.currentSessionId ?? "",
             },
           ],
           [bufferKey]: "",

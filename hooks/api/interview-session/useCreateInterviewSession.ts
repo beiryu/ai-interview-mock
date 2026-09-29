@@ -1,13 +1,12 @@
 import { useMutation } from "@tanstack/react-query"
 
-import {
-  CreateInterviewSessionRequest,
-  InterviewSession,
-} from "@/lib/validations/interview-session"
+import { CreateInterviewSessionRequest } from "@/lib/validations/interview-session"
+
+type CreatedSession = { id: string; sessionContext: string | null }
 
 const createInterviewSession = async (
   payload: CreateInterviewSessionRequest
-): Promise<InterviewSession> => {
+): Promise<CreatedSession> => {
   const response = await fetch("/api/interview-sessions", {
     method: "POST",
     headers: {
@@ -15,7 +14,7 @@ const createInterviewSession = async (
     },
     body: JSON.stringify(payload),
   })
-
+  if (!response.ok) throw new Error("Failed to start session")
   return response.json()
 }
 

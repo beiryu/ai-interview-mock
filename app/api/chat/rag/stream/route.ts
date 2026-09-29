@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server"
 import { z } from "zod"
 
+import { saveChatInteraction } from "@/lib/chat/persistence"
 import { ConfigService } from "@/lib/config/config.service"
 import { db } from "@/lib/db"
-import { saveChatInteraction } from "@/lib/chat/persistence"
 import {
   FileSearchSource,
   streamDocumentChatWithoutFileSearch,

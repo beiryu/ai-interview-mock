@@ -15,6 +15,7 @@ import {
   Settings2,
 } from "lucide-react"
 
+import type { SessionUser } from "@/lib/auth"
 import {
   Sidebar,
   SidebarContent,
@@ -24,7 +25,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import type { SessionUser } from "@/lib/auth"
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
 import { NavSecondary } from "@/components/nav-secondary"

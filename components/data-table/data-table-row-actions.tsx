@@ -1,27 +1,20 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Row } from "@tanstack/react-table"
-import { Copy, Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { History, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 
-import { InterviewSchema } from "@/lib/validations/interview"
+import type { Interview } from "@/lib/validations/interview"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { type_options } from "@/components/filters"
 import DeleteDialog from "@/components/modals/delete-modal"
 import EditDialog from "@/components/modals/edit-modal"
 
@@ -32,20 +25,13 @@ interface DataTableRowActionsProps<TData> {
 export function DataTableRowActions<TData>({
   row,
 }: DataTableRowActionsProps<TData>) {
-  const [dialogContent, setDialogContent] =
-    React.useState<React.ReactNode | null>(null)
-  const [showDeleteDialog, setShowDeleteDialog] = React.useState<boolean>(false)
+  const [showEditDialog, setShowEditDialog] = React.useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
 
-  const interview = InterviewSchema.parse(row.original)
-
-  const router = useRouter()
-
-  const handleEditClick = () => {
-    setDialogContent(<EditDialog interview={interview} />)
-  }
+  const interview = row.original as Interview
 
   return (
-    <Dialog>
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -56,33 +42,18 @@ export function DataTableRowActions<TData>({
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[200px]">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem
-            onClick={() => navigator.clipboard.writeText(interview.id)}
-          >
-            <Copy className="mr-2 size-4" />
-            Copy Interview ID
+        <DropdownMenuContent align="end" className="w-[180px]">
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/interviews/${interview.id}/sessions`}>
+              <History className="mr-2 size-4" />
+              Past sessions
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setShowEditDialog(true)}>
+            <Pencil className="mr-2 size-4" />
+            Edit
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {/* <DialogTrigger
-            asChild
-            onClick={() => {
-              router.push(`/dashboard/interviews/${interview.id}`)
-            }}
-          >
-            <DropdownMenuItem>
-              {" "}
-              <Eye className="mr-2 size-4" />
-              View Details
-            </DropdownMenuItem>
-          </DialogTrigger> */}
-          <DialogTrigger asChild onClick={handleEditClick}>
-            <DropdownMenuItem>
-              <Pencil className="mr-2 size-4" />
-              Edit Details
-            </DropdownMenuItem>
-          </DialogTrigger>
           <DropdownMenuItem
             onSelect={() => setShowDeleteDialog(true)}
             className="text-red-600"
@@ -90,28 +61,23 @@ export function DataTableRowActions<TData>({
             <Trash2 className="mr-2 size-4" />
             Delete
           </DropdownMenuItem>
-          {/* <DropdownMenuSeparator />
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Labels</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup value={interview.type}>
-                {type_options.map((type) => (
-                  <DropdownMenuRadioItem key={type.value} value={type.value}>
-                    <type.icon className="size-4 mr-2" />
-                    {type.label}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub> */}
         </DropdownMenuContent>
       </DropdownMenu>
-      {dialogContent && <DialogContent>{dialogContent}</DialogContent>}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-[520px]">
+          {showEditDialog && (
+            <EditDialog
+              interview={interview}
+              onDone={() => setShowEditDialog(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       <DeleteDialog
         interview={interview}
         isOpen={showDeleteDialog}
         showActionToggle={setShowDeleteDialog}
       />
-    </Dialog>
+    </>
   )
 }

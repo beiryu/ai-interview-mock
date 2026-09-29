@@ -1,5 +1,7 @@
 import { Cable } from "lucide-react"
 
+import { cn } from "@/lib/utils"
+
 import { Icons } from "./icons"
 import { HoverBorderGradient } from "./ui/hover-border-gradient"
 
@@ -16,8 +18,12 @@ export function RecordButton({
 }: RecordButtonProps) {
   return (
     <HoverBorderGradient
-      onClick={onClick}
-      containerClassName="rounded-full m-4"
+      onClick={disabled ? undefined : onClick}
+      aria-disabled={disabled}
+      containerClassName={cn(
+        "rounded-full m-4",
+        disabled && "cursor-not-allowed opacity-50"
+      )}
       as="button"
       className="dark:bg-black bg-white text-black dark:text-white "
     >
@@ -29,10 +35,8 @@ export function RecordButton({
           </>
         ) : (
           <>
-            {/* <Icons.micOn className="size-4 -translate-x-0.5 mr-2" />
-              Start listening */}
             <Cable className="size-4 -translate-x-0.5 mr-2" />
-            <span className="text-sm font-medium">Select a meeting room</span>
+            <span className="text-sm font-medium">Share the meeting tab</span>
           </>
         )}
       </div>

@@ -2,12 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  LogOut,
-} from "lucide-react"
+import { BadgeCheck, Bell, ChevronsUpDown, LogOut } from "lucide-react"
 
 import type { SessionUser } from "@/lib/auth"
 import { authClient } from "@/lib/auth-client"

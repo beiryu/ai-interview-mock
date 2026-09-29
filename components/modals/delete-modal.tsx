@@ -1,6 +1,5 @@
 "use client"
 
-// * * This is just a demostration of delete modal, actual functionality may vary
 import { Interview } from "@/lib/validations/interview"
 import { useDeleteInterview } from "@/hooks/api/interview/useDeleteInterview"
 import {
@@ -31,10 +30,10 @@ export default function DeleteDialog({
     <AlertDialog open={isOpen} onOpenChange={showActionToggle}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure absolutely sure ?</AlertDialogTitle>
+          <AlertDialogTitle>Delete this interview?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. You are about to delete Interview
-            Details of <b>{interview.name}</b>
+            <b>{interview.name}</b> and all of its saved sessions will be
+            permanently deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

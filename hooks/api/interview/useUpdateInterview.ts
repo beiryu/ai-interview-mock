@@ -12,6 +12,7 @@ const updateInterview = async (
     },
     body: JSON.stringify(payload),
   })
+  if (!response.ok) throw new Error("Failed to update interview")
   return response.json()
 }
 

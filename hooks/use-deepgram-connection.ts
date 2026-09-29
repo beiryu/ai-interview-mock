@@ -75,7 +75,6 @@ export function useDeepgramConnection(
         if (conn && conn.getReadyState() === 1) {
           // 1 = OPEN
           conn.keepAlive()
-          console.log("Sent keepAlive message")
         }
       }, cfg.deepgram.keepAliveIntervalMs)
 

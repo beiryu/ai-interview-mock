@@ -32,17 +32,6 @@ export function useGetDocuments() {
     })
   }, [data, searchQuery, typeFilter])
 
-  const getDocumentStats = useCallback(() => {
-    const documents = data || []
-    const total = documents.length
-    const byType = documents.reduce((acc, doc) => {
-      acc[doc.type] = (acc[doc.type] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-
-    return { total, byType }
-  }, [data])
-
   return {
     documents: data || [],
     filteredDocuments: filteredDocuments,
@@ -52,6 +41,5 @@ export function useGetDocuments() {
     setSearchQuery,
     typeFilter,
     setTypeFilter,
-    getDocumentStats,
   }
 }

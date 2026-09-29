@@ -1,31 +1,48 @@
-import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import * as z from "zod"
 
-import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UpdateInterviewRequestSchema } from "@/lib/validations/interview"
+import { getCurrentUser } from "@/lib/session"
+import {
+  UpdateInterviewRequestSchema,
+  toInterviewData,
+} from "@/lib/validations/interview"
 
-export async function GET(
-  req: Request,
-  props: { params: Promise<{ interviewId: string }> }
-) {
-  const params = await props.params
+interface Params {
+  params: Promise<{ interviewId: string }>
+}
+
+async function findOwnedInterview(interviewId: string, userId: string) {
+  return db.interview.findFirst({ where: { id: interviewId, userId } })
+}
+
+export async function GET(req: Request, props: Params) {
+  const { interviewId } = await props.params
   try {
-    const session = await auth.api.getSession({ headers: await headers() })
-
-    if (!session) {
-      return new NextResponse("Unauthorized", { status: 403 })
+    const user = await getCurrentUser()
+    if (!user) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const interview = await db.interview.findUnique({
-      where: {
-        id: params.interviewId,
-      },
+    const interview = await db.interview.findFirst({
+      where: { id: interviewId, userId: user.id },
       include: {
-        sessions: true,
+        sessions: {
+          orderBy: { startedAt: "desc" },
+          select: {
+            id: true,
+            status: true,
+            startedAt: true,
+            endedAt: true,
+            transcript: true,
+          },
+        },
       },
     })
+
+    if (!interview) {
+      return new NextResponse("Not found", { status: 404 })
+    }
 
     return NextResponse.json(interview)
   } catch (error) {
@@ -33,33 +50,23 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  req: Request,
-  props: { params: Promise<{ interviewId: string }> }
-) {
-  const params = await props.params
+export async function PATCH(req: Request, props: Params) {
+  const { interviewId } = await props.params
   try {
-    const session = await auth.api.getSession({ headers: await headers() })
-
-    if (!session) {
-      return new NextResponse("Unauthorized", { status: 403 })
+    const user = await getCurrentUser()
+    if (!user) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const json = await req.json()
-    const body = UpdateInterviewRequestSchema.parse(json)
+    if (!(await findOwnedInterview(interviewId, user.id))) {
+      return new NextResponse("Not found", { status: 404 })
+    }
+
+    const body = UpdateInterviewRequestSchema.parse(await req.json())
 
     const interview = await db.interview.update({
-      where: {
-        id: params.interviewId,
-      },
-      data: {
-        ...body,
-        user: {
-          connect: {
-            id: session.user.id,
-          },
-        },
-      },
+      where: { id: interviewId },
+      data: toInterviewData(body),
     })
 
     return NextResponse.json(interview)
@@ -72,23 +79,19 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  req: Request,
-  props: { params: Promise<{ interviewId: string }> }
-) {
-  const params = await props.params
+export async function DELETE(req: Request, props: Params) {
+  const { interviewId } = await props.params
   try {
-    const session = await auth.api.getSession({ headers: await headers() })
-
-    if (!session) {
-      return new NextResponse("Unauthorized", { status: 403 })
+    const user = await getCurrentUser()
+    if (!user) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    await db.interview.delete({
-      where: {
-        id: params.interviewId,
-      },
-    })
+    if (!(await findOwnedInterview(interviewId, user.id))) {
+      return new NextResponse("Not found", { status: 404 })
+    }
+
+    await db.interview.delete({ where: { id: interviewId } })
 
     return new NextResponse(null, { status: 204 })
   } catch (error) {

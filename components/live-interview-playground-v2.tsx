@@ -1,13 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useChatDocumentStore } from "@/stores/chat-document-store"
-import { useInterviewSessionStore } from "@/stores/interview-session.store"
 import { Clock, FileText, Zap } from "lucide-react"
 
-import useCreateInterviewSession from "@/hooks/api/interview-session/useCreateInterviewSession"
-import useUpdateInterviewSession from "@/hooks/api/interview-session/useUpdateInterviewSession"
+import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
+import { useInterviewSessionLifecycle } from "@/hooks/use-interview-session-lifecycle"
 import { Button } from "@/components/ui/button"
 import {
   ResizableHandle,
@@ -34,7 +33,7 @@ import { TranscriptionDisplay } from "@/components/transcription-display"
 
 interface LiveInterviewPlaygroundV2Props {
   interviewId: string
-  defaultLayout: number[] | undefined
+  defaultLayout?: number[]
 }
 
 export function LiveInterviewPlaygroundV2({
@@ -42,7 +41,8 @@ export function LiveInterviewPlaygroundV2({
   defaultLayout = [30, 40, 30],
 }: LiveInterviewPlaygroundV2Props) {
   const router = useRouter()
-  const { setCurrentSessionId, setSessionContext } = useInterviewSessionStore()
+  const { data: interview } = useGetInterview(interviewId)
+  const { startedAt, finish } = useInterviewSessionLifecycle(interviewId)
   const {
     clearDocumentSelection,
     clearActiveSession,
@@ -52,35 +52,6 @@ export function LiveInterviewPlaygroundV2({
     fastMode,
     setFastMode,
   } = useChatDocumentStore()
-
-  const { mutateAsync: createSession } = useCreateInterviewSession()
-  const { mutateAsync: updateSession } = useUpdateInterviewSession()
-
-  const [timer, setTimer] = useState("00:00")
-  const timerRef = useRef<NodeJS.Timeout | undefined>(undefined)
-  const cleanupRef = useRef<(() => void) | null>(null)
-  /** DB id of the active InterviewSession (not the parent interview's id). */
-  const interviewSessionIdRef = useRef<string | null>(null)
-
-  // Reset and start timer
-  const resetTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-    }
-
-    setTimer("00:00")
-    let seconds = 0
-    timerRef.current = setInterval(() => {
-      seconds++
-      const minutes = Math.floor(seconds / 60)
-      const remainingSeconds = seconds % 60
-      setTimer(
-        `${minutes.toString().padStart(2, "0")}:${remainingSeconds
-          .toString()
-          .padStart(2, "0")}`
-      )
-    }, 1000)
-  }, [])
 
   // Reset RAG chat state when interview changes
   useEffect(() => {
@@ -94,77 +65,20 @@ export function LiveInterviewPlaygroundV2({
     clearCoachDocuments,
   ])
 
-  // Start new session when component mounts
-  useEffect(() => {
-    let mounted = true
+  const [isEnding, setIsEnding] = useState(false)
+  const handleEnd = useCallback(async () => {
+    setIsEnding(true)
+    const saved = await finish()
+    router.push(
+      saved
+        ? `/dashboard/interviews/${interviewId}/sessions`
+        : "/dashboard/interviews"
+    )
+  }, [finish, router, interviewId])
 
-    const initSession = async () => {
-      try {
-        createSession(
-          { interviewId },
-          {
-            onSuccess: (result) => {
-              if (mounted) {
-                interviewSessionIdRef.current = result.id
-                setCurrentSessionId(result.id)
-                setSessionContext(result.sessionContext ?? "")
-              }
-            },
-          }
-        )
-      } catch (error) {
-        console.error("Failed to create session:", error)
-      }
-    }
-
-    initSession()
-    resetTimer()
-
-    return () => {
-      mounted = false
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-      }
-
-      if (cleanupRef.current) {
-        cleanupRef.current()
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interviewId])
-
-  // Setup cleanup effect separately
-  useEffect(() => {
-    cleanupRef.current = async () => {
-      const sessionId = interviewSessionIdRef.current
-      interviewSessionIdRef.current = null
-      setSessionContext("")
-      if (!sessionId) {
-        setCurrentSessionId(null)
-        return
-      }
-      try {
-        await updateSession(
-          {
-            id: sessionId,
-            status: "completed",
-          },
-          {
-            onSettled: () => {
-              setCurrentSessionId(null)
-            },
-          }
-        )
-      } catch (error) {
-        console.error("Failed to cleanup session:", error)
-      }
-    }
-  }, [updateSession, setCurrentSessionId, setSessionContext])
-
-  const handleLeave = useCallback(() => {
-    void cleanupRef.current?.()
-    router.push("/dashboard/interviews")
-  }, [router])
+  const subtitle = [interview?.companyName, interview?.jobTitle]
+    .filter(Boolean)
+    .join(" · ")
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -172,20 +86,29 @@ export function LiveInterviewPlaygroundV2({
         {/* Unified top header */}
         <div className="flex h-14 shrink-0 items-center justify-between rounded-t-lg border border-b-0 bg-background px-5">
           <div className="flex items-center gap-3">
-            <h1 className="text-sm font-semibold tracking-tight">
-              Live Interview
-            </h1>
-            <Separator orientation="vertical" className="h-4" />
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Clock className="size-3.5" />
-              <span className="font-mono tabular-nums">{timer}</span>
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-semibold tracking-tight">
+                {interview?.name ?? "Interview"}
+              </h1>
+              {subtitle && (
+                <p className="truncate text-xs text-muted-foreground">
+                  {subtitle}
+                </p>
+              )}
             </div>
+            <Separator orientation="vertical" className="h-4" />
+            <SessionTimer startedAt={startedAt} />
           </div>
           <div className="flex items-center gap-2">
             <InterviewSettingsSheet />
             <MicOnlyRecorder />
-            <Button variant="destructive" size="sm" onClick={handleLeave}>
-              End Session
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleEnd}
+              disabled={isEnding}
+            >
+              {isEnding ? "Saving…" : "End session"}
             </Button>
           </div>
         </div>
@@ -204,7 +127,6 @@ export function LiveInterviewPlaygroundV2({
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Transcription
               </span>
-              <MicrophoneConnectionStatus />
             </div>
             <TranscriptionDisplay />
           </ResizablePanel>
@@ -314,5 +236,31 @@ export function LiveInterviewPlaygroundV2({
         </ResizablePanelGroup>
       </div>
     </TooltipProvider>
+  )
+}
+
+function SessionTimer({ startedAt }: { startedAt: number | null }) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!startedAt) return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [startedAt])
+
+  const seconds = startedAt
+    ? Math.max(0, Math.floor((now - startedAt) / 1000))
+    : 0
+  const label = startedAt
+    ? `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(
+        seconds % 60
+      ).padStart(2, "0")}`
+    : "Not started"
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <Clock className="size-3.5" />
+      <span className="font-mono tabular-nums">{label}</span>
+    </div>
   )
 }

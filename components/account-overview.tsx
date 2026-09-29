@@ -1,9 +1,9 @@
 "use client"
 
 import * as React from "react"
-import type { User } from "@/lib/generated/prisma/client"
 import { formatDistance } from "date-fns"
 
+import type { User } from "@/lib/generated/prisma/client"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -16,10 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { Icons } from "@/components/icons"
 
 interface AccountOverviewProps {
-  user: Pick<
-    User,
-    "emailVerified" | "createdAt" | "updatedAt"
-  >
+  user: Pick<User, "emailVerified" | "createdAt" | "updatedAt">
 }
 
 export function AccountOverview({ user }: AccountOverviewProps) {
@@ -73,7 +70,6 @@ export function AccountOverview({ user }: AccountOverviewProps) {
             })}
           </span>
         </div>
-
       </CardContent>
     </Card>
   )

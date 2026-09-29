@@ -6,8 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
 import {
-  CreateInterviewRequest,
-  CreateInterviewRequestSchema,
+  InterviewFormSchema,
+  type InterviewFormValues,
 } from "@/lib/validations/interview"
 import useCreateInterview from "@/hooks/api/interview/useCreateInterview"
 import { Button } from "@/components/ui/button"
@@ -20,58 +20,43 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Form } from "@/components/ui/form"
 import { toast } from "@/components/ui/use-toast"
 import { Icons } from "@/components/icons"
+import {
+  InterviewFormFields,
+  toInterviewRequest,
+} from "@/components/interviews/interview-form-fields"
+
+const EMPTY: InterviewFormValues = {
+  name: "",
+  companyName: "",
+  jobTitle: "",
+  scheduledAt: "",
+  notes: "",
+}
 
 export function CreateInterviewDialog() {
   const [open, setOpen] = React.useState(false)
-
   const router = useRouter()
-
   const { mutate: createInterview, isPending } = useCreateInterview()
 
-  const form = useForm({
-    resolver: zodResolver(CreateInterviewRequestSchema),
-    defaultValues: {
-      name: "",
-      type: "live",
-      status: "in-progress",
-      priority: "high",
-      dueDate: new Date().toISOString(),
-      jobTitle: "",
-      companyName: "",
-    },
+  const form = useForm<InterviewFormValues>({
+    resolver: zodResolver(InterviewFormSchema),
+    defaultValues: EMPTY,
   })
 
-  function onSubmit(data: CreateInterviewRequest) {
-    createInterview(data, {
+  function onSubmit(values: InterviewFormValues) {
+    createInterview(toInterviewRequest(values), {
       onSuccess: (interview) => {
         setOpen(false)
-
-        router.refresh()
+        form.reset(EMPTY)
         router.push(`/dashboard/interviews/${interview.id}`)
       },
-      onError: (error: any) => {
-        if (error.status === 422) {
-          return toast({
-            title: "Limit of 3 posts reached.",
-            description: "Please upgrade to the PRO plan.",
-            variant: "destructive",
-          })
-        }
-        return toast({
+      onError: () => {
+        toast({
           title: "Something went wrong.",
-          description: "Your post was not created. Please try again.",
+          description: "The interview was not created. Please try again.",
           variant: "destructive",
         })
       },
@@ -81,39 +66,27 @@ export function CreateInterviewDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" effect="gooeyRight">
+        <Button>
           <Icons.add className="mr-2 size-4" />
-          New Session
+          New interview
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>New Session</DialogTitle>
+          <DialogTitle>New interview</DialogTitle>
           <DialogDescription>
-            Give your session a name to get started.
+            Company, role and notes are passed to the answer coach.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Session name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Google SWE round 1" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <InterviewFormFields control={form.control} />
             <DialogFooter>
-              <Button effect="gooeyRight" type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending}>
                 {isPending && (
                   <Icons.spinner className="mr-2 size-4 animate-spin" />
                 )}
-                Start
+                Create &amp; open
               </Button>
             </DialogFooter>
           </form>

@@ -86,7 +86,6 @@ export default function EditDocumentDialog({
     defaultValues: {
       title: document.title,
       content: document.content,
-      metadata: document.metadata,
       type: document.type,
     },
   })
