@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useChatDocumentStore } from "@/stores/chat-document-store"
 import { Clock, FileText, Zap } from "lucide-react"
@@ -80,6 +80,15 @@ export function LiveInterviewPlaygroundV2({
     .filter(Boolean)
     .join(" · ")
 
+  // Help speech-to-text with names it can't know (company, role)
+  const contextTerms = useMemo(
+    () =>
+      [interview?.companyName, interview?.jobTitle].filter(
+        (term): term is string => Boolean(term)
+      ),
+    [interview?.companyName, interview?.jobTitle]
+  )
+
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex flex-col">
@@ -101,7 +110,7 @@ export function LiveInterviewPlaygroundV2({
           </div>
           <div className="flex items-center gap-2">
             <InterviewSettingsSheet />
-            <MicOnlyRecorder />
+            <MicOnlyRecorder contextTerms={contextTerms} />
             <Button
               variant="destructive"
               size="sm"
@@ -153,7 +162,7 @@ export function LiveInterviewPlaygroundV2({
                   <MicrophoneConnectionStatus />
                 </div>
                 <div className="min-h-0 flex-1 overflow-auto border-b bg-muted/30 px-3 py-4">
-                  <RecorderTranscriber />
+                  <RecorderTranscriber contextTerms={contextTerms} />
                 </div>
               </ResizablePanel>
 

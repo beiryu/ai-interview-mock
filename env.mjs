@@ -2,6 +2,8 @@ import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
 export const env = createEnv({
+  // Treat `KEY=` lines in .env as unset
+  emptyStringAsUndefined: true,
   server: {
     BETTER_AUTH_URL: z.string().min(1),
     BETTER_AUTH_SECRET: z.string().min(1),
@@ -14,7 +16,8 @@ export const env = createEnv({
     RESEND_API_KEY: z.string().min(1),
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_BASE_URL: z.string().min(1),
-    DEEPGRAM_API_KEY: z.string().min(1),
+    // Optional so the app boots without it; /api/stt/token reports it missing
+    SONIOX_API_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().min(1),
@@ -31,6 +34,6 @@ export const env = createEnv({
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
-    DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
+    SONIOX_API_KEY: process.env.SONIOX_API_KEY,
   },
 })

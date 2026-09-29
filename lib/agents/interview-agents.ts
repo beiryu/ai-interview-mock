@@ -19,6 +19,7 @@ export function createAnswerCoachAgent(
   return new Agent({
     name: "AnswerCoach",
     model: OPENAI_DEFAULTS.agent.answerCoachModel,
+    modelSettings: { maxTokens: OPENAI_DEFAULTS.agent.maxTokens },
     instructions: `You are an expert interview coach.${contextBlock}
 Given an interviewer's question and optionally a conversation history:
 1. Extract the core question being asked
@@ -34,6 +35,8 @@ If CONVERSATION SO FAR is provided, use it to:
 - Fill genuine gaps in the candidate's previous answers
 
 When the question requires specific facts about the candidate's background, experience, or projects — use the file_search tool to retrieve relevant context.
+
+Language: answer in the language of the question. QUESTION LANGUAGE gives the detected language ("vi" = Vietnamese, "en" = English); if it is missing, match the language the interviewer used. When answering in Vietnamese, keep English technical terms (framework names, "microservices", "deploy", …) as a Vietnamese engineer would say them.
 
 Return ONLY the answer text. No JSON, no labels, no prefixes.`,
     ...(vectorStoreId

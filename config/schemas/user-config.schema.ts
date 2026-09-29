@@ -9,8 +9,6 @@ const CHAT_MODELS = [
   "gpt-4.1",
 ] as const
 
-const DEEPGRAM_MODELS = ["nova-3", "nova-2"] as const
-
 /** Prisma nullable columns use `null`; Zod `.optional()` only allows `undefined`. */
 function nullableEnum<const T extends readonly string[]>(
   allowed: T,
@@ -35,29 +33,12 @@ export const UserConfigSchemaV1 = z.object({
   ),
   chatTemperature: z.number().min(0).max(1).optional().nullable(),
 
-  // Deepgram
-  deepgramModel: z.preprocess(
-    (val) => nullableEnum(DEEPGRAM_MODELS, val),
-    z.enum(DEEPGRAM_MODELS).optional().nullable()
-  ),
-  deepgramLanguage: z.string().optional().nullable(),
+  // Speech-to-text (Soniox)
+  endpointMaxDelayMs: z.number().int().min(500).max(3000).optional().nullable(),
+  endpointSensitivity: z.number().min(-1).max(1).optional().nullable(),
 
-  // Interview behavior
-  silenceThresholdMs: z
-    .number()
-    .int()
-    .min(1000)
-    .max(30000)
-    .optional()
-    .nullable(),
-  utteranceEndMs: z.number().int().min(500).max(10000).optional().nullable(),
-  deepgramEndpointing: z
-    .number()
-    .int()
-    .min(200)
-    .max(5000)
-    .optional()
-    .nullable(),
+  // Turn taking
+  turnMaxSilenceMs: z.number().int().min(1000).max(5000).optional().nullable(),
 })
 
 // Current schema alias — update this alias when adding V2+

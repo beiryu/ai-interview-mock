@@ -13,7 +13,7 @@ Single-user by design: only emails listed in `ALLOWED_EMAILS` can sign in.
 - Next.js 16 (App Router, Turbopack), React 19, Tailwind + shadcn/ui
 - Better Auth (GitHub OAuth, email magic link via Resend)
 - Prisma 7 + PostgreSQL (`@prisma/adapter-pg`)
-- Deepgram streaming speech-to-text
+- Soniox real-time speech-to-text (Vietnamese + English, per-word language ID, semantic end-of-turn)
 - OpenAI Responses API, hosted vector stores (`file_search`), Agents SDK
 
 ## Getting started
@@ -37,7 +37,7 @@ pnpm dev                     # http://localhost:3000
 | `SMTP_FROM`, `RESEND_API_KEY` | Sender and API key for magic-link emails |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `OPENAI_API_KEY`, `OPENAI_BASE_URL` | OpenAI access |
-| `DEEPGRAM_API_KEY` | Deepgram access |
+| `SONIOX_API_KEY` | Soniox access (browser gets short-lived keys via `/api/stt/token`) |
 
 ## Using it
 
@@ -55,6 +55,8 @@ pnpm dev                     # http://localhost:3000
 pnpm lint        # ESLint
 pnpm typecheck   # tsc --noEmit
 pnpm build       # production build
+pnpm test        # unit tests (turn detection)
+pnpm stt:smoke   # live Soniox + turn-engine check with synthesized VI/EN speech (macOS)
 ```
 
 ## License

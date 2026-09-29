@@ -1,6 +1,6 @@
-import { DEEPGRAM_DEFAULTS } from "@/config/defaults/deepgram"
 import { INTERVIEW_DEFAULTS } from "@/config/defaults/interview"
 import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
+import { STT_DEFAULTS } from "@/config/defaults/stt"
 import {
   CURRENT_SCHEMA_VERSION,
   UserConfigSchema,
@@ -21,20 +21,22 @@ export interface ResolvedConfig {
       temperature: number
       timeoutMs: number
     }
-    agent: { answerCoachModel: string }
+    agent: { answerCoachModel: string; maxTokens: number }
   }
-  deepgram: {
+  stt: {
     model: string
-    language: string
-    interimResults: boolean
-    smartFormat: boolean
-    utteranceEndMs: number
-    endpointing: number
+    languageHints: string[]
+    endpointMaxDelayMs: number
+    endpointSensitivity: number
+    endpointLatencyLevel: number
     keepAliveIntervalMs: number
   }
   interview: {
-    silenceThresholdMs: number
-    silenceCheckIntervalMs: number
+    pauseMs: number
+    completeCommitMs: number
+    turnMaxSilenceMs: number
+    candidateBargeInMs: number
+    amendWindowMs: number
   }
 }
 
@@ -45,7 +47,7 @@ function buildBaseConfig(): ResolvedConfig {
       classify: { ...OPENAI_DEFAULTS.classify },
       agent: { ...OPENAI_DEFAULTS.agent },
     },
-    deepgram: { ...DEEPGRAM_DEFAULTS },
+    stt: { ...STT_DEFAULTS, languageHints: [...STT_DEFAULTS.languageHints] },
     interview: { ...INTERVIEW_DEFAULTS },
   }
 }
@@ -93,11 +95,9 @@ export class ConfigService {
             schemaVersion: CURRENT_SCHEMA_VERSION,
             chatModel: null,
             chatTemperature: null,
-            deepgramModel: null,
-            deepgramLanguage: null,
-            silenceThresholdMs: null,
-            utteranceEndMs: null,
-            deepgramEndpointing: null,
+            endpointMaxDelayMs: null,
+            endpointSensitivity: null,
+            turnMaxSilenceMs: null,
           },
         })
       } catch {
@@ -124,15 +124,12 @@ export class ConfigService {
     if (userConfig.chatModel) base.openai.chat.model = userConfig.chatModel
     if (userConfig.chatTemperature != null)
       base.openai.chat.temperature = userConfig.chatTemperature
-    if (userConfig.deepgramModel) base.deepgram.model = userConfig.deepgramModel
-    if (userConfig.deepgramLanguage)
-      base.deepgram.language = userConfig.deepgramLanguage
-    if (userConfig.silenceThresholdMs != null)
-      base.interview.silenceThresholdMs = userConfig.silenceThresholdMs
-    if (userConfig.utteranceEndMs != null)
-      base.deepgram.utteranceEndMs = userConfig.utteranceEndMs
-    if (userConfig.deepgramEndpointing != null)
-      base.deepgram.endpointing = userConfig.deepgramEndpointing
+    if (userConfig.endpointMaxDelayMs != null)
+      base.stt.endpointMaxDelayMs = userConfig.endpointMaxDelayMs
+    if (userConfig.endpointSensitivity != null)
+      base.stt.endpointSensitivity = userConfig.endpointSensitivity
+    if (userConfig.turnMaxSilenceMs != null)
+      base.interview.turnMaxSilenceMs = userConfig.turnMaxSilenceMs
 
     return base
   }

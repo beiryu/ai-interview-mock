@@ -10,6 +10,7 @@ pnpm dev              # Run next dev
 pnpm build            # next build
 pnpm lint             # Run ESLint
 pnpm typecheck        # tsc --noEmit
+pnpm test             # vitest (lib/**/*.test.ts)
 pnpm start            # Start production server
 ```
 
@@ -38,7 +39,7 @@ Environment: copy `.env.example` to `.env` and fill in values (the Prisma CLI re
 
 **Auth**: Better Auth (`lib/auth.ts`) with GitHub OAuth and magic link (Resend); a `databaseHooks.user.create.before` allowlist blocks sign-ups outside `ALLOWED_EMAILS`. Handler at `app/api/auth/[...all]`; client helpers in `lib/auth-client.ts`; server code uses `getCurrentUser()` from `lib/session.ts` or `auth.api.getSession({ headers })`.
 
-**Live interview flow**: the playground captures the meeting tab (`hooks/use-microphone.ts`, getDisplayMedia) and the candidate mic (`hooks/use-microphone-only.ts`), each streamed to Deepgram. Transcript and AI suggestions live in `stores/interview-session.store.ts`. `hooks/use-interview-session-lifecycle.ts` creates the `InterviewSession` row only once capture starts and persists the transcript (autosave, on end, `sendBeacon` on tab close).
+**Live interview flow**: two streams, each `hooks/use-live-transcriber.ts` → `hooks/use-audio-capture.ts` (tab via getDisplayMedia / mic; an AudioWorklet in `public/worklets/pcm-capture.js` emits 16 kHz PCM + RMS) → `lib/stt/soniox-stream.ts` (Soniox `stt-rt-v5`, `language_hints` vi+en, semantic `<end>` endpoints; short-lived keys from `/api/stt/token`). Transcripts and audio levels feed `lib/turn/turn-engine.ts`, which decides when the interviewer finished (pause + text completeness in `lib/turn/completeness.ts` + Soniox `<end>` + candidate starting to talk), speculates an answer at the first pause and promotes it on commit. Wiring and answer streaming live in `stores/interview-session.store.ts`. `hooks/use-interview-session-lifecycle.ts` persists the transcript. Turn logic is unit-tested (`pnpm test`); `pnpm stt:smoke` exercises Soniox end-to-end with synthesized speech.
 
 **AI**: OpenAI Responses API + per-user hosted vector store (`lib/openai/*`); answer coach agent in `lib/agents/interview-agents.ts`. No Redis — cached ids live in Postgres.
 

@@ -24,11 +24,9 @@ export async function GET() {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       chatModel: null,
       chatTemperature: null,
-      deepgramModel: null,
-      deepgramLanguage: null,
-      silenceThresholdMs: null,
-      utteranceEndMs: null,
-      deepgramEndpointing: null,
+      endpointMaxDelayMs: null,
+      endpointSensitivity: null,
+      turnMaxSilenceMs: null,
     })
   }
 
@@ -51,16 +49,20 @@ export async function PUT(req: Request) {
     )
   }
 
+  // Partial update: only fields present in the request change
   const data = parsed.data
-  const configFields = {
+  const fields = [
+    "chatModel",
+    "chatTemperature",
+    "endpointMaxDelayMs",
+    "endpointSensitivity",
+    "turnMaxSilenceMs",
+  ] as const
+  const configFields: Record<string, unknown> = {
     schemaVersion: data.schemaVersion ?? CURRENT_SCHEMA_VERSION,
-    chatModel: data.chatModel ?? null,
-    chatTemperature: data.chatTemperature ?? null,
-    deepgramModel: data.deepgramModel ?? null,
-    deepgramLanguage: data.deepgramLanguage ?? null,
-    silenceThresholdMs: data.silenceThresholdMs ?? null,
-    utteranceEndMs: data.utteranceEndMs ?? null,
-    deepgramEndpointing: data.deepgramEndpointing ?? null,
+  }
+  for (const field of fields) {
+    if (field in body) configFields[field] = data[field] ?? null
   }
 
   const updated = await db.userConfig.upsert({
@@ -71,11 +73,9 @@ export async function PUT(req: Request) {
       schemaVersion: true,
       chatModel: true,
       chatTemperature: true,
-      deepgramModel: true,
-      deepgramLanguage: true,
-      silenceThresholdMs: true,
-      utteranceEndMs: true,
-      deepgramEndpointing: true,
+      endpointMaxDelayMs: true,
+      endpointSensitivity: true,
+      turnMaxSilenceMs: true,
     },
   })
 

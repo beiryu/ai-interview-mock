@@ -1,8 +1,8 @@
 import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 
+import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
 import { auth } from "@/lib/auth"
-import { ConfigService } from "@/lib/config/config.service"
 import openai from "@/lib/openai"
 
 export async function POST(req: Request) {
@@ -11,7 +11,8 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 })
   }
 
-  const config = await ConfigService.forUser(session.user.id)
+  // Operator constants; users can't override the classifier
+  const classify = OPENAI_DEFAULTS.classify
 
   const {
     text,
@@ -21,16 +22,13 @@ export async function POST(req: Request) {
     context: { role: string; content: string }[]
   } = await req.json()
 
-  // Tier 1: word count gate — free, no LLM
-  if (text.trim().split(/\s+/).length < 4) {
+  // One-word acknowledgements never need an answer ("Why?" still does)
+  if (text.trim().split(/\s+/).length < 2 && !text.trim().endsWith("?")) {
     return NextResponse.json({ isQuestion: false })
   }
 
   const controller = new AbortController()
-  const timeout = setTimeout(
-    () => controller.abort(),
-    config.openai.classify.timeoutMs
-  )
+  const timeout = setTimeout(() => controller.abort(), classify.timeoutMs)
 
   try {
     const messages: {
@@ -40,7 +38,7 @@ export async function POST(req: Request) {
       {
         role: "system",
         content:
-          'You are a classifier for interview transcripts. The speech may be Vietnamese, English, or mixed.\n\nDetermine if the transcript is a complete interview question worth answering.\n\nReturn only valid JSON: { "isQuestion": true } or { "isQuestion": false }\n\nReturn false for:\n- Single words or short filler sounds (yes, no, ok, ừ, uh, hmm, right, okay)\n- Incomplete fragments (trailing off mid-sentence)\n- Affirmations or acknowledgements\n\nReturn true for:\n- Complete questions requiring a substantive answer\n- Statements that clearly prompt a response',
+          'You are a classifier for interview transcripts. The speech may be Vietnamese, English, or mixed.\n\nDetermine if the transcript is a complete interview question worth answering.\n\nReturn only valid JSON: { "isQuestion": true } or { "isQuestion": false }\n\nReturn false for:\n- Single words or short filler sounds (yes, no, ok, ừ, uh, hmm, right, okay)\n- Incomplete fragments (trailing off mid-sentence)\n- Affirmations or acknowledgements\n\nReturn true for:\n- Complete questions requiring a substantive answer, including short ones ("Why?", "Tell me more", "Tại sao?")\n- Statements that clearly prompt a response',
       },
     ]
 
@@ -56,13 +54,13 @@ export async function POST(req: Request) {
 
     const response = await openai.chat.completions.create(
       {
-        model: config.openai.classify.model,
+        model: classify.model,
         messages,
         response_format: { type: "json_object" },
-        max_tokens: config.openai.classify.maxTokens,
-        temperature: config.openai.classify.temperature,
+        max_tokens: classify.maxTokens,
+        temperature: classify.temperature,
       },
-      { signal: controller.signal }
+      { signal: AbortSignal.any([controller.signal, req.signal]) }
     )
 
     const result = JSON.parse(response.choices[0].message.content ?? "{}")

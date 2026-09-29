@@ -3,70 +3,56 @@ import { useInterviewSessionStore } from "@/stores/interview-session.store"
 
 import { TranscriptionMessage } from "./transcription-message"
 
+const timeLabel = (date: Date) =>
+  date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+
 export function TranscriptionDisplay() {
-  const {
-    messages,
-    interviewerBuffer,
-    candidateBuffer,
-    interimText,
-    interimRole,
-  } = useInterviewSessionStore()
+  const messages = useInterviewSessionStore((s) => s.messages)
+  const live = useInterviewSessionStore((s) => s.live)
+  const sttError = useInterviewSessionStore((s) => s.sttError)
 
   const scrollRef = useRef<HTMLDivElement>(null)
-
-  const showInterviewerSpeaking =
-    interimRole === "interviewer" || !!interviewerBuffer
-  const showCandidateSpeaking = interimRole === "candidate" || !!candidateBuffer
 
   // Newest entries render at the top; keep them in view
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0
-  }, [messages.length, showInterviewerSpeaking, showCandidateSpeaking])
-
-  const interviewerLiveText = [
-    interviewerBuffer,
-    interimRole === "interviewer" ? interimText : "",
-  ]
-    .filter(Boolean)
-    .join(" ")
-
-  const candidateLiveText = [
-    candidateBuffer,
-    interimRole === "candidate" ? interimText : "",
-  ]
-    .filter(Boolean)
-    .join(" ")
+  }, [messages.length, live.interviewer.text, live.candidate.text])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {sttError && (
+        <p className="border-b bg-destructive/10 px-4 py-2 text-xs text-destructive">
+          Transcription: {sttError}
+        </p>
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
         <div className="flex flex-col gap-2 p-4">
-          {showInterviewerSpeaking && (
+          {live.interviewer.text && (
             <TranscriptionMessage
               type="speaking"
               role="interviewer"
-              text={interviewerLiveText}
+              text={live.interviewer.text}
+              language={live.interviewer.language}
             />
           )}
 
-          {showCandidateSpeaking && (
+          {live.candidate.text && (
             <TranscriptionMessage
               type="speaking"
               role="candidate"
-              text={candidateLiveText}
+              text={live.candidate.text}
+              language={live.candidate.language}
             />
           )}
 
           {[...messages].reverse().map((message) => (
             <TranscriptionMessage
               key={message.id}
-              timestamp={new Date(message.createdAt).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              timestamp={timeLabel(new Date(message.createdAt))}
               text={message.content}
               type="final"
               role={message.role as "interviewer" | "candidate"}
+              language={message.questionAnalysis?.language ?? null}
             />
           ))}
         </div>

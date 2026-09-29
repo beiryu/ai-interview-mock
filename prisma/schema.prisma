@@ -94,14 +94,12 @@ model UserConfig {
   chatModel       String?
   chatTemperature Float?
 
-  // Deepgram
-  deepgramModel    String?
-  deepgramLanguage String?
+  // Speech-to-text (Soniox)
+  endpointMaxDelayMs  Int?
+  endpointSensitivity Float?
 
-  // Interview behavior
-  silenceThresholdMs  Int?
-  utteranceEndMs      Int?
-  deepgramEndpointing Int?
+  // Turn taking
+  turnMaxSilenceMs Int?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

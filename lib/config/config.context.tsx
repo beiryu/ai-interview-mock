@@ -2,9 +2,9 @@
 
 import { createContext, useContext, useState } from "react"
 
-import { DEEPGRAM_DEFAULTS } from "@/config/defaults/deepgram"
 import { INTERVIEW_DEFAULTS } from "@/config/defaults/interview"
 import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
+import { STT_DEFAULTS } from "@/config/defaults/stt"
 import type { UserConfig } from "@/config/schemas/user-config.schema"
 import type { ResolvedConfig } from "@/lib/config/config.service"
 
@@ -20,7 +20,7 @@ function buildClientBase(): ResolvedConfig {
       classify: { ...OPENAI_DEFAULTS.classify },
       agent: { ...OPENAI_DEFAULTS.agent },
     },
-    deepgram: { ...DEEPGRAM_DEFAULTS },
+    stt: { ...STT_DEFAULTS, languageHints: [...STT_DEFAULTS.languageHints] },
     interview: { ...INTERVIEW_DEFAULTS },
   }
 }
@@ -36,21 +36,18 @@ function applyUserConfig(
       ...base.openai,
       chat: { ...base.openai.chat },
     },
-    deepgram: { ...base.deepgram },
+    stt: { ...base.stt },
     interview: { ...base.interview },
   }
   if (userConfig.chatModel) result.openai.chat.model = userConfig.chatModel
   if (userConfig.chatTemperature != null)
     result.openai.chat.temperature = userConfig.chatTemperature
-  if (userConfig.deepgramModel) result.deepgram.model = userConfig.deepgramModel
-  if (userConfig.deepgramLanguage)
-    result.deepgram.language = userConfig.deepgramLanguage
-  if (userConfig.silenceThresholdMs != null)
-    result.interview.silenceThresholdMs = userConfig.silenceThresholdMs
-  if (userConfig.utteranceEndMs != null)
-    result.deepgram.utteranceEndMs = userConfig.utteranceEndMs
-  if (userConfig.deepgramEndpointing != null)
-    result.deepgram.endpointing = userConfig.deepgramEndpointing
+  if (userConfig.endpointMaxDelayMs != null)
+    result.stt.endpointMaxDelayMs = userConfig.endpointMaxDelayMs
+  if (userConfig.endpointSensitivity != null)
+    result.stt.endpointSensitivity = userConfig.endpointSensitivity
+  if (userConfig.turnMaxSilenceMs != null)
+    result.interview.turnMaxSilenceMs = userConfig.turnMaxSilenceMs
   return result
 }
 

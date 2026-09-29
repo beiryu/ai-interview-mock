@@ -1,35 +1,35 @@
 "use client"
 
-import {
-  useDeepgramAudioSender,
-  useDeepgramConnection,
-} from "@/hooks/use-deepgram-connection"
-import { useMicrophone } from "@/hooks/use-microphone"
+import { useLiveTranscriber } from "@/hooks/use-live-transcriber"
 
 import { RecordButton } from "./record-button"
 import { VideoPreview } from "./video-preview"
 
-/** Captures the meeting tab (interviewer side) and streams it to Deepgram. */
-export default function RecorderTranscriber() {
-  const { connection, status } = useDeepgramConnection("interviewer")
-  const handleDataAvailable = useDeepgramAudioSender(connection)
-
-  const { micOpen, userMedia, toggleMicrophone } =
-    useMicrophone(handleDataAvailable)
+/** Captures the meeting tab (interviewer side) and transcribes it live. */
+export default function RecorderTranscriber({
+  contextTerms,
+}: {
+  contextTerms?: string[]
+}) {
+  const { active, stream, captureError, start, stop } = useLiveTranscriber(
+    "interviewer",
+    { contextTerms }
+  )
 
   return (
     <div className="relative w-full">
-      {micOpen && userMedia ? (
+      {active && stream ? (
         <div className="flex max-h-[min(42vh,320px)] items-center justify-center overflow-hidden p-2">
-          <VideoPreview stream={userMedia} />
+          <VideoPreview stream={stream} />
         </div>
       ) : (
         <div className="flex flex-col items-center">
-          <RecordButton
-            micOpen={micOpen}
-            onClick={toggleMicrophone}
-            disabled={status !== "ready"}
-          />
+          <RecordButton micOpen={active} onClick={active ? stop : start} />
+          {captureError && (
+            <p className="px-4 text-center text-xs text-destructive">
+              {captureError}
+            </p>
+          )}
         </div>
       )}
     </div>

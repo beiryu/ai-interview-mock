@@ -5,6 +5,8 @@ interface TranscriptionMessageProps {
   text?: string
   type: TranscriptionMessageType
   role?: "interviewer" | "candidate"
+  /** Detected language ("vi", "en", …) */
+  language?: string | null
 }
 
 export function TranscriptionMessage({
@@ -12,8 +14,19 @@ export function TranscriptionMessage({
   text,
   type,
   role,
+  language,
 }: TranscriptionMessageProps) {
   const isCandidate = role === "candidate"
+  const speaker = (
+    <span className="px-1 text-xs text-muted-foreground">
+      {isCandidate ? "Me" : "Interviewer"}
+      {language && (
+        <span className="ml-1.5 rounded bg-muted px-1 py-px text-[10px] font-medium uppercase">
+          {language}
+        </span>
+      )}
+    </span>
+  )
 
   if (type === "speaking") {
     return (
@@ -22,9 +35,7 @@ export function TranscriptionMessage({
           isCandidate ? "items-end" : "items-start"
         }`}
       >
-        <span className="text-xs text-muted-foreground px-1">
-          {isCandidate ? "Me" : "Interviewer"}
-        </span>
+        {speaker}
         <div
           className={`max-w-[80%] rounded-2xl px-4 py-3 ${
             isCandidate
@@ -62,9 +73,7 @@ export function TranscriptionMessage({
           isCandidate ? "items-end" : "items-start"
         }`}
       >
-        <span className="text-xs text-muted-foreground px-1">
-          {isCandidate ? "Me" : "Interviewer"}
-        </span>
+        {speaker}
         <div
           className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
             isCandidate

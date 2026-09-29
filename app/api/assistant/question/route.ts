@@ -18,6 +18,7 @@ export async function POST(req: Request) {
 
   const {
     text,
+    language = null,
     agentHistory = [],
     context = [],
     sessionContext,
@@ -25,6 +26,8 @@ export async function POST(req: Request) {
     fastMode = false,
   }: {
     text: string
+    /** Dominant language of the question from speech-to-text ("vi", "en"…) */
+    language?: string | null
     agentHistory: AgentInputItem[]
     context: { role: string; content: string }[]
     sessionContext?: string
@@ -50,7 +53,9 @@ export async function POST(req: Request) {
         "\n\n"
       : ""
 
-  const input = `${contextBlock}NEW QUESTION FROM INTERVIEWER: ${text}`
+  const languageLine = language ? `QUESTION LANGUAGE: ${language}\n` : ""
+  // The new question goes last so the stable prefix stays cacheable
+  const input = `${contextBlock}${languageLine}NEW QUESTION FROM INTERVIEWER: ${text}`
 
   const memorySession = new MemorySession({ initialItems: agentHistory })
   const session = new OpenAIResponsesCompactionSession({
@@ -69,6 +74,8 @@ export async function POST(req: Request) {
     const streamed = await run(agent, input, {
       session,
       stream: true,
+      // Client aborts (speculation dropped, not a question) stop the model run
+      signal: req.signal,
     })
 
     const encoder = new TextEncoder()

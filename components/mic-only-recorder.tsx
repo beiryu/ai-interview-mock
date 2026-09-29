@@ -2,29 +2,28 @@
 
 import { Mic, MicOff } from "lucide-react"
 
-import {
-  useDeepgramAudioSender,
-  useDeepgramConnection,
-} from "@/hooks/use-deepgram-connection"
-import { useMicrophoneOnly } from "@/hooks/use-microphone-only"
+import { useLiveTranscriber } from "@/hooks/use-live-transcriber"
 
 import { Button } from "./ui/button"
 
-/** Captures the candidate's microphone and streams it to Deepgram. */
-export default function MicOnlyRecorder() {
-  const { connection } = useDeepgramConnection("candidate")
-  const handleDataAvailable = useDeepgramAudioSender(connection)
-
-  const { micOpen, toggleMicrophone } = useMicrophoneOnly(handleDataAvailable)
+/** Captures the candidate's microphone and transcribes it live. */
+export default function MicOnlyRecorder({
+  contextTerms,
+}: {
+  contextTerms?: string[]
+}) {
+  const { active, start, stop } = useLiveTranscriber("candidate", {
+    contextTerms,
+  })
 
   return (
     <Button
-      variant={micOpen ? "default" : "ghost"}
+      variant={active ? "default" : "ghost"}
       size="icon"
-      onClick={toggleMicrophone}
-      title={micOpen ? "Stop my microphone" : "Start my microphone"}
+      onClick={active ? stop : start}
+      title={active ? "Stop my microphone" : "Start my microphone"}
     >
-      {micOpen ? <Mic className="size-4" /> : <MicOff className="size-4" />}
+      {active ? <Mic className="size-4" /> : <MicOff className="size-4" />}
     </Button>
   )
 }

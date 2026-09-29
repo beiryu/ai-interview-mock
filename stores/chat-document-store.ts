@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { createJSONStorage, persist } from "zustand/middleware"
 
 interface ChatDocumentStore {
   // Document chat selection state
@@ -30,46 +31,57 @@ interface ChatDocumentStore {
   clearActiveSession: () => void
 }
 
-export const useChatDocumentStore = create<ChatDocumentStore>()((set) => ({
-  // Initial state
-  selectedDocuments: [],
-  coachDocuments: [],
-  fastMode: true,
-  activeSessionId: undefined,
+export const useChatDocumentStore = create<ChatDocumentStore>()(
+  persist(
+    (set) => ({
+      // Initial state
+      selectedDocuments: [],
+      coachDocuments: [],
+      fastMode: true,
+      activeSessionId: undefined,
 
-  // Document chat actions
+      // Document chat actions
 
-  deselectDocument: (documentId: string) =>
-    set((state) => ({
-      selectedDocuments: state.selectedDocuments.filter(
-        (id) => id !== documentId
-      ),
-    })),
+      deselectDocument: (documentId: string) =>
+        set((state) => ({
+          selectedDocuments: state.selectedDocuments.filter(
+            (id) => id !== documentId
+          ),
+        })),
 
-  toggleDocument: (documentId: string) =>
-    set((state) => ({
-      selectedDocuments: state.selectedDocuments.includes(documentId)
-        ? state.selectedDocuments.filter((id) => id !== documentId)
-        : [...state.selectedDocuments, documentId],
-    })),
+      toggleDocument: (documentId: string) =>
+        set((state) => ({
+          selectedDocuments: state.selectedDocuments.includes(documentId)
+            ? state.selectedDocuments.filter((id) => id !== documentId)
+            : [...state.selectedDocuments, documentId],
+        })),
 
-  clearDocumentSelection: () => set({ selectedDocuments: [] }),
+      clearDocumentSelection: () => set({ selectedDocuments: [] }),
 
-  // Coach document actions
-  toggleCoachDocument: (documentId: string) =>
-    set((state) => ({
-      coachDocuments: state.coachDocuments.includes(documentId)
-        ? state.coachDocuments.filter((id) => id !== documentId)
-        : [...state.coachDocuments, documentId],
-    })),
+      // Coach document actions
+      toggleCoachDocument: (documentId: string) =>
+        set((state) => ({
+          coachDocuments: state.coachDocuments.includes(documentId)
+            ? state.coachDocuments.filter((id) => id !== documentId)
+            : [...state.coachDocuments, documentId],
+        })),
 
-  clearCoachDocuments: () => set({ coachDocuments: [] }),
+      clearCoachDocuments: () => set({ coachDocuments: [] }),
 
-  // Fast mode actions
-  setFastMode: (enabled) => set({ fastMode: enabled }),
+      // Fast mode actions
+      setFastMode: (enabled) => set({ fastMode: enabled }),
 
-  // Session Management Actions
-  setActiveSession: (sessionId: string) => set({ activeSessionId: sessionId }),
+      // Session Management Actions
+      setActiveSession: (sessionId: string) =>
+        set({ activeSessionId: sessionId }),
 
-  clearActiveSession: () => set({ activeSessionId: undefined }),
-}))
+      clearActiveSession: () => set({ activeSessionId: undefined }),
+    }),
+    {
+      name: "chat-document-prefs",
+      storage: createJSONStorage(() => localStorage),
+      // Only the Fast/Normal preference survives reloads
+      partialize: (state) => ({ fastMode: state.fastMode }),
+    }
+  )
+)

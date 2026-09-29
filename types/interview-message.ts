@@ -20,11 +20,26 @@ export interface InterviewMessage {
   sessionId: string
 }
 
+export interface AnswerMetrics {
+  /** Why the turn was committed (see lib/turn/turn-engine.ts) */
+  commitReason: string
+  /** Interviewer silence at commit time */
+  silenceMs: number
+  /** Commit → first answer token; 0 when a speculative answer was ready */
+  firstTokenMs: number | null
+  /** The answer was started before the turn was committed */
+  speculated: boolean
+}
+
 export interface QuestionAnalysis {
   id: string
 
   question: string
   suggestedAnswer: string
+  /** Detected language of the question ("vi", "en", …) */
+  language: string | null
+  metrics: AnswerMetrics | null
+  error: string | null
 
   createdAt: Date
   updatedAt: Date
