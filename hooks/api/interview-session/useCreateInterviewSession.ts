@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query"
 
 import { CreateInterviewSessionRequest } from "@/lib/validations/interview-session"
 
-type CreatedSession = { id: string; sessionContext: string | null }
+type CreatedSession = { id: string }
 
 const createInterviewSession = async (
   payload: CreateInterviewSessionRequest

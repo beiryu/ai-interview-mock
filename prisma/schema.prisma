@@ -91,6 +91,8 @@ model Interview {
   jobTitle    String?
   scheduledAt DateTime?
   notes       String?            @db.Text
+  /// Documents the answer coach reads during this interview (CV, JD, notes…)
+  documentIds String[]           @default([]) @map("document_ids")
   sessions    InterviewSession[]
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at")
@@ -109,7 +111,6 @@ model InterviewSession {
   status         String    @default("in_progress")
   /// Array of { role: "interviewer" | "candidate", text: string, at: ISO string }
   transcript     Json?
-  sessionContext String?   @db.Text
   startedAt      DateTime  @default(now())
   endedAt        DateTime?
   createdAt      DateTime  @default(now()) @map("created_at")

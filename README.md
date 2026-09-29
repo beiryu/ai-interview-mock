@@ -14,7 +14,7 @@ Single-user by design: only emails listed in `ALLOWED_EMAILS` can sign in.
 - Better Auth (GitHub OAuth, email magic link via Resend)
 - Prisma 7 + PostgreSQL (`@prisma/adapter-pg`)
 - Soniox real-time speech-to-text (Vietnamese + English, per-word language ID, semantic end-of-turn)
-- OpenAI Responses API, hosted vector stores (`file_search`), Agents SDK
+- OpenAI Agents SDK (answer coach reads an interview brief built from your documents), Responses API + hosted vector stores (`file_search`) for Document Chat
 
 ## Getting started
 
@@ -42,7 +42,8 @@ pnpm dev                     # http://localhost:3000
 ## Using it
 
 1. Upload your resume, job descriptions and notes under **Documents**.
-2. Create an **Interview** with the company, role and any notes.
+2. Create an **Interview** with the company, role, notes, and pick the
+   documents the coach should read (your CV + this job's description).
 3. Launch it, click **Share the meeting tab** and pick the tab running the
    call (with "share tab audio" enabled). Turn on your mic to transcribe your
    own answers too.

@@ -1,14 +1,21 @@
 import { headers } from "next/headers"
-import {
-  MemorySession,
-  OpenAIResponsesCompactionSession,
-  run,
-  type AgentInputItem,
-} from "@openai/agents"
+import { run } from "@openai/agents"
+import { z } from "zod"
 
 import { createAnswerCoachAgent } from "@/lib/agents/interview-agents"
 import { auth } from "@/lib/auth"
-import { getOrCreateVectorStore } from "@/lib/openai/vector-store-service"
+import { loadInterviewBrief } from "@/lib/interview/load-brief"
+
+const RequestSchema = z.object({
+  interviewId: z.string().min(1),
+  text: z.string().min(1),
+  /** Dominant language of the question from speech-to-text ("vi", "en"…) */
+  language: z.string().nullable().default(null),
+  /** Recent transcript; the only memory the coach has (stateless per call) */
+  context: z
+    .array(z.object({ role: z.string(), content: z.string() }))
+    .default([]),
+})
 
 export async function POST(req: Request) {
   const authSession = await auth.api.getSession({ headers: await headers() })
@@ -16,28 +23,13 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 })
   }
 
-  const {
-    text,
-    language = null,
-    agentHistory = [],
-    context = [],
-    sessionContext,
-    selectedDocuments,
-    fastMode = false,
-  }: {
-    text: string
-    /** Dominant language of the question from speech-to-text ("vi", "en"…) */
-    language?: string | null
-    agentHistory: AgentInputItem[]
-    context: { role: string; content: string }[]
-    sessionContext?: string
-    selectedDocuments?: string[]
-    fastMode?: boolean
-  } = await req.json()
+  const parsed = RequestSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return new Response("Invalid request", { status: 400 })
+  }
+  const { interviewId, text, language, context } = parsed.data
 
-  const vectorStoreId = fastMode
-    ? undefined
-    : await getOrCreateVectorStore(authSession.user.id)
+  const brief = await loadInterviewBrief(interviewId, authSession.user.id)
 
   const contextBlock =
     context.length > 0
@@ -54,27 +46,12 @@ export async function POST(req: Request) {
       : ""
 
   const languageLine = language ? `QUESTION LANGUAGE: ${language}\n` : ""
-  // The new question goes last so the stable prefix stays cacheable
   const input = `${contextBlock}${languageLine}NEW QUESTION FROM INTERVIEWER: ${text}`
 
-  const memorySession = new MemorySession({ initialItems: agentHistory })
-  const session = new OpenAIResponsesCompactionSession({
-    underlyingSession: memorySession,
-    shouldTriggerCompaction: ({ compactionCandidateItems }) =>
-      compactionCandidateItems.length >= 12,
-  })
-
-  const agent = createAnswerCoachAgent(
-    sessionContext,
-    vectorStoreId,
-    selectedDocuments
-  )
-
   try {
-    const streamed = await run(agent, input, {
-      session,
+    const streamed = await run(createAnswerCoachAgent(brief), input, {
       stream: true,
-      // Client aborts (speculation dropped, not a question) stop the model run
+      // Client aborts (draft dropped, not a question) stop the model run
       signal: req.signal,
     })
 
@@ -95,9 +72,9 @@ export async function POST(req: Request) {
               controller.enqueue(encoder.encode(chunk))
             }
           }
-          const updatedHistory = await session.getItems()
-          const done = JSON.stringify({ type: "done", updatedHistory }) + "\n"
-          controller.enqueue(encoder.encode(done))
+          controller.enqueue(
+            encoder.encode(JSON.stringify({ type: "done" }) + "\n")
+          )
         } catch (err: unknown) {
           const isAbort =
             err instanceof Error &&

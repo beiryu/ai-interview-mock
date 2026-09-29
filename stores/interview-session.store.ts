@@ -1,7 +1,4 @@
-import { useChatDocumentStore } from "@/stores/chat-document-store"
-import type { AgentInputItem } from "@openai/agents"
 import { create } from "zustand"
-import { createJSONStorage, persist } from "zustand/middleware"
 
 import type { AnswerMetrics, InterviewMessage } from "@/types/interview-message"
 import { MicrophoneStatus } from "@/types/interview-session"
@@ -46,19 +43,17 @@ interface InterviewSessionStore {
 
   messages: InterviewMessage[]
 
-  // Agent memory
-  agentHistory: AgentInputItem[]
-
   // Session states
+  /** Interview on screen; the server builds the coach's brief from it */
+  interviewId: string | null
   currentSessionId: string | null
-  sessionContext: string
 
   setMicrophoneStatus: (status: MicrophoneStatus) => void
   setSttError: (error: string | null) => void
-  /** Attach a freshly created DB session (id + context for the coach). */
-  startSession: (sessionId: string, sessionContext: string) => void
-  /** Clear everything from the previous session (transcript, answers, memory). */
-  resetSession: () => void
+  /** Attach a freshly created DB session. */
+  startSession: (sessionId: string) => void
+  /** Clear everything from the previous session and switch interview. */
+  resetSession: (interviewId?: string | null) => void
 
   // Manual controls (buttons + hotkeys)
   /** Answer what the interviewer has said so far, or redo the last answer */
@@ -74,35 +69,31 @@ const EMPTY_LIVE: Record<Role, LiveLine> = {
 }
 
 export const useInterviewSessionStore = create<InterviewSessionStore>()(
-  persist(
-    (set) => ({
+  (set) => ({
       microphoneStatus: "disconnected",
       live: EMPTY_LIVE,
       sttError: null,
       status: "idle",
       skipReason: null,
       messages: [],
-      agentHistory: [],
+      interviewId: null,
       currentSessionId: null,
-      sessionContext: "",
 
       setMicrophoneStatus: (status) => set({ microphoneStatus: status }),
       setSttError: (error) => set({ sttError: error }),
 
-      startSession: (sessionId, sessionContext) =>
-        set({ currentSessionId: sessionId, sessionContext }),
+      startSession: (sessionId) => set({ currentSessionId: sessionId }),
 
-      resetSession: () => {
+      resetSession: (interviewId = null) => {
         abortPause()
         for (const answer of answers.values()) answer.controller.abort()
         answers.clear()
         lastAnsweredQuestion = null
         turnEngine.reset()
         set({
+          interviewId,
           currentSessionId: null,
-          sessionContext: "",
           messages: [],
-          agentHistory: [],
           live: EMPTY_LIVE,
           sttError: null,
           status: "idle",
@@ -123,13 +114,7 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
       },
 
       regenerate: (messageId) => regenerateAnswer(messageId),
-    }),
-    {
-      name: "interview-agent-history",
-      storage: createJSONStorage(() => sessionStorage),
-      partialize: (state) => ({ agentHistory: state.agentHistory }),
-    }
-  )
+    })
 )
 
 const store = useInterviewSessionStore
@@ -232,7 +217,6 @@ interface AnswerRun {
   controller: AbortController
   text: string
   firstTokenAt: number | null
-  history: AgentInputItem[] | null
   /** Card showing this run; null while it is a hidden draft */
   messageId: string | null
   commitAt: number | null
@@ -243,27 +227,22 @@ const answers = new Map<string, AnswerRun>()
 let lastAnsweredQuestion: string | null = null
 
 function startAnswer(question: string, language: string | null): AnswerRun {
-  const { coachDocuments, fastMode } = useChatDocumentStore.getState()
-  const state = store.getState()
+  const { interviewId } = store.getState()
   const run: AnswerRun = {
     question,
     controller: new AbortController(),
     text: "",
     firstTokenAt: null,
-    history: null,
     messageId: null,
     commitAt: null,
   }
 
   streamAnswer(
     {
+      interviewId: interviewId ?? "",
       text: question,
       language,
-      agentHistory: state.agentHistory,
       context: recentContext(),
-      sessionContext: state.sessionContext,
-      selectedDocuments: coachDocuments,
-      fastMode,
     },
     {
       onDelta: (delta) => {
@@ -275,11 +254,6 @@ function startAnswer(question: string, language: string | null): AnswerRun {
         updateAnalysis(run.messageId, (a) => ({
           suggestedAnswer: a.suggestedAnswer + delta,
         }))
-      },
-      onDone: (history) => {
-        run.history = history
-        // Only a shown answer becomes agent memory
-        if (run.messageId) store.setState({ agentHistory: history })
       },
     },
     run.controller.signal
@@ -304,7 +278,6 @@ function showAnswer(run: AnswerRun, messageId: string, commitAt: number) {
       firstTokenMs: Math.max(0, Math.round(run.firstTokenAt - commitAt)),
     })
   }
-  if (run.history) store.setState({ agentHistory: run.history })
   lastAnsweredQuestion = run.question
   store.setState({ status: "answering", skipReason: null })
 }

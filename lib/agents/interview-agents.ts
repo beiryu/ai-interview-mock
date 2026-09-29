@@ -1,26 +1,8 @@
-import { Agent, fileSearchTool } from "@openai/agents"
+import { Agent } from "@openai/agents"
 
 import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
-import { buildFileSearchFilter } from "@/lib/openai/vector-store-service"
 
-export function createAnswerCoachAgent(
-  sessionContext?: string,
-  vectorStoreId?: string,
-  selectedDocumentIds?: string[]
-): Agent {
-  const contextBlock = sessionContext
-    ? `\nSESSION CONTEXT:\n${sessionContext}\n\nUse this context when tailoring suggested answers.\n`
-    : ""
-
-  const filter = selectedDocumentIds?.length
-    ? buildFileSearchFilter(selectedDocumentIds)
-    : undefined
-
-  return new Agent({
-    name: "AnswerCoach",
-    model: OPENAI_DEFAULTS.agent.answerCoachModel,
-    modelSettings: { maxTokens: OPENAI_DEFAULTS.agent.maxTokens },
-    instructions: `You are an expert interview coach.${contextBlock}
+const INSTRUCTIONS = `You are an expert interview coach.
 Given an interviewer's question and optionally a conversation history, help the candidate answer it live. They glance at your output mid-conversation, so the first lines must be useful on their own.
 
 Output format (exactly):
@@ -35,20 +17,31 @@ If CONVERSATION SO FAR is provided, use it to:
 - Build naturally on what was already said
 - Fill genuine gaps in the candidate's previous answers
 
-When the question requires specific facts about the candidate's background, experience, or projects — use the file_search tool to retrieve relevant context.
+Facts about the candidate (employers, projects, numbers, tech they used) come only from the INTERVIEW BRIEF below. Prefer a real example from it over a generic one, and tie it to the role when the brief has a job description.
+Keep each fact with the project or employer the brief lists it under, and do not add duties, numbers or scale the brief does not state.
+Anything in the brief counts as the candidate's experience, including a bare skills list: if a skill is only listed, say they have used it and keep the details general rather than inventing a project.
+Never invent experience. When asked about a technology, company or task that appears nowhere in the brief, do not say they used it: say so honestly and bridge to the closest real experience in the brief (asked about Kafka, brief has RabbitMQ → "Not Kafka in production, but I ran RabbitMQ for…"). With no brief, keep examples general instead of making up employers or numbers.
 
-Language: answer in the language of the question. QUESTION LANGUAGE gives the detected language ("vi" = Vietnamese, "en" = English); if it is missing, match the language the interviewer used. When answering in Vietnamese, keep English technical terms (framework names, "microservices", "deploy", …) as a Vietnamese engineer would say them.
+Language: answer in the language of the question. QUESTION LANGUAGE gives the detected language ("vi" = Vietnamese, "en" = English); if it is missing, match the language the interviewer used. When answering in Vietnamese, the candidate calls themselves "em" (unless the interviewer uses another pronoun pair) and keeps English technical terms (framework names, "microservices", "deploy", …) as a Vietnamese engineer would say them.
 
-No headings, labels, JSON or extra text beyond that format.`,
-    ...(vectorStoreId
-      ? {
-          tools: [
-            fileSearchTool(
-              vectorStoreId,
-              filter ? { filters: filter as any } : undefined
-            ),
-          ],
-        }
-      : {}),
+No headings, labels, JSON or extra text beyond that format.`
+
+/**
+ * The live answer coach. `brief` (lib/interview/brief.ts) is the same for a
+ * whole interview, so the instructions form a stable, cacheable prefix.
+ */
+export function createAnswerCoachAgent(brief: string): Agent {
+  return new Agent({
+    name: "AnswerCoach",
+    model: OPENAI_DEFAULTS.agent.answerCoachModel,
+    modelSettings: {
+      maxTokens: OPENAI_DEFAULTS.agent.maxTokens,
+      // Same key → same cache shard, so the brief prefix actually gets reused
+      providerData: { prompt_cache_key: "answer-coach" },
+    },
+    instructions: `${INSTRUCTIONS}
+
+INTERVIEW BRIEF:
+${brief || "(none — the candidate added no role, notes or documents)"}`,
   })
 }

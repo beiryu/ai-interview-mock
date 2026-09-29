@@ -1,18 +1,13 @@
-import type { AgentInputItem } from "@openai/agents"
-
 export interface StreamAnswerRequest {
+  /** The server builds the coach's brief (CV, JD, notes) from it */
+  interviewId: string
   text: string
   language: string | null
-  agentHistory: AgentInputItem[]
   context: { role: string; content: string }[]
-  sessionContext: string
-  selectedDocuments: string[]
-  fastMode: boolean
 }
 
 export interface StreamAnswerHandlers {
   onDelta: (text: string) => void
-  onDone: (updatedHistory: AgentInputItem[]) => void
 }
 
 /**
@@ -55,7 +50,6 @@ export async function streamAnswer(
       if (!line.trim()) continue
       const event = JSON.parse(line)
       if (event.type === "delta") handlers.onDelta(event.text)
-      else if (event.type === "done") handlers.onDone(event.updatedHistory)
     }
   }
 }

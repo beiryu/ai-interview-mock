@@ -23,18 +23,8 @@ export async function POST(req: Request) {
       return new NextResponse("Not found", { status: 404 })
     }
 
-    // Context the answer coach uses to tailor suggestions
-    const parts: string[] = []
-    if (interview.jobTitle) parts.push(`Role: ${interview.jobTitle}`)
-    if (interview.companyName) parts.push(`Company: ${interview.companyName}`)
-    if (interview.notes) parts.push(`Notes: ${interview.notes}`)
-
     const interviewSession = await db.interviewSession.create({
-      data: {
-        interviewId,
-        userId: user.id,
-        sessionContext: parts.length > 0 ? parts.join("\n") : null,
-      },
+      data: { interviewId, userId: user.id },
     })
 
     return NextResponse.json(interviewSession)

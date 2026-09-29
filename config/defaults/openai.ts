@@ -18,6 +18,8 @@ export const OPENAI_DEFAULTS = {
     answerCoachModel: "gpt-4.1-mini",
     // 3 key points + 1–3 spoken sentences; a cap keeps tail latency bounded
     maxTokens: 260,
+    // Interview brief (CV, JD, notes) in the instructions; ~8k tokens max
+    maxBriefChars: 32_000,
   },
 } as const
 

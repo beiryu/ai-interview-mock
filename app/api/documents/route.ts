@@ -64,20 +64,28 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Upload to OpenAI Files API and attach to user's vector store
-    const vectorStoreId = await getOrCreateVectorStore(user.id)
-    const openaiFileId = await addFileToVectorStore(
-      textContent,
-      title,
-      document.id,
-      vectorStoreId
-    )
-
-    // Store the OpenAI file ID on the document record
-    await db.document.update({
-      where: { id: document.id },
-      data: { openaiFileId },
-    })
+    // Index for Document Chat. The answer coach reads `content` directly, so
+    // a failure here only affects chat search and must not lose the upload.
+    try {
+      const vectorStoreId = await getOrCreateVectorStore(user.id)
+      const openaiFileId = await addFileToVectorStore(
+        textContent,
+        title,
+        document.id,
+        vectorStoreId
+      )
+      await db.document.update({
+        where: { id: document.id },
+        data: { openaiFileId },
+      })
+    } catch (error) {
+      console.error("Error indexing document for chat search:", error)
+      return NextResponse.json({
+        success: true,
+        documentId: document.id,
+        message: "Document saved; indexing for Document Chat failed",
+      })
+    }
 
     return NextResponse.json({
       success: true,

@@ -41,6 +41,7 @@ export default function EditDialog({ interview, onDone }: EditProps) {
       jobTitle: interview.jobTitle ?? "",
       scheduledAt: toDateTimeLocal(interview.scheduledAt),
       notes: interview.notes ?? "",
+      documentIds: interview.documentIds ?? [],
     },
   })
 
@@ -65,7 +66,7 @@ export default function EditDialog({ interview, onDone }: EditProps) {
       <DialogHeader>
         <DialogTitle>Edit interview</DialogTitle>
         <DialogDescription>
-          Changes apply to the next session you start.
+          The answer coach uses these from its next answer.
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>

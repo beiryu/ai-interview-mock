@@ -72,7 +72,7 @@ export function useInterviewSessionLifecycle(interviewId: string) {
 
   // Fresh state per interview; finish the session when leaving the page
   useEffect(() => {
-    resetSession()
+    resetSession(interviewId)
     return () => {
       void finish()
     }
@@ -87,7 +87,7 @@ export function useInterviewSessionLifecycle(interviewId: string) {
     createSession({ interviewId })
       .then((session) => {
         sessionIdRef.current = session.id
-        startSession(session.id, session.sessionContext ?? "")
+        startSession(session.id)
         setStartedAt(Date.now())
       })
       .catch((error) => console.error("Failed to start session:", error))

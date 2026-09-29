@@ -3,9 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useChatDocumentStore } from "@/stores/chat-document-store"
-import { Clock, FileText, Zap } from "lucide-react"
+import { Clock, FileText } from "lucide-react"
 
-import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
+import { cn } from "@/lib/utils"
+import {
+  useGetInterview,
+  type InterviewWithSessions,
+} from "@/hooks/api/interview/useGetInterview"
 import { useCopilotHotkeys } from "@/hooks/use-copilot-hotkeys"
 import { useInterviewSessionLifecycle } from "@/hooks/use-interview-session-lifecycle"
 import { Button } from "@/components/ui/button"
@@ -15,18 +19,12 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
 import { Separator } from "@/components/ui/separator"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import DocumentSelector from "@/components/chat/document-selector"
 import StreamingChat from "@/components/chat/streaming-chat"
 import { CopilotStatus } from "@/components/copilot-status"
 import { LiveInterviewResponses } from "@/components/live-interview-responses"
+import EditDialog from "@/components/modals/edit-modal"
 import MicOnlyRecorder from "@/components/mic-only-recorder"
 import { MicrophoneConnectionStatus } from "@/components/microphone-connection-status"
 import RecorderTranscriber from "@/components/recorder-transcriber"
@@ -45,27 +43,13 @@ export function LiveInterviewPlaygroundV2({
   const { data: interview } = useGetInterview(interviewId)
   const { startedAt, finish } = useInterviewSessionLifecycle(interviewId)
   useCopilotHotkeys()
-  const {
-    clearDocumentSelection,
-    clearActiveSession,
-    coachDocuments,
-    toggleCoachDocument,
-    clearCoachDocuments,
-    fastMode,
-    setFastMode,
-  } = useChatDocumentStore()
+  const { clearDocumentSelection, clearActiveSession } = useChatDocumentStore()
 
-  // Reset RAG chat state when interview changes
+  // Reset document chat state when interview changes
   useEffect(() => {
     clearDocumentSelection()
     clearActiveSession()
-    clearCoachDocuments()
-  }, [
-    interviewId,
-    clearDocumentSelection,
-    clearActiveSession,
-    clearCoachDocuments,
-  ])
+  }, [interviewId, clearDocumentSelection, clearActiveSession])
 
   const [isEnding, setIsEnding] = useState(false)
   const handleEnd = useCallback(async () => {
@@ -177,50 +161,7 @@ export function LiveInterviewPlaygroundV2({
               >
                 <div className="flex h-10 shrink-0 items-center justify-between border-b px-4">
                   <CopilotStatus />
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={fastMode ? "default" : "outline"}
-                      size="sm"
-                      className="h-6 gap-1 px-2 text-xs"
-                      onClick={() => setFastMode(!fastMode)}
-                      title={
-                        fastMode
-                          ? "Fast mode: file search disabled. Click to enable Normal mode."
-                          : "Normal mode: file search enabled. Click to enable Fast mode."
-                      }
-                    >
-                      <Zap className="size-3" />
-                      {fastMode ? "Fast" : "Normal"}
-                    </Button>
-                    <Sheet>
-                      <SheetTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7"
-                          title="Select documents for Answer Coach"
-                          disabled={fastMode}
-                        >
-                          <FileText className="size-3.5" />
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent side="right" className="w-80 p-0">
-                        <SheetHeader className="px-4 py-3 border-b">
-                          <SheetTitle className="text-sm">
-                            Coach Documents
-                          </SheetTitle>
-                        </SheetHeader>
-                        <p className="px-4 py-2 text-xs text-muted-foreground">
-                          Select documents for the Answer Coach to reference. If
-                          none selected, all documents are searched.
-                        </p>
-                        <DocumentSelector
-                          selectedDocuments={coachDocuments}
-                          onToggle={toggleCoachDocument}
-                        />
-                      </SheetContent>
-                    </Sheet>
-                  </div>
+                  {interview && <CoachBriefButton interview={interview} />}
                 </div>
                 <div className="min-h-0 flex-1 overflow-hidden">
                   <LiveInterviewResponses />
@@ -270,5 +211,35 @@ function SessionTimer({ startedAt }: { startedAt: number | null }) {
       <Clock className="size-3.5" />
       <span className="font-mono tabular-nums">{label}</span>
     </div>
+  )
+}
+
+/** Which documents the coach reads; opens the interview form to change them. */
+function CoachBriefButton({ interview }: { interview: InterviewWithSessions }) {
+  const [open, setOpen] = useState(false)
+  const count = interview.documentIds.length
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={cn(
+            "h-6 gap-1 px-2 text-xs",
+            count === 0 && "text-amber-600 dark:text-amber-400"
+          )}
+          title="Documents the answer coach reads (CV, job description…)"
+        >
+          <FileText className="size-3" />
+          {count === 0
+            ? "No documents"
+            : `${count} document${count > 1 ? "s" : ""}`}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[520px]">
+        <EditDialog interview={interview} onDone={() => setOpen(false)} />
+      </DialogContent>
+    </Dialog>
   )
 }

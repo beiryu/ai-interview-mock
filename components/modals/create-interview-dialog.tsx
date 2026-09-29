@@ -34,6 +34,7 @@ const EMPTY: InterviewFormValues = {
   jobTitle: "",
   scheduledAt: "",
   notes: "",
+  documentIds: [],
 }
 
 export function CreateInterviewDialog() {
@@ -75,7 +76,7 @@ export function CreateInterviewDialog() {
         <DialogHeader>
           <DialogTitle>New interview</DialogTitle>
           <DialogDescription>
-            Company, role and notes are passed to the answer coach.
+            Company, role, notes and the documents you pick are what the answer coach knows about you.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

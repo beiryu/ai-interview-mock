@@ -7,6 +7,7 @@ export const InterviewSchema = z.object({
   jobTitle: z.string().nullable(),
   scheduledAt: z.string().nullable(),
   notes: z.string().nullable(),
+  documentIds: z.array(z.string()),
   createdAt: z.string(),
   updatedAt: z.string(),
   _count: z.object({ sessions: z.number() }).optional(),
@@ -20,6 +21,8 @@ export const InterviewFormSchema = z.object({
   // ISO timestamp (converted from datetime-local in the browser), or "" when unset
   scheduledAt: z.string().optional(),
   notes: z.string().max(5000).optional(),
+  // Documents the answer coach reads during the interview
+  documentIds: z.array(z.string().min(1)).max(20).optional(),
 })
 
 export const CreateInterviewRequestSchema = InterviewFormSchema
@@ -44,6 +47,7 @@ export function toInterviewData(values: Partial<InterviewFormValues>) {
     companyName: orNull(values.companyName),
     jobTitle: orNull(values.jobTitle),
     notes: orNull(values.notes),
+    documentIds: values.documentIds,
     scheduledAt:
       values.scheduledAt === undefined
         ? undefined
