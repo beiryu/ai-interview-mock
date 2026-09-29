@@ -14,8 +14,6 @@ export interface ResolvedConfig {
       model: string
       temperature: number
       maxTokens: number
-      presencePenalty: number
-      frequencyPenalty: number
     }
     classify: {
       model: string
