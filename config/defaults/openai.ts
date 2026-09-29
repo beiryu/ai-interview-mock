@@ -4,11 +4,15 @@ export const OPENAI_DEFAULTS = {
     temperature: 0.2,
     maxTokens: 2000,
   },
-  classify: {
-    model: "gpt-4o-mini",
-    maxTokens: 20,
-    temperature: 0,
-    timeoutMs: 2000,
+  // Decides whether the interviewer asked something and what exactly.
+  // gpt-4.1-mini over nano: same flags on the eval set, but it resolves
+  // follow-ups ("Why?" → "Why did you choose Go?"); ~80 ms slower.
+  judge: {
+    model: "gpt-4.1-mini",
+    maxTokens: 160,
+    timeoutMs: 2500,
+    // Rolling transcript sent with each call (smaller input = faster)
+    maxContextChars: 1500,
   },
   agent: {
     answerCoachModel: "gpt-4.1-mini",

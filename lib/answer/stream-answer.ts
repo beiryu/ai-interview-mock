@@ -60,23 +60,45 @@ export async function streamAnswer(
   }
 }
 
-/** Asks the classifier whether a committed interviewer turn is a question. */
-export async function classifyQuestion(
-  text: string,
-  context: { role: string; content: string }[],
+export interface JudgeVerdict {
+  isAsk: boolean
+  complete: boolean
+  /** Self-contained question to answer (merged / follow-up resolved) */
+  question: string
+  duplicate: boolean
+  judgeMs: number
+}
+
+export type JudgeResult = JudgeVerdict | { unavailable: true; judgeMs: number }
+
+/**
+ * Asks the LLM judge whether the interviewer's latest words are a finished
+ * question and what exactly to answer. Never throws: on any failure the
+ * caller gets `{ unavailable: true }` and falls back to heuristics.
+ */
+export async function judgeTurn(
+  request: {
+    text: string
+    context: { role: string; content: string }[]
+    lastAnsweredQuestion: string | null
+  },
   signal: AbortSignal
-): Promise<boolean> {
+): Promise<JudgeResult> {
+  const started = performance.now()
+  const unavailable = () => ({
+    unavailable: true as const,
+    judgeMs: Math.round(performance.now() - started),
+  })
   try {
-    const response = await fetch("/api/assistant/classify-question", {
+    const response = await fetch("/api/assistant/judge", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, context }),
+      body: JSON.stringify(request),
       signal,
     })
-    if (!response.ok) return true // fail open
-    const { isQuestion } = (await response.json()) as { isQuestion?: boolean }
-    return isQuestion !== false
+    if (!response.ok) return unavailable()
+    return (await response.json()) as JudgeResult
   } catch {
-    return true
+    return unavailable()
   }
 }

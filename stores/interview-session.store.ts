@@ -6,7 +6,7 @@ import { createJSONStorage, persist } from "zustand/middleware"
 import type { AnswerMetrics, InterviewMessage } from "@/types/interview-message"
 import { MicrophoneStatus } from "@/types/interview-session"
 import { INTERVIEW_DEFAULTS } from "@/config/defaults/interview"
-import { classifyQuestion, streamAnswer } from "@/lib/answer/stream-answer"
+import { judgeTurn, streamAnswer } from "@/lib/answer/stream-answer"
 import {
   TurnEngine,
   type CommittedTurn,
@@ -380,13 +380,15 @@ function commitInterviewerTurn(turn: CommittedTurn) {
     return
   }
   // Everything else: let the classifier veto in parallel with the answer
-  void classifyQuestion(turn.text, recentContext(id), controller.signal).then(
-    (isQuestion) => {
-      if (isQuestion || controller.signal.aborted) return
-      controller.abort()
-      dropCard(id)
-    }
-  )
+  void judgeTurn(
+    { text: turn.text, context: recentContext(id), lastAnsweredQuestion: null },
+    controller.signal
+  ).then((verdict) => {
+    if ("unavailable" in verdict || verdict.isAsk || controller.signal.aborted)
+      return
+    controller.abort()
+    dropCard(id)
+  })
 }
 
 function dropCard(messageId: string) {

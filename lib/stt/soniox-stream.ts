@@ -36,6 +36,19 @@ export interface SttUpdate {
   languageChars: Record<SttLanguage, number>
 }
 
+export interface EndpointInfo {
+  /**
+   * Audio streamed after the last finalized word when `<end>` arrived, i.e.
+   * how long Soniox waited before deciding the speaker finished (plus
+   * network). Null if no word timing was available.
+   */
+  lagMs: number | null
+}
+
+// No server message for this long while speech is being sent: assume the
+// socket died silently and reconnect
+const LIVENESS_TIMEOUT_MS = 15000
+
 export type SttStatus =
   | "idle"
   | "connecting"
@@ -46,7 +59,7 @@ export type SttStatus =
 export interface SonioxStreamHandlers {
   onUpdate?: (update: SttUpdate) => void
   /** Soniox semantic endpoint (`<end>`): the speaker likely finished */
-  onEndpoint?: () => void
+  onEndpoint?: (info: EndpointInfo) => void
   onStatus?: (status: SttStatus) => void
   onError?: (error: Error) => void
 }
@@ -55,6 +68,8 @@ interface SonioxToken {
   text: string
   is_final: boolean
   language?: string
+  /** Audio time (ms since the connection started) where the token ends */
+  end_ms?: number
 }
 
 interface SonioxMessage {
@@ -72,6 +87,11 @@ export class SonioxStream {
   private pending: ArrayBuffer[] = []
   private pendingBytes = 0
   private lastSendAt = 0
+  // Per-connection audio clock (Soniox token timestamps restart on reconnect)
+  private audioMsSent = 0
+  private lastFinalEndMs: number | null = null
+  private lastMessageAt = 0
+  private lastSpeechSentAt = 0
   private keepAliveTimer: ReturnType<typeof setInterval> | null = null
   private reconnectAttempt = 0
 
@@ -86,10 +106,15 @@ export class SonioxStream {
     await this.connect()
   }
 
-  /** Send one chunk of 16 kHz mono pcm_s16le audio. */
-  send(pcm: ArrayBuffer) {
+  /**
+   * Send one chunk of 16 kHz mono pcm_s16le audio. `speech` marks chunks
+   * with voice activity (used to detect a silently dead socket).
+   */
+  send(pcm: ArrayBuffer, speech = false) {
+    if (speech) this.lastSpeechSentAt = Date.now()
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(pcm)
+      this.audioMsSent += pcm.byteLength / 32 // 16 kHz × 2 bytes = 32 B/ms
       this.lastSendAt = Date.now()
       return
     }
@@ -142,8 +167,14 @@ export class SonioxStream {
     ws.onopen = () => {
       ws.send(JSON.stringify(this.buildConfigMessage(apiKey)))
       this.reconnectAttempt = 0
+      this.audioMsSent = 0
+      this.lastFinalEndMs = null
+      this.lastMessageAt = Date.now()
       this.setStatus("open")
-      for (const chunk of this.pending) ws.send(chunk)
+      for (const chunk of this.pending) {
+        ws.send(chunk)
+        this.audioMsSent += chunk.byteLength / 32
+      }
       this.pending = []
       this.pendingBytes = 0
       this.lastSendAt = Date.now()
@@ -152,6 +183,7 @@ export class SonioxStream {
 
     ws.onmessage = (event) => {
       if (typeof event.data !== "string") return
+      this.lastMessageAt = Date.now()
       this.handleMessage(JSON.parse(event.data) as SonioxMessage)
     }
 
@@ -204,6 +236,9 @@ export class SonioxStream {
 
       if (token.is_final) {
         finalChunk += token.text
+        if (token.end_ms !== undefined && token.text.trim()) {
+          this.lastFinalEndMs = token.end_ms
+        }
         if (token.language) {
           languageChars[token.language] =
             (languageChars[token.language] ?? 0) + token.text.trim().length
@@ -214,7 +249,13 @@ export class SonioxStream {
     }
 
     this.handlers.onUpdate?.({ finalChunk, partial, languageChars })
-    if (sawEndpoint) this.handlers.onEndpoint?.()
+    if (sawEndpoint) {
+      const lagMs =
+        this.lastFinalEndMs === null
+          ? null
+          : Math.max(0, Math.round(this.audioMsSent - this.lastFinalEndMs))
+      this.handlers.onEndpoint?.({ lagMs })
+    }
   }
 
   private buildConfigMessage(apiKey: string) {
@@ -250,7 +291,17 @@ export class SonioxStream {
   private startKeepAlive() {
     this.clearKeepAlive()
     this.keepAliveTimer = setInterval(() => {
-      const idleFor = Date.now() - this.lastSendAt
+      const now = Date.now()
+      // Speech went out well after the last reply and nothing came back
+      if (
+        this.ws &&
+        now - this.lastMessageAt > LIVENESS_TIMEOUT_MS &&
+        this.lastSpeechSentAt - this.lastMessageAt > 3000
+      ) {
+        this.ws.close() // onclose schedules a reconnect
+        return
+      }
+      const idleFor = now - this.lastSendAt
       if (
         this.ws?.readyState === WebSocket.OPEN &&
         idleFor >= this.config.keepAliveIntervalMs
