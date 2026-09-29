@@ -74,10 +74,6 @@ const data = {
           title: "General",
           url: "/dashboard/settings",
         },
-        {
-          title: "Billing",
-          url: "/dashboard/billing",
-        },
       ],
     },
   ],

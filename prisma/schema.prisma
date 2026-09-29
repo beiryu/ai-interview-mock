@@ -69,11 +69,7 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
-  stripeCustomerId       String?   @unique @map("stripe_customer_id")
-  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
-  stripePriceId          String?   @map("stripe_price_id")
-  stripeCurrentPeriodEnd DateTime? @map("stripe_current_period_end")
-  openaiVectorStoreId    String?   @map("openai_vector_store_id")
+  openaiVectorStoreId String? @map("openai_vector_store_id")
 
   accounts          Account[]
   sessions          Session[]

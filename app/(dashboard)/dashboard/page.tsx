@@ -136,7 +136,7 @@ export default async function DashboardPage() {
             <Settings className="size-5 text-muted-foreground" />
           </div>
           <p className="text-muted-foreground mb-4">
-            Manage your profile, subscription and preferences.
+            Manage your profile and preferences.
           </p>
           <Link
             className={cn(

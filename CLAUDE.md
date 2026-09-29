@@ -29,18 +29,16 @@ Environment: copy `.env.example` to `.env.local` and fill in values.
 - `app/(auth)` — Login/register pages, no layout shell
 - `app/(dashboard)` — Protected pages (sidebar layout), requires auth
 - `app/(editor)` — Editor.js-based post editor
-- `app/(marketing)` — Public pages (home, pricing, blog)
-- `app/api` — Route handlers for posts, auth, Stripe webhooks, user settings
+- `app/api` — Route handlers for interviews, documents, chat/RAG, Deepgram, auth, user settings
+- `app/page.tsx` redirects `/` to `/dashboard` (personal-use app, no marketing site or payments)
 
 **Middleware** (`middleware.ts`) protects `/dashboard`, `/editor`, `/login`, `/register` with an optimistic Better Auth session-cookie check; pages and route handlers still validate via `getCurrentUser()`.
 
 **Database** (Prisma 7 + PostgreSQL via `@prisma/adapter-pg`): client is generated to `lib/generated/prisma` (import types from `@/lib/generated/prisma/client`, enums from `.../enums`); datasource URL lives in `prisma.config.ts`. Auth tables (`User`, `Account`, `Session`, `Verification`) follow the Better Auth schema.
 
-**Payments**: Stripe checkout and billing portal; webhook handler under `app/api/webhooks/stripe`.
-
 **Auth**: Better Auth (`lib/auth.ts`) with GitHub OAuth and magic link (Resend). Handler at `app/api/auth/[...all]`; client helpers in `lib/auth-client.ts`; server code uses `getCurrentUser()` from `lib/session.ts` or `auth.api.getSession({ headers })`.
 
-**Config** (`/config`): Site metadata, dashboard nav, docs nav, and marketing nav are centralized here — update these when adding new routes/pages.
+**Config** (`/config`): Operator defaults (OpenAI, Deepgram, interview), site metadata and the user-config schema live here — update these when adding new routes/pages.
 
 **Environment validation** (`env.mjs`): All env vars are validated with Zod at startup. Add new variables here when introducing new integrations.
 

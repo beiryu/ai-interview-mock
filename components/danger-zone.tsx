@@ -76,7 +76,6 @@ export function DangerZone({ userId, className }: DangerZoneProps) {
                 <li>Permanently delete your profile and account data</li>
                 <li>Remove all your interviews and sessions</li>
                 <li>Delete all uploaded documents and resumes</li>
-                <li>Cancel any active subscriptions</li>
               </ul>
             </div>
           </div>

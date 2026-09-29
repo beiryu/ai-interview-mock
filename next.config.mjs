@@ -14,15 +14,6 @@ const nextConfig = {
     "@openai/agents-core",
     "@openai/agents-openai",
   ],
-  turbopack: {
-    rules: {
-      // Import .svg files as React components
-      "*.svg": {
-        loaders: ["@svgr/webpack"],
-        as: "*.js",
-      },
-    },
-  },
 }
 
 export default nextConfig
