@@ -29,6 +29,9 @@ export interface AnswerMetrics {
   firstTokenMs: number | null
   /** The answer was started before the turn was committed */
   speculated: boolean
+  /** Speculative answers thrown away for this question (interviewer kept
+   *  talking, or the final text differed) */
+  discardedSpeculations: number
 }
 
 export interface QuestionAnalysis {

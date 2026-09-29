@@ -20,11 +20,15 @@ function LatencyBadge({ metrics }: { metrics: AnswerMetrics }) {
   return (
     <span
       className="text-[10px] tabular-nums text-muted-foreground/70"
-      title="Silence before commit · commit to first answer token"
+      title="Commit reason · interviewer silence → commit to first answer token (⚡ = answer drafted before the commit) · drafts discarded because the interviewer kept talking"
     >
       {REASON_LABEL[metrics.commitReason] ?? metrics.commitReason} ·{" "}
       {metrics.silenceMs}ms → {first}
       {metrics.speculated && " ⚡"}
+      {metrics.discardedSpeculations > 0 &&
+        ` · ${metrics.discardedSpeculations} draft${
+          metrics.discardedSpeculations > 1 ? "s" : ""
+        } discarded`}
     </span>
   )
 }

@@ -66,6 +66,7 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
 
       resetSession: () => {
         cancelSpeculation()
+        discardedSinceCommit = 0
         for (const controller of activeAnswers.values()) controller.abort()
         activeAnswers.clear()
         turnEngine.reset()
@@ -201,6 +202,8 @@ interface Speculation {
 }
 
 let speculation: Speculation | null = null
+/** Speculations aborted since the last commit (reported in card metrics) */
+let discardedSinceCommit = 0
 /** Answer requests backing visible cards, by message id */
 const activeAnswers = new Map<string, AbortController>()
 
@@ -250,7 +253,10 @@ function speculate(text: string, language: string | null) {
 
 function cancelSpeculation() {
   // A promoted speculation backs a card; activeAnswers owns its lifetime
-  if (speculation && !speculation.messageId) speculation.controller.abort()
+  if (speculation && !speculation.messageId) {
+    speculation.controller.abort()
+    discardedSinceCommit++
+  }
   speculation = null
 }
 
@@ -299,6 +305,9 @@ function commitInterviewerTurn(turn: CommittedTurn) {
     silenceMs: Math.round(turn.silenceMs),
     firstTokenMs: promoted && spec.firstTokenAt !== null ? 0 : null,
     speculated: promoted,
+    // Earlier cancellations plus a pending one that didn't match the question
+    discardedSpeculations:
+      discardedSinceCommit + (spec !== null && !promoted ? 1 : 0),
   }
 
   const now = new Date()
@@ -325,6 +334,7 @@ function commitInterviewerTurn(turn: CommittedTurn) {
 
   let controller: AbortController
   if (promoted) {
+    discardedSinceCommit = 0
     spec.messageId = id
     spec.commitAt = commitAt
     controller = spec.controller
@@ -332,6 +342,7 @@ function commitInterviewerTurn(turn: CommittedTurn) {
     speculation = null
   } else {
     cancelSpeculation()
+    discardedSinceCommit = 0
     controller = new AbortController()
     let first = true
     streamAnswer(
