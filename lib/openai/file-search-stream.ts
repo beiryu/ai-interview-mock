@@ -6,7 +6,7 @@ import type {
   ResponseTextDeltaEvent,
 } from "openai/resources/responses/responses"
 
-import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
+import { AI_DEFAULTS } from "@/config/defaults/ai"
 import openai from "@/lib/openai"
 
 import { buildFileSearchFilter } from "./vector-store-service"
@@ -107,14 +107,14 @@ export async function* streamDocumentChatWithoutFileSearch(
   modelConfig?: ModelConfig
 ): AsyncGenerator<FileSearchChunk> {
   const stream = await openai.responses.create({
-    model: modelConfig?.model ?? OPENAI_DEFAULTS.chat.model,
+    model: modelConfig?.model ?? AI_DEFAULTS.chat.model,
     instructions: INSTRUCTIONS_DOCUMENT_CHAT_NO_FILES,
     input: [{ role: "user" as const, content: query }],
     ...(previousResponseId ? { previous_response_id: previousResponseId } : {}),
     stream: true,
-    temperature: modelConfig?.temperature ?? OPENAI_DEFAULTS.chat.temperature,
+    temperature: modelConfig?.temperature ?? AI_DEFAULTS.chat.temperature,
     max_output_tokens:
-      modelConfig?.maxOutputTokens ?? OPENAI_DEFAULTS.chat.maxTokens,
+      modelConfig?.maxOutputTokens ?? AI_DEFAULTS.chat.maxTokens,
   })
 
   yield* iterateResponsesStream(stream)
@@ -146,15 +146,15 @@ export async function* streamWithFileSearch(
   }
 
   const stream = await openai.responses.create({
-    model: modelConfig?.model ?? OPENAI_DEFAULTS.chat.model,
+    model: modelConfig?.model ?? AI_DEFAULTS.chat.model,
     instructions: INSTRUCTIONS_DOCUMENT_CHAT_WITH_RAG,
     input: [{ role: "user" as const, content: query }],
     ...(previousResponseId ? { previous_response_id: previousResponseId } : {}),
     tools: [fileSearchTool],
     stream: true,
-    temperature: modelConfig?.temperature ?? OPENAI_DEFAULTS.chat.temperature,
+    temperature: modelConfig?.temperature ?? AI_DEFAULTS.chat.temperature,
     max_output_tokens:
-      modelConfig?.maxOutputTokens ?? OPENAI_DEFAULTS.chat.maxTokens,
+      modelConfig?.maxOutputTokens ?? AI_DEFAULTS.chat.maxTokens,
   })
 
   yield* iterateResponsesStream(stream, fileIdToTitle)

@@ -1,4 +1,4 @@
-import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
+import { AI_DEFAULTS } from "@/config/defaults/ai"
 import { db } from "@/lib/db"
 
 import { buildInterviewBrief } from "./brief"
@@ -26,6 +26,6 @@ export async function loadInterviewBrief(interviewId: string, userId: string) {
   return buildInterviewBrief(
     interview,
     documents,
-    OPENAI_DEFAULTS.agent.maxBriefChars
+    AI_DEFAULTS.coach.maxBriefChars
   )
 }

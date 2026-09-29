@@ -14,7 +14,7 @@ Single-user by design: only emails listed in `ALLOWED_EMAILS` can sign in.
 - Better Auth (GitHub OAuth, email magic link via Resend)
 - Prisma 7 + PostgreSQL (`@prisma/adapter-pg`)
 - Soniox real-time speech-to-text (Vietnamese + English, per-word language ID, semantic end-of-turn)
-- OpenAI Agents SDK (answer coach reads an interview brief built from your documents), Responses API + hosted vector stores (`file_search`) for Document Chat
+- Vercel AI SDK for the live turn judge and answer coach (model per task in `config/defaults/ai.ts`; the coach reads an interview brief built from your documents), OpenAI Responses API + hosted vector stores (`file_search`) for Document Chat
 
 ## Getting started
 
@@ -58,6 +58,7 @@ pnpm typecheck   # tsc --noEmit
 pnpm build       # production build
 pnpm test        # unit tests (turn detection)
 pnpm stt:smoke   # live Soniox + turn-engine check with synthesized VI/EN speech (macOS)
+pnpm ai:eval     # turn judge + answer coach against real models (latency, caching, accuracy)
 ```
 
 ## License

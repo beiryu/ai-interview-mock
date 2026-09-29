@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 import { z } from "zod"
 
-import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
+import { AI_DEFAULTS } from "@/config/defaults/ai"
 import { saveChatInteraction } from "@/lib/chat/persistence"
 import { db } from "@/lib/db"
 import {
@@ -93,9 +93,9 @@ export async function POST(req: NextRequest) {
           // With selected docs: file_search on vector store; otherwise general chat (no RAG).
           let newResponseId: string | undefined
           const modelArgs = {
-            model: OPENAI_DEFAULTS.chat.model,
-            temperature: OPENAI_DEFAULTS.chat.temperature,
-            maxOutputTokens: OPENAI_DEFAULTS.chat.maxTokens,
+            model: AI_DEFAULTS.chat.model,
+            temperature: AI_DEFAULTS.chat.temperature,
+            maxOutputTokens: AI_DEFAULTS.chat.maxTokens,
           }
           const streamIterator = hasDocSelection
             ? streamWithFileSearch(

@@ -11,6 +11,7 @@ pnpm build            # next build
 pnpm lint             # Run ESLint
 pnpm typecheck        # tsc --noEmit
 pnpm test             # vitest (lib/**/*.test.ts)
+pnpm ai:eval          # judge + answer coach against real models (needs keys + DB)
 pnpm start            # Start production server
 ```
 
@@ -41,7 +42,7 @@ Environment: copy `.env.example` to `.env` and fill in values (the Prisma CLI re
 
 **Live interview flow**: two streams, each `hooks/use-live-transcriber.ts` → `hooks/use-audio-capture.ts` (tab via getDisplayMedia / mic; an AudioWorklet in `public/worklets/pcm-capture.js` emits 16 kHz PCM + RMS) → `lib/stt/soniox-stream.ts` (Soniox `stt-rt-v5`, `language_hints` vi+en, semantic `<end>` endpoints; short-lived keys from `/api/stt/token`). Transcripts and audio levels feed `lib/turn/turn-engine.ts`, which decides when the interviewer finished (pause + text completeness in `lib/turn/completeness.ts` + Soniox `<end>` + candidate starting to talk), speculates an answer at the first pause and promotes it on commit. Wiring and answer streaming live in `stores/interview-session.store.ts`. `hooks/use-interview-session-lifecycle.ts` persists the transcript. Turn logic is unit-tested (`pnpm test`); `pnpm stt:smoke` exercises Soniox end-to-end with synthesized speech.
 
-**AI**: the live answer coach (`lib/agents/interview-agents.ts`, route `app/api/assistant/question`) is stateless per call: the server builds an "interview brief" from the interview's role/company/notes plus the full text of the documents picked on the interview (`Interview.documentIds`, `lib/interview/brief.ts`) and puts it in the instructions (stable prefix → OpenAI prompt caching); the client sends only the recent transcript and the question. No file_search in the live path. Document Chat (right panel / `/dashboard/chat`) still uses the per-user hosted vector store with file_search (`lib/openai/*`). No Redis — cached ids live in Postgres.
+**AI**: the live calls go through the Vercel AI SDK (`ai` + `@ai-sdk/openai`), all in `lib/ai/`: `models.ts` is the only provider-aware file (models are `"provider:model"` strings in `config/defaults/ai.ts`; per-provider options such as prompt caching and `store: false` live there too); `judge.ts` (structured verdict via `generateText` + `Output.object`) backs `app/api/assistant/judge`; `coach.ts` (`streamText`) backs `app/api/assistant/question`. The coach is stateless per call: the server builds an "interview brief" from the interview's role/company/notes plus the full text of the documents picked on the interview (`Interview.documentIds`, `lib/interview/brief.ts`) and puts it in the instructions (stable prefix → prompt caching); the client sends only the recent transcript and the question. `pnpm ai:eval` runs the judge against labelled cases and the coach for latency/caching/format with real models — run it before and after changing a model or prompt (`--model provider:model` to try one). AI SDK telemetry is off unless an integration is registered. Document Chat (right panel / `/dashboard/chat`) still uses the OpenAI SDK with the per-user hosted vector store and file_search (`lib/openai/*`). No Redis — cached ids live in Postgres.
 
 **Config** (`/config/defaults`): all tuning lives here as constants — OpenAI models, Soniox STT params, turn-taking thresholds, site metadata. There is no per-user config.
 

@@ -1,6 +1,14 @@
-import { Agent } from "@openai/agents"
+import { streamText } from "ai"
 
-import { OPENAI_DEFAULTS } from "@/config/defaults/openai"
+import { AI_DEFAULTS } from "@/config/defaults/ai"
+
+import { languageModel, providerOptions } from "./models"
+
+/**
+ * The live answer coach: one streaming call, no tools, no memory. What it
+ * knows comes from the interview brief (lib/interview/brief.ts) and the
+ * recent transcript the client sends with each question.
+ */
 
 const INSTRUCTIONS = `You are an expert interview coach.
 Given an interviewer's question and optionally a conversation history, help the candidate answer it live. They glance at your output mid-conversation, so the first lines must be useful on their own.
@@ -26,22 +34,72 @@ Language: answer in the language of the question. QUESTION LANGUAGE gives the de
 
 No headings, labels, JSON or extra text beyond that format.`
 
-/**
- * The live answer coach. `brief` (lib/interview/brief.ts) is the same for a
- * whole interview, so the instructions form a stable, cacheable prefix.
- */
-export function createAnswerCoachAgent(brief: string): Agent {
-  return new Agent({
-    name: "AnswerCoach",
-    model: OPENAI_DEFAULTS.agent.answerCoachModel,
-    modelSettings: {
-      maxTokens: OPENAI_DEFAULTS.agent.maxTokens,
-      // Same key → same cache shard, so the brief prefix actually gets reused
-      providerData: { prompt_cache_key: "answer-coach" },
-    },
-    instructions: `${INSTRUCTIONS}
+export interface Turn {
+  role: string
+  content: string
+}
+
+/** Rules + brief. Same for a whole interview → a cacheable prefix. */
+export function coachInstructions(brief: string) {
+  return `${INSTRUCTIONS}
 
 INTERVIEW BRIEF:
-${brief || "(none — the candidate added no role, notes or documents)"}`,
+${brief || "(none — the candidate added no role, notes or documents)"}`
+}
+
+/** Per-question input; the new question goes last. */
+export function buildCoachInput({
+  context,
+  language,
+  text,
+}: {
+  context: Turn[]
+  language: string | null
+  text: string
+}) {
+  const contextBlock =
+    context.length > 0
+      ? "CONVERSATION SO FAR:\n" +
+        context
+          .map(
+            (m) =>
+              `${m.role === "interviewer" ? "INTERVIEWER" : "YOU SAID"}: ${
+                m.content
+              }`
+          )
+          .join("\n") +
+        "\n\n"
+      : ""
+  const languageLine = language ? `QUESTION LANGUAGE: ${language}\n` : ""
+  return `${contextBlock}${languageLine}NEW QUESTION FROM INTERVIEWER: ${text}`
+}
+
+export function streamCoachAnswer({
+  brief,
+  context,
+  language,
+  text,
+  abortSignal,
+  model = AI_DEFAULTS.coach.model,
+}: {
+  brief: string
+  context: Turn[]
+  language: string | null
+  text: string
+  abortSignal?: AbortSignal
+  /** Override for evals ("provider:model") */
+  model?: string
+}) {
+  return streamText({
+    model: languageModel(model),
+    instructions: coachInstructions(brief),
+    prompt: buildCoachInput({ context, language, text }),
+    maxOutputTokens: AI_DEFAULTS.coach.maxTokens,
+    abortSignal,
+    // Same key → same cache shard, so the brief prefix actually gets reused
+    providerOptions: providerOptions(model, { cacheKey: "answer-coach" }),
+    onError: ({ error }) => {
+      if (!abortSignal?.aborted) console.error("Answer coach error:", error)
+    },
   })
 }
