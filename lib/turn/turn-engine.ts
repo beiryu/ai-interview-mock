@@ -1,37 +1,51 @@
 import { scoreCompleteness } from "./completeness"
+import { isBackchannel, worthJudging } from "./prefilter"
+import { SAME_QUESTION, textSimilarity } from "./similarity"
 
 /**
- * Decides when the interviewer has finished a question, from three signals:
+ * Decides WHEN the interviewer has finished speaking. WHAT they asked is the
+ * LLM judge's job (see stores/interview-session.store.ts); its verdicts come
+ * back through `onJudge` and can hold a turn open ("not complete yet").
+ *
+ * Signals:
  *  - voice activity per stream (RMS from the capture worklet)
- *  - streaming transcript + Soniox's semantic `<end>` endpoint per stream
+ *  - streaming transcript + Soniox's semantic `<end>` per stream
  *  - the candidate starting to talk (headphones keep the mic stream clean)
  *
- * Framework-free and clock-injected (`now` arguments + `tick`) so it can be
- * unit-tested with fake time. See lib/turn/turn-engine.test.ts.
+ * Framework-free and clock-injected (`now` + `tick`) so it can be unit-tested
+ * with fake time. See lib/turn/turn-engine.test.ts.
  *
- * Interviewer lifecycle:
- *   speaking ──pause──► speculate (answer generated hidden)
- *        ▲                  │ commit rules (see tick)
- *        └──resume/cancel───┤
- *                           ▼
- *                       committed ──resume within amendWindow──► amend
+ *   listening ──pause──► onPause (judge + hidden draft)
+ *       ▲                  │ judge: incomplete ──► waiting (hold)
+ *       └──interviewer─────┤ commit rules (see tick)
+ *          resumes         ▼
+ *                      committed ──resume within amendWindow──► amend
  */
 
 export type Role = "interviewer" | "candidate"
 
 export interface TurnThresholds {
   pauseMs: number
-  completeCommitMs: number
-  turnMaxSilenceMs: number
+  stableMs: number
+  maxSilenceMs: number
   candidateBargeInMs: number
   amendWindowMs: number
 }
 
 export type CommitReason =
   | "endpoint"
-  | "complete-pause"
+  | "stable"
   | "candidate-started"
   | "max-silence"
+  | "manual"
+
+export type TurnStatus = "idle" | "listening" | "waiting"
+
+/** What the engine needs from a judge verdict */
+export interface TurnVerdict {
+  isAsk: boolean
+  complete: boolean
+}
 
 export interface CommittedTurn {
   text: string
@@ -41,6 +55,10 @@ export interface CommittedTurn {
   silenceMs: number
   /** True when this extends the previous committed question */
   amends: boolean
+  /** False for acknowledgements/filler: record it, don't answer it */
+  answerable: boolean
+  /** Soniox `<end>` lag for this turn, if an endpoint was seen */
+  endpointLagMs: number | null
 }
 
 export interface TurnEngineCallbacks {
@@ -48,19 +66,20 @@ export interface TurnEngineCallbacks {
   onLive?: (role: Role, text: string, language: string | null) => void
   /** Ask the STT stream to finalize pending words now */
   onFinalizeRequest?: (role: Role) => void
-  /** Interviewer paused: start generating an answer for `text`, hidden */
-  onSpeculate?: (text: string, language: string | null) => void
-  /** Interviewer resumed before commit: drop the speculative answer */
-  onCancelSpeculation?: () => void
-  /** The interviewer's question is done */
+  /** Interviewer paused on something worth answering: judge it + draft */
+  onPause?: (text: string, language: string | null) => void
+  /** Interviewer resumed: the paused text is stale (drop judge + draft) */
+  onResume?: () => void
+  /** The interviewer's turn is done */
   onCommit?: (turn: CommittedTurn) => void
   /** The candidate finished an utterance (for the transcript only) */
   onCandidateTurn?: (text: string, language: string | null) => void
+  onStatus?: (status: TurnStatus) => void
 }
 
 // RMS level above which a 120 ms chunk counts as speech. Speech is usually
 // 0.02–0.2; headphone mic noise floors sit well under 0.01.
-const SPEECH_RMS = 0.015
+export const SPEECH_RMS = 0.015
 
 interface Stream {
   finalText: string
@@ -70,6 +89,7 @@ interface Stream {
   speechStartedAt: number | null
   lastSpeechAt: number
   endpointSeen: boolean
+  endpointLagMs: number | null
 }
 
 function emptyStream(): Stream {
@@ -81,6 +101,7 @@ function emptyStream(): Stream {
     speechStartedAt: null,
     lastSpeechAt: 0,
     endpointSeen: false,
+    endpointLagMs: null,
   }
 }
 
@@ -100,39 +121,32 @@ function dominantLanguage(chars: Record<string, number>) {
   return best
 }
 
-function normalizeForCompare(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
 export class TurnEngine {
   private streams: Record<Role, Stream> = {
     interviewer: emptyStream(),
     candidate: emptyStream(),
   }
   private finalizeSent = false
-  private speculatedText: string | null = null
+  /** Text last handed to onPause (null = no pause in progress) */
+  private pausedText: string | null = null
+  private verdict: { forText: string; verdict: TurnVerdict } | null = null
   private lastCommit: { text: string; at: number } | null = null
   private amending = false
+  private status: TurnStatus = "idle"
 
   constructor(
-    private thresholds: TurnThresholds,
+    private readonly thresholds: TurnThresholds,
     private readonly callbacks: TurnEngineCallbacks = {}
   ) {}
-
-  setThresholds(thresholds: TurnThresholds) {
-    this.thresholds = thresholds
-  }
 
   reset() {
     this.streams = { interviewer: emptyStream(), candidate: emptyStream() }
     this.finalizeSent = false
-    this.speculatedText = null
+    this.pausedText = null
+    this.verdict = null
     this.lastCommit = null
     this.amending = false
+    this.setStatus("idle")
   }
 
   /** Current interviewer text (final + partial) not yet committed. */
@@ -155,8 +169,8 @@ export class TurnEngine {
     }
     stream.speaking = speaking
 
-    if (role === "interviewer" && speaking) this.onInterviewerActivity(now)
-    if (role === "candidate" && speaking) this.onCandidateActivity()
+    if (speaking && role === "interviewer") this.onInterviewerActivity(now)
+    if (speaking && role === "candidate") this.onCandidateActivity()
   }
 
   /** Transcript update from the role's STT stream. */
@@ -182,10 +196,8 @@ export class TurnEngine {
     const after = joinText(stream.finalText, stream.partial)
     this.callbacks.onLive?.(role, after, dominantLanguage(stream.languageChars))
 
-    // New words (not just a finalization of the same words) mean speech
-    const grew =
-      normalizeForCompare(after).length > normalizeForCompare(before).length
-    if (grew) {
+    // New words (not just re-punctuation of the same words) mean speech
+    if (textSimilarity(before, after) < 1 && after.length > before.length) {
       stream.lastSpeechAt = Math.max(stream.lastSpeechAt, now)
       stream.endpointSeen = false
       if (role === "interviewer") this.onInterviewerActivity(now)
@@ -194,9 +206,27 @@ export class TurnEngine {
   }
 
   /** Soniox `<end>`: the speaker likely finished an utterance. */
-  onEndpoint(role: Role) {
-    this.streams[role].endpointSeen = true
+  onEndpoint(role: Role, lagMs: number | null = null) {
+    const stream = this.streams[role]
+    stream.endpointSeen = true
+    stream.endpointLagMs = lagMs
     if (role === "candidate") this.flushCandidate()
+  }
+
+  /** Judge verdict for `forText`; ignored if the question moved on. */
+  onJudge(forText: string, verdict: TurnVerdict) {
+    const current = this.pendingInterviewerText
+    if (!current || textSimilarity(forText, current) < SAME_QUESTION) return
+    this.verdict = { forText, verdict }
+  }
+
+  /** "Answer now": commit whatever the interviewer has said. */
+  forceCommit(now: number) {
+    const text = this.pendingInterviewerText
+    if (!text) return false
+    const s = this.streams.interviewer
+    this.commit(text, "manual", s.speaking ? 0 : now - s.lastSpeechAt, now)
+    return true
   }
 
   // ─── Clock ─────────────────────────────────────────────────────────────────
@@ -205,11 +235,13 @@ export class TurnEngine {
   tick(now: number) {
     const s = this.streams.interviewer
     const text = joinText(s.finalText, s.partial)
-    if (!text) return
+    if (!text) {
+      this.setStatus("idle")
+      return
+    }
 
     const silence = s.speaking ? 0 : now - s.lastSpeechAt
     const t = this.thresholds
-    const completeness = scoreCompleteness(text)
 
     if (silence >= t.pauseMs) {
       if (!this.finalizeSent) {
@@ -217,16 +249,32 @@ export class TurnEngine {
         this.callbacks.onFinalizeRequest?.("interviewer")
       }
       if (
-        completeness !== "incomplete" &&
-        (this.speculatedText === null ||
-          normalizeForCompare(this.speculatedText) !==
-            normalizeForCompare(text))
+        worthJudging(text) &&
+        (this.pausedText === null ||
+          textSimilarity(this.pausedText, text) < SAME_QUESTION)
       ) {
-        if (this.speculatedText !== null) this.callbacks.onCancelSpeculation?.()
-        this.speculatedText = text
-        this.callbacks.onSpeculate?.(text, dominantLanguage(s.languageChars))
+        this.pausedText = text
+        this.callbacks.onPause?.(text, dominantLanguage(s.languageChars))
       }
     }
+
+    // Judge verdict for this text, if one arrived; otherwise the heuristic
+    const verdict =
+      this.verdict &&
+      textSimilarity(this.verdict.forText, text) >= SAME_QUESTION
+        ? this.verdict.verdict
+        : null
+    const heuristic = scoreCompleteness(text)
+    const holding =
+      verdict !== null
+        ? verdict.isAsk && !verdict.complete
+        : heuristic === "incomplete"
+    const looksComplete =
+      verdict !== null
+        ? !verdict.isAsk || verdict.complete
+        : heuristic === "complete"
+
+    this.setStatus(silence >= t.pauseMs && holding ? "waiting" : "listening")
 
     const candidate = this.streams.candidate
     const candidateTalking =
@@ -235,13 +283,13 @@ export class TurnEngine {
       now - candidate.speechStartedAt >= t.candidateBargeInMs
 
     let reason: CommitReason | null = null
-    if (s.endpointSeen && completeness !== "incomplete" && silence > 0) {
+    if (s.endpointSeen && !holding && silence > 0) {
       reason = "endpoint"
-    } else if (completeness === "complete" && silence >= t.completeCommitMs) {
-      reason = "complete-pause"
+    } else if (looksComplete && silence >= t.stableMs) {
+      reason = "stable"
     } else if (candidateTalking && silence >= t.pauseMs) {
       reason = "candidate-started"
-    } else if (silence >= t.turnMaxSilenceMs) {
+    } else if (silence >= t.maxSilenceMs) {
       reason = "max-silence"
     }
 
@@ -251,10 +299,10 @@ export class TurnEngine {
   // ─── Internals ─────────────────────────────────────────────────────────────
 
   private onInterviewerActivity(now: number) {
-    // Resumed after a pause: the speculative answer is for a partial question
-    if (this.speculatedText !== null) {
-      this.speculatedText = null
-      this.callbacks.onCancelSpeculation?.()
+    // Resumed after a pause: the judged/drafted text is now partial
+    if (this.pausedText !== null) {
+      this.pausedText = null
+      this.callbacks.onResume?.()
     }
     this.finalizeSent = false
 
@@ -272,6 +320,12 @@ export class TurnEngine {
     this.flushCandidate()
   }
 
+  private onCandidateActivity() {
+    // Once the candidate starts answering, further interviewer speech is a
+    // new question rather than an extension of the last one
+    this.lastCommit = null
+  }
+
   private commit(
     text: string,
     reason: CommitReason,
@@ -282,6 +336,8 @@ export class TurnEngine {
     const language = dominantLanguage(s.languageChars)
     const amends = this.amending && this.lastCommit !== null
     const fullText = amends ? joinText(`${this.lastCommit!.text} `, text) : text
+    const answerable =
+      reason === "manual" || (!isBackchannel(text) && worthJudging(fullText))
 
     this.callbacks.onCommit?.({
       text: fullText,
@@ -289,11 +345,14 @@ export class TurnEngine {
       reason,
       silenceMs,
       amends,
+      answerable,
+      endpointLagMs: s.endpointSeen ? s.endpointLagMs : null,
     })
 
-    this.lastCommit = { text: fullText, at: now }
+    if (answerable) this.lastCommit = { text: fullText, at: now }
     this.amending = false
-    this.speculatedText = null
+    this.pausedText = null
+    this.verdict = null
     this.finalizeSent = false
     this.streams.interviewer = {
       ...emptyStream(),
@@ -301,12 +360,7 @@ export class TurnEngine {
       lastSpeechAt: s.lastSpeechAt,
     }
     this.callbacks.onLive?.("interviewer", "", null)
-  }
-
-  private onCandidateActivity() {
-    // Once the candidate starts answering, further interviewer speech is a
-    // new question rather than an extension of the last one
-    this.lastCommit = null
+    this.setStatus("idle")
   }
 
   private flushCandidate() {
@@ -321,5 +375,11 @@ export class TurnEngine {
       lastSpeechAt: c.lastSpeechAt,
     }
     this.callbacks.onLive?.("candidate", "", null)
+  }
+
+  private setStatus(status: TurnStatus) {
+    if (status === this.status) return
+    this.status = status
+    this.callbacks.onStatus?.(status)
   }
 }

@@ -7,7 +7,7 @@ import {
 
 import { STT_DEFAULTS } from "@/config/defaults/stt"
 import { SonioxStream, type SttStatus } from "@/lib/stt/soniox-stream"
-import type { Role } from "@/lib/turn/turn-engine"
+import { SPEECH_RMS, type Role } from "@/lib/turn/turn-engine"
 import { useAudioCapture, type AudioFrame } from "@/hooks/use-audio-capture"
 
 const TICK_MS = 100
@@ -48,7 +48,7 @@ export function useLiveTranscriber(
 
   const onFrame = useCallback(
     ({ pcm, rms }: AudioFrame) => {
-      streamRef.current?.send(pcm)
+      streamRef.current?.send(pcm, rms >= SPEECH_RMS)
       turnEngine.onAudioLevel(role, rms, performance.now())
     },
     [role]
@@ -73,7 +73,7 @@ export function useLiveTranscriber(
       {
         onUpdate: (update) =>
           turnEngine.onTranscript(role, update, performance.now()),
-        onEndpoint: () => turnEngine.onEndpoint(role),
+        onEndpoint: ({ lagMs }) => turnEngine.onEndpoint(role, lagMs),
         onStatus: (next) => {
           setStatus(next)
           if (role === "interviewer" && next === "open") {

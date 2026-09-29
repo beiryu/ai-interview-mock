@@ -6,7 +6,12 @@ import { createJSONStorage, persist } from "zustand/middleware"
 import type { AnswerMetrics, InterviewMessage } from "@/types/interview-message"
 import { MicrophoneStatus } from "@/types/interview-session"
 import { INTERVIEW_DEFAULTS } from "@/config/defaults/interview"
-import { judgeTurn, streamAnswer } from "@/lib/answer/stream-answer"
+import {
+  judgeTurn,
+  streamAnswer,
+  type JudgeResult,
+} from "@/lib/answer/stream-answer"
+import { SAME_QUESTION, textSimilarity } from "@/lib/turn/similarity"
 import {
   TurnEngine,
   type CommittedTurn,
@@ -18,12 +23,26 @@ export interface LiveLine {
   language: string | null
 }
 
+/**
+ * What the copilot is doing, shown above the suggestions:
+ * idle → listening → (waiting for the rest) → answering | skipped
+ */
+export type CopilotStatus =
+  | "idle"
+  | "listening"
+  | "waiting"
+  | "answering"
+  | "skipped"
+
 interface InterviewSessionStore {
   /** Meeting-tab capture status */
   microphoneStatus: MicrophoneStatus
   /** In-progress (uncommitted) speech per stream */
   live: Record<Role, LiveLine>
   sttError: string | null
+  status: CopilotStatus
+  /** Why the last turn was skipped ("not a question", "already answered") */
+  skipReason: string | null
 
   messages: InterviewMessage[]
 
@@ -40,6 +59,13 @@ interface InterviewSessionStore {
   startSession: (sessionId: string, sessionContext: string) => void
   /** Clear everything from the previous session (transcript, answers, memory). */
   resetSession: () => void
+
+  // Manual controls (buttons + hotkeys)
+  /** Answer what the interviewer has said so far, or redo the last answer */
+  answerNow: () => void
+  /** Stop and hide the answer being generated / shown last */
+  skipCurrent: () => void
+  regenerate: (messageId: string) => void
 }
 
 const EMPTY_LIVE: Record<Role, LiveLine> = {
@@ -53,6 +79,8 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
       microphoneStatus: "disconnected",
       live: EMPTY_LIVE,
       sttError: null,
+      status: "idle",
+      skipReason: null,
       messages: [],
       agentHistory: [],
       currentSessionId: null,
@@ -65,10 +93,10 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
         set({ currentSessionId: sessionId, sessionContext }),
 
       resetSession: () => {
-        cancelSpeculation()
-        discardedSinceCommit = 0
-        for (const controller of activeAnswers.values()) controller.abort()
-        activeAnswers.clear()
+        abortPause()
+        for (const answer of answers.values()) answer.controller.abort()
+        answers.clear()
+        lastAnsweredQuestion = null
         turnEngine.reset()
         set({
           currentSessionId: null,
@@ -77,8 +105,24 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
           agentHistory: [],
           live: EMPTY_LIVE,
           sttError: null,
+          status: "idle",
+          skipReason: null,
         })
       },
+
+      answerNow: () => {
+        if (turnEngine.forceCommit(performance.now())) return
+        const last = lastAnswerCard()
+        if (last) regenerateAnswer(last.id)
+      },
+
+      skipCurrent: () => {
+        abortPause()
+        const last = lastAnswerCard()
+        if (last) dropCard(last.id, "skipped")
+      },
+
+      regenerate: (messageId) => regenerateAnswer(messageId),
     }),
     {
       name: "interview-agent-history",
@@ -106,10 +150,15 @@ export const turnEngine = new TurnEngine(INTERVIEW_DEFAULTS, {
       live: { ...s.live, [role]: { text, language } },
     })),
   onFinalizeRequest: (role) => finalizers[role]?.(),
-  onSpeculate: (text, language) => speculate(text, language),
-  onCancelSpeculation: () => cancelSpeculation(),
+  onPause: (text, language) => startPause(text, language),
+  onResume: () => abortPause(),
   onCommit: (turn) => commitInterviewerTurn(turn),
   onCandidateTurn: (text) => appendMessage("candidate", text),
+  onStatus: (status) => {
+    // "answering" / "skipped" are owned by the answer flow until new speech
+    if (status === "idle" && store.getState().status !== "listening") return
+    store.setState({ status, skipReason: null })
+  },
 })
 
 // ─── Messages ──────────────────────────────────────────────────────────────────
@@ -156,134 +205,213 @@ function updateAnalysis(
   }))
 }
 
-function recentContext(excludeId: string) {
+function updateMetrics(messageId: string, patch: Partial<AnswerMetrics>) {
+  updateAnalysis(messageId, (a) => ({
+    metrics: a.metrics ? { ...a.metrics, ...patch } : a.metrics,
+  }))
+}
+
+function recentContext(excludeId = "") {
   return store
     .getState()
     .messages.filter((m) => m.id !== excludeId)
-    .slice(-4)
+    .slice(-6)
     .map((m) => ({ role: m.role, content: m.content }))
 }
 
-function answerRequest(text: string, language: string | null, excludeId = "") {
-  const { coachDocuments, fastMode } = useChatDocumentStore.getState()
-  const state = store.getState()
-  return {
-    text,
-    language,
-    agentHistory: state.agentHistory,
-    context: recentContext(excludeId),
-    sessionContext: state.sessionContext,
-    selectedDocuments: coachDocuments,
-    fastMode,
-  }
+function lastAnswerCard() {
+  return [...store.getState().messages]
+    .reverse()
+    .find((m) => m.questionAnalysis !== null)
 }
 
-function normalize(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim()
-}
+// ─── Answer generation ────────────────────────────────────────────────────────
 
-// ─── Speculative answers ──────────────────────────────────────────────────────
-// Started when the interviewer pauses; shown only if the committed question
-// matches, otherwise aborted (client and server side).
-
-interface Speculation {
-  text: string
+interface AnswerRun {
+  question: string
   controller: AbortController
-  answer: string
+  text: string
   firstTokenAt: number | null
   history: AgentInputItem[] | null
-  /** Card the speculation was promoted into, once committed */
+  /** Card showing this run; null while it is a hidden draft */
   messageId: string | null
   commitAt: number | null
 }
 
-let speculation: Speculation | null = null
-/** Speculations aborted since the last commit (reported in card metrics) */
-let discardedSinceCommit = 0
-/** Answer requests backing visible cards, by message id */
-const activeAnswers = new Map<string, AbortController>()
+/** Visible answer runs by message id */
+const answers = new Map<string, AnswerRun>()
+let lastAnsweredQuestion: string | null = null
 
-function speculate(text: string, language: string | null) {
-  cancelSpeculation()
-  const controller = new AbortController()
-  const spec: Speculation = {
-    text,
-    controller,
-    answer: "",
+function startAnswer(question: string, language: string | null): AnswerRun {
+  const { coachDocuments, fastMode } = useChatDocumentStore.getState()
+  const state = store.getState()
+  const run: AnswerRun = {
+    question,
+    controller: new AbortController(),
+    text: "",
     firstTokenAt: null,
     history: null,
     messageId: null,
     commitAt: null,
   }
-  speculation = spec
 
   streamAnswer(
-    answerRequest(text, language),
+    {
+      text: question,
+      language,
+      agentHistory: state.agentHistory,
+      context: recentContext(),
+      sessionContext: state.sessionContext,
+      selectedDocuments: coachDocuments,
+      fastMode,
+    },
     {
       onDelta: (delta) => {
-        const isFirst = spec.firstTokenAt === null
-        if (isFirst) spec.firstTokenAt = performance.now()
-        spec.answer += delta
-        if (spec.messageId) {
-          const id = spec.messageId
-          if (isFirst) recordFirstToken(id, spec.commitAt)
-          updateAnalysis(id, (a) => ({
-            suggestedAnswer: a.suggestedAnswer + delta,
-          }))
-        }
+        const isFirst = run.firstTokenAt === null
+        if (isFirst) run.firstTokenAt = performance.now()
+        run.text += delta
+        if (!run.messageId) return
+        if (isFirst) recordFirstToken(run)
+        updateAnalysis(run.messageId, (a) => ({
+          suggestedAnswer: a.suggestedAnswer + delta,
+        }))
       },
       onDone: (history) => {
-        spec.history = history
-        // Only a promoted (committed) answer becomes agent memory
-        if (spec.messageId) store.setState({ agentHistory: history })
+        run.history = history
+        // Only a shown answer becomes agent memory
+        if (run.messageId) store.setState({ agentHistory: history })
       },
     },
-    controller.signal
+    run.controller.signal
   ).catch((error: unknown) => {
-    if (controller.signal.aborted || !spec.messageId) return
-    updateAnalysis(spec.messageId, () => ({
+    if (run.controller.signal.aborted || !run.messageId) return
+    updateAnalysis(run.messageId, () => ({
       error: error instanceof Error ? error.message : String(error),
     }))
   })
+
+  return run
 }
 
-function cancelSpeculation() {
-  // A promoted speculation backs a card; activeAnswers owns its lifetime
-  if (speculation && !speculation.messageId) {
-    speculation.controller.abort()
-    discardedSinceCommit++
+/** Attach a run (fresh or a promoted draft) to a card. */
+function showAnswer(run: AnswerRun, messageId: string, commitAt: number) {
+  run.messageId = messageId
+  run.commitAt = commitAt
+  answers.set(messageId, run)
+  updateAnalysis(messageId, () => ({ suggestedAnswer: run.text }))
+  if (run.firstTokenAt !== null) {
+    updateMetrics(messageId, {
+      firstTokenMs: Math.max(0, Math.round(run.firstTokenAt - commitAt)),
+    })
   }
-  speculation = null
+  if (run.history) store.setState({ agentHistory: run.history })
+  lastAnsweredQuestion = run.question
+  store.setState({ status: "answering", skipReason: null })
 }
 
-function recordFirstToken(messageId: string, commitAt: number | null) {
-  const firstTokenMs =
-    commitAt === null ? null : Math.round(performance.now() - commitAt)
-  updateAnalysis(messageId, (a) => ({
-    metrics: a.metrics ? { ...a.metrics, firstTokenMs } : a.metrics,
+function recordFirstToken(run: AnswerRun) {
+  if (!run.messageId || run.commitAt === null) return
+  updateMetrics(run.messageId, {
+    firstTokenMs: Math.round(performance.now() - run.commitAt),
+  })
+}
+
+function dropCard(messageId: string, reason: string) {
+  answers.get(messageId)?.controller.abort()
+  answers.delete(messageId)
+  store.setState((s) => ({
+    status: "skipped",
+    skipReason: reason,
+    messages: s.messages.map((m) =>
+      m.id === messageId ? { ...m, questionAnalysis: null } : m
+    ),
   }))
+}
+
+function regenerateAnswer(messageId: string) {
+  const message = store.getState().messages.find((m) => m.id === messageId)
+  const analysis = message?.questionAnalysis
+  if (!message || !analysis) return
+  answers.get(messageId)?.controller.abort()
+  updateAnalysis(messageId, () => ({ suggestedAnswer: "", error: null }))
+  showAnswer(
+    startAnswer(analysis.question, analysis.language),
+    messageId,
+    performance.now()
+  )
+}
+
+// ─── Pause: judge + hidden draft in parallel ──────────────────────────────────
+// Started when the interviewer pauses. The draft is shown only if the
+// committed question is (nearly) the same; the judge verdict both gates the
+// turn engine and, after commit, can veto or re-target the answer.
+
+interface PendingJudge {
+  text: string
+  controller: AbortController
+  result: Promise<JudgeResult>
+}
+
+let draft: AnswerRun | null = null
+let draftsDiscarded = 0
+let pendingJudge: PendingJudge | null = null
+
+function startPause(text: string, language: string | null) {
+  abortPause()
+  draft = startAnswer(text, language)
+
+  const controller = new AbortController()
+  const judge: PendingJudge = {
+    text,
+    controller,
+    result: judgeTurn(
+      {
+        text,
+        context: recentContext(),
+        lastAnsweredQuestion,
+      },
+      controller.signal
+    ),
+  }
+  pendingJudge = judge
+  void judge.result.then((verdict) => {
+    if ("unavailable" in verdict) return
+    turnEngine.onJudge(judge.text, verdict)
+  })
+}
+
+function abortPause() {
+  if (draft && !draft.messageId) {
+    draft.controller.abort()
+    draftsDiscarded++
+  }
+  draft = null
+  pendingJudge?.controller.abort()
+  pendingJudge = null
 }
 
 // ─── Committing interviewer turns ─────────────────────────────────────────────
 
 function commitInterviewerTurn(turn: CommittedTurn) {
   const commitAt = performance.now()
-  const state = store.getState()
 
-  // Amend: replace the previous question's card rather than adding one
+  if (!turn.answerable) {
+    abortPause()
+    appendMessage("interviewer", turn.text)
+    store.setState({ status: "skipped", skipReason: "not a question" })
+    return
+  }
+
+  // Amend: re-answer the previous question's card with the longer question
   let messageId: string | null = null
   if (turn.amends) {
-    const previous = [...state.messages]
+    const previous = [...store.getState().messages]
       .reverse()
       .find((m) => m.role === "interviewer")
     if (previous) {
       messageId = previous.id
-      activeAnswers.get(previous.id)?.abort()
-      activeAnswers.delete(previous.id)
+      answers.get(previous.id)?.controller.abort()
+      answers.delete(previous.id)
       store.setState((s) => ({
         messages: s.messages.map((m) =>
           m.id === previous.id ? { ...m, content: turn.text } : m
@@ -293,22 +421,48 @@ function commitInterviewerTurn(turn: CommittedTurn) {
   }
   const id = messageId ?? appendMessage("interviewer", turn.text)
 
-  const spec = speculation
+  // Reuse the pause's judge call when it judged (nearly) this text
+  const judge =
+    pendingJudge &&
+    textSimilarity(pendingJudge.text, turn.text) >= SAME_QUESTION
+      ? pendingJudge
+      : null
+  const judgeController = judge?.controller ?? new AbortController()
+  const judgeResult =
+    judge?.result ??
+    judgeTurn(
+      {
+        text: turn.text,
+        context: recentContext(id),
+        lastAnsweredQuestion,
+      },
+      judgeController.signal
+    )
+  pendingJudge = null
+
+  // Promote the hidden draft when it answered (nearly) this question
   const promoted =
-    spec !== null &&
-    spec.messageId === null &&
+    draft !== null &&
     !turn.amends &&
-    normalize(spec.text) === normalize(turn.text)
+    textSimilarity(draft.question, turn.text) >= SAME_QUESTION
+      ? draft
+      : null
+  if (draft && !promoted) {
+    draft.controller.abort()
+    draftsDiscarded++
+  }
+  draft = null
 
   const metrics: AnswerMetrics = {
     commitReason: turn.reason,
     silenceMs: Math.round(turn.silenceMs),
-    firstTokenMs: promoted && spec.firstTokenAt !== null ? 0 : null,
-    speculated: promoted,
-    // Earlier cancellations plus a pending one that didn't match the question
-    discardedSpeculations:
-      discardedSinceCommit + (spec !== null && !promoted ? 1 : 0),
+    firstTokenMs: null,
+    speculated: promoted !== null,
+    discardedSpeculations: draftsDiscarded,
+    endpointLagMs: turn.endpointLagMs,
+    judgeMs: null,
   }
+  draftsDiscarded = 0
 
   const now = new Date()
   store.setState((s) => ({
@@ -320,7 +474,7 @@ function commitInterviewerTurn(turn: CommittedTurn) {
               id,
               messageId: id,
               question: turn.text,
-              suggestedAnswer: promoted ? spec.answer : "",
+              suggestedAnswer: "",
               language: turn.language,
               metrics,
               error: null,
@@ -332,70 +486,33 @@ function commitInterviewerTurn(turn: CommittedTurn) {
     ),
   }))
 
-  let controller: AbortController
-  if (promoted) {
-    discardedSinceCommit = 0
-    spec.messageId = id
-    spec.commitAt = commitAt
-    controller = spec.controller
-    if (spec.history) store.setState({ agentHistory: spec.history })
-    speculation = null
-  } else {
-    cancelSpeculation()
-    discardedSinceCommit = 0
-    controller = new AbortController()
-    let first = true
-    streamAnswer(
-      answerRequest(turn.text, turn.language, id),
-      {
-        onDelta: (delta) => {
-          if (first) {
-            first = false
-            recordFirstToken(id, commitAt)
-          }
-          updateAnalysis(id, (a) => ({
-            suggestedAnswer: a.suggestedAnswer + delta,
-          }))
-        },
-        onDone: (history) => store.setState({ agentHistory: history }),
-      },
-      controller.signal
-    ).catch((error: unknown) => {
-      if (controller.signal.aborted) return
-      updateAnalysis(id, () => ({
-        error: error instanceof Error ? error.message : String(error),
-      }))
-    })
-  }
-  activeAnswers.set(id, controller)
+  showAnswer(promoted ?? startAnswer(turn.text, turn.language), id, commitAt)
 
-  // One-word turns ("okay", "right", "ừ") are acknowledgements, not
-  // questions — unless punctuated as one ("Why?")
-  if (
-    turn.text.trim().split(/\s+/).length < 2 &&
-    !turn.text.trim().endsWith("?")
-  ) {
-    controller.abort()
-    dropCard(id)
-    return
-  }
-  // Everything else: let the classifier veto in parallel with the answer
-  void judgeTurn(
-    { text: turn.text, context: recentContext(id), lastAnsweredQuestion: null },
-    controller.signal
-  ).then((verdict) => {
-    if ("unavailable" in verdict || verdict.isAsk || controller.signal.aborted)
+  // The verdict may arrive after the answer started: veto or re-target it
+  void judgeResult.then((verdict) => {
+    updateMetrics(id, { judgeMs: verdict.judgeMs })
+    if ("unavailable" in verdict) return
+    if (!store.getState().messages.some((m) => m.id === id)) return
+
+    if (!verdict.isAsk) {
+      dropCard(id, "not a question")
       return
-    controller.abort()
-    dropCard(id)
-  })
-}
+    }
+    if (verdict.duplicate && turn.reason !== "manual") {
+      dropCard(id, "already answered")
+      return
+    }
 
-function dropCard(messageId: string) {
-  activeAnswers.delete(messageId)
-  store.setState((s) => ({
-    messages: s.messages.map((m) =>
-      m.id === messageId ? { ...m, questionAnalysis: null } : m
-    ),
-  }))
+    const question = verdict.question.trim()
+    const current = answers.get(id)
+    if (question && current) {
+      updateAnalysis(id, () => ({ question }))
+      // Merged context / resolved follow-up: answer the real question
+      if (textSimilarity(question, current.question) < SAME_QUESTION) {
+        current.controller.abort()
+        updateAnalysis(id, () => ({ suggestedAnswer: "" }))
+        showAnswer(startAnswer(question, turn.language), id, commitAt)
+      }
+    }
+  })
 }

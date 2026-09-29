@@ -32,6 +32,10 @@ export interface AnswerMetrics {
   /** Speculative answers thrown away for this question (interviewer kept
    *  talking, or the final text differed) */
   discardedSpeculations: number
+  /** Soniox `<end>` lag for this turn (null if committed another way) */
+  endpointLagMs: number | null
+  /** Judge round-trip for this question (null until it answers) */
+  judgeMs: number | null
 }
 
 export interface QuestionAnalysis {

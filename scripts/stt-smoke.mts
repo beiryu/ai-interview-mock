@@ -97,13 +97,19 @@ async function main() {
   const at = () => `${((Date.now() - t0) / 1000).toFixed(2)}s`
   let lastSpeechEnd = 0
 
+  // No judge here (it needs the app server): the engine falls back to its
+  // text heuristics, i.e. this exercises Soniox timing + local rules only.
   const engine = new TurnEngine(INTERVIEW_DEFAULTS, {
     onFinalizeRequest: () => stream.finalize(),
-    onSpeculate: (text) => console.log(`${at()}  ⚡ speculate: ${text}`),
-    onCancelSpeculation: () => console.log(`${at()}  ✗ speculation cancelled`),
+    onPause: (text) => console.log(`${at()}  ⏸ pause → judge + draft: ${text}`),
+    onResume: () => console.log(`${at()}  ▶ resumed, draft dropped`),
+    onStatus: (status) => console.log(`${at()}  status: ${status}`),
     onCommit: (turn) =>
       console.log(
         `${at()}  ✅ COMMIT [${turn.reason}, lang=${turn.language}, ` +
+          `answerable=${turn.answerable}, <end> lag=${
+            turn.endpointLagMs ?? "-"
+          }ms, ` +
           `${Date.now() - lastSpeechEnd}ms after speech ended]: ${turn.text}`
       ),
   })
@@ -119,9 +125,9 @@ async function main() {
         }
         engine.onTranscript("interviewer", update, Date.now())
       },
-      onEndpoint: () => {
-        console.log(`${at()}  <end>`)
-        engine.onEndpoint("interviewer")
+      onEndpoint: ({ lagMs }) => {
+        console.log(`${at()}  <end> (lag ${lagMs ?? "-"}ms)`)
+        engine.onEndpoint("interviewer", lagMs)
       },
       onStatus: (status) => console.log(`${at()}  socket: ${status}`),
       onError: (error) => console.error(`${at()}  ERROR ${error.message}`),
@@ -136,8 +142,9 @@ async function main() {
     if (piece.label) console.log(`${at()}  ▶ speaking: ${piece.label}`)
     for (let i = 0; i < piece.samples.length; i += CHUNK) {
       const chunk = piece.samples.slice(i, i + CHUNK)
-      stream.send(chunk.buffer)
-      engine.onAudioLevel("interviewer", rms(chunk), Date.now())
+      const level = rms(chunk)
+      stream.send(chunk.buffer, level >= 0.015)
+      engine.onAudioLevel("interviewer", level, Date.now())
       await new Promise((resolve) => setTimeout(resolve, 120))
     }
     if (piece.label) lastSpeechEnd = Date.now()
