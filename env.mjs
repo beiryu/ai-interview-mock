@@ -9,8 +9,6 @@ export const env = createEnv({
     BETTER_AUTH_SECRET: z.string().min(1),
     // Comma-separated emails allowed to sign in (personal-use app)
     ALLOWED_EMAILS: z.string().min(1),
-    GITHUB_CLIENT_ID: z.string().min(1),
-    GITHUB_CLIENT_SECRET: z.string().min(1),
     DATABASE_URL: z.string().min(1),
     SMTP_FROM: z.string().min(1),
     RESEND_API_KEY: z.string().min(1),
@@ -27,8 +25,6 @@ export const env = createEnv({
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     ALLOWED_EMAILS: process.env.ALLOWED_EMAILS,
-    GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
-    GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     SMTP_FROM: process.env.SMTP_FROM,
     RESEND_API_KEY: process.env.RESEND_API_KEY,

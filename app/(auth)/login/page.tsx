@@ -17,7 +17,7 @@ export default function LoginPage() {
           <Icons.logo className="mx-auto size-6" />
           <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
           <p className="text-sm text-muted-foreground">
-            Use GitHub or get a sign-in link by email
+            We will email you a sign-in link
           </p>
         </div>
         <Suspense fallback={<div>Loading...</div>}>

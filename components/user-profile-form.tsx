@@ -70,11 +70,6 @@ export function UserProfileForm({
               user={{ name: user.name, image: user.image }}
               className="size-20"
             />
-            <div className="text-sm text-muted-foreground">
-              {user.image
-                ? "Avatar from your GitHub account"
-                : "Sign in with GitHub to use your GitHub avatar"}
-            </div>
           </div>
 
           {/* Name Field */}

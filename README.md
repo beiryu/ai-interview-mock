@@ -11,7 +11,7 @@ Single-user by design: only emails listed in `ALLOWED_EMAILS` can sign in.
 ## Stack
 
 - Next.js 16 (App Router, Turbopack), React 19, Tailwind + shadcn/ui
-- Better Auth (GitHub OAuth, email magic link via Resend)
+- Better Auth (email magic link via Resend)
 - Prisma 7 + PostgreSQL (`@prisma/adapter-pg`)
 - Soniox real-time speech-to-text (Vietnamese + English, per-word language ID, semantic end-of-turn)
 - Vercel AI SDK for the live turn judge and answer coach (model per task in `config/defaults/ai.ts`; the coach reads an interview brief built from your documents), OpenAI Responses API + hosted vector stores (`file_search`) for Document Chat
@@ -33,7 +33,6 @@ pnpm dev                     # http://localhost:3000
 | `NEXT_PUBLIC_APP_URL`, `BETTER_AUTH_URL` | App origin, e.g. `http://localhost:3000` |
 | `BETTER_AUTH_SECRET` | Random secret (`openssl rand -base64 32`) |
 | `ALLOWED_EMAILS` | Comma-separated emails allowed to sign in |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub OAuth app, callback `/api/auth/callback/github` |
 | `SMTP_FROM`, `RESEND_API_KEY` | Sender and API key for magic-link emails |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `OPENAI_API_KEY`, `OPENAI_BASE_URL` | OpenAI access |

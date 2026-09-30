@@ -33,7 +33,7 @@ export const auth = betterAuth({
     user: {
       create: {
         // Personal-use app: only allowlisted emails may get an account,
-        // whether they arrive via magic link or GitHub.
+        // (sign-in is by email magic link only).
         before: async (user) => {
           if (!isAllowedEmail(user.email)) return false
         },
@@ -42,12 +42,6 @@ export const auth = betterAuth({
   },
   session: {
     cookieCache: { enabled: true, maxAge: 5 * 60 },
-  },
-  socialProviders: {
-    github: {
-      clientId: env.GITHUB_CLIENT_ID,
-      clientSecret: env.GITHUB_CLIENT_SECRET,
-    },
   },
   plugins: [
     magicLink({
