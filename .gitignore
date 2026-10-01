@@ -31,3 +31,6 @@ next-env.d.ts
 
 # prisma client (generated on postinstall)
 /lib/generated/
+
+# eval runs (contain your answers / documents)
+/eval/results/
