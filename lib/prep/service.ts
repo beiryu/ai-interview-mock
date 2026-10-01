@@ -36,7 +36,10 @@ export interface PrepState<T> {
 /** Readable one-paragraph error (gateway errors carry ANSI colors). */
 function errorMessage(error: unknown) {
   const text = error instanceof Error ? error.message : String(error)
-  return text.replace(/\u001b\[[0-9;]*m/g, "").split("\n\n")[0].trim()
+  return text
+    .replace(/\u001b\[[0-9;]*m/g, "")
+    .split("\n\n")[0]
+    .trim()
 }
 
 function effectiveStatus(

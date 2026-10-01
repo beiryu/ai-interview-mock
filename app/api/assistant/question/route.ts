@@ -2,8 +2,9 @@ import { headers } from "next/headers"
 import { z } from "zod"
 
 import { streamCoachAnswer } from "@/lib/ai/coach"
+import { validateAnswer } from "@/lib/answer/validate"
 import { auth } from "@/lib/auth"
-import { loadInterviewBrief } from "@/lib/interview/load-brief"
+import { loadCoachContext } from "@/lib/interview/load-brief"
 
 const RequestSchema = z.object({
   interviewId: z.string().min(1),
@@ -28,9 +29,9 @@ export async function POST(req: Request) {
   }
   const { interviewId, text, language, context } = parsed.data
 
-  const brief = await loadInterviewBrief(interviewId, authSession.user.id)
+  const coach = await loadCoachContext(interviewId, authSession.user.id)
   const result = streamCoachAnswer({
-    brief,
+    brief: coach.brief,
     context,
     language,
     text,
@@ -44,12 +45,23 @@ export async function POST(req: Request) {
   const body = new ReadableStream({
     async start(controller) {
       try {
+        let answer = ""
         for await (const delta of result.textStream) {
+          answer += delta
           controller.enqueue(line({ type: "delta", text: delta }))
         }
         // Which model actually answered (a gateway fallback shows here)
         const { modelId } = await result.response
-        controller.enqueue(line({ type: "done", model: modelId }))
+        // Things to double-check before saying them
+        const issues = validateAnswer({
+          answer,
+          knownIds: coach.knownIds,
+          doNotClaim: coach.doNotClaim,
+          source: [coach.brief, text, ...context.map((m) => m.content)].join(
+            "\n"
+          ),
+        })
+        controller.enqueue(line({ type: "done", model: modelId, issues }))
       } catch {
         // Aborted by the client; provider errors are logged in onError
       } finally {

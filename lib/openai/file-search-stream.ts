@@ -113,8 +113,7 @@ export async function* streamDocumentChatWithoutFileSearch(
     ...(previousResponseId ? { previous_response_id: previousResponseId } : {}),
     stream: true,
     temperature: modelConfig?.temperature ?? DOCUMENT_CHAT.temperature,
-    max_output_tokens:
-      modelConfig?.maxOutputTokens ?? DOCUMENT_CHAT.maxTokens,
+    max_output_tokens: modelConfig?.maxOutputTokens ?? DOCUMENT_CHAT.maxTokens,
   })
 
   yield* iterateResponsesStream(stream)
@@ -153,8 +152,7 @@ export async function* streamWithFileSearch(
     tools: [fileSearchTool],
     stream: true,
     temperature: modelConfig?.temperature ?? DOCUMENT_CHAT.temperature,
-    max_output_tokens:
-      modelConfig?.maxOutputTokens ?? DOCUMENT_CHAT.maxTokens,
+    max_output_tokens: modelConfig?.maxOutputTokens ?? DOCUMENT_CHAT.maxTokens,
   })
 
   yield* iterateResponsesStream(stream, fileIdToTitle)

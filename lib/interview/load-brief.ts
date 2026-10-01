@@ -14,6 +14,22 @@ const NO_INTERVIEW = { companyName: null, jobTitle: null, notes: null }
  * a missing or failed prep never blocks answering.
  */
 export async function loadInterviewBrief(interviewId: string, userId: string) {
+  return (await loadCoachContext(interviewId, userId)).brief
+}
+
+export interface CoachContext {
+  brief: string
+  /** Prep ids answers may cite (empty without a prep) */
+  knownIds: Set<string>
+  doNotClaim: string[]
+}
+
+/** The brief plus what the answer validator checks against. */
+export async function loadCoachContext(
+  interviewId: string,
+  userId: string
+): Promise<CoachContext> {
+  const none: CoachContext = { brief: "", knownIds: new Set(), doNotClaim: [] }
   const interview = await db.interview.findFirst({
     where: { id: interviewId, userId },
     select: {
@@ -25,7 +41,7 @@ export async function loadInterviewBrief(interviewId: string, userId: string) {
       user: { select: { profilePrep: { select: { content: true } } } },
     },
   })
-  if (!interview) return ""
+  if (!interview) return none
 
   const documents = interview.documentIds.length
     ? await db.document.findMany({
@@ -38,7 +54,10 @@ export async function loadInterviewBrief(interviewId: string, userId: string) {
     interview.user.profilePrep?.content
   )
   if (!profile.success) {
-    return buildInterviewBrief(interview, documents, BRIEF_MAX_CHARS)
+    return {
+      ...none,
+      brief: buildInterviewBrief(interview, documents, BRIEF_MAX_CHARS),
+    }
   }
 
   const interviewPrep = InterviewPrepSchema.safeParse(interview.prep?.content)
@@ -52,5 +71,15 @@ export async function loadInterviewBrief(interviewId: string, userId: string) {
   const budget = BRIEF_MAX_CHARS - prepBrief.length
   const raw =
     budget > 500 ? buildInterviewBrief(NO_INTERVIEW, documents, budget) : ""
-  return raw ? `${prepBrief}\n\n${raw}` : prepBrief
+  return {
+    brief: raw ? `${prepBrief}\n\n${raw}` : prepBrief,
+    knownIds: new Set([
+      ...profile.data.facts.map((f) => f.id),
+      ...profile.data.stories.map((s) => s.id),
+      ...(interviewPrep.success
+        ? interviewPrep.data.requirements.map((r) => r.id)
+        : []),
+    ]),
+    doNotClaim: profile.data.doNotClaim,
+  }
 }

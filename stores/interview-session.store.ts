@@ -8,6 +8,7 @@ import {
   streamAnswer,
   type JudgeResult,
 } from "@/lib/answer/stream-answer"
+import type { AnswerIssue } from "@/lib/answer/validate"
 import { SAME_QUESTION, textSimilarity } from "@/lib/turn/similarity"
 import {
   TurnEngine,
@@ -219,6 +220,8 @@ interface AnswerRun {
   firstTokenAt: number | null
   /** Model that answered, once the stream is done */
   model: string | null
+  /** Validator warnings, once the stream is done */
+  issues: AnswerIssue[]
   /** Card showing this run; null while it is a hidden draft */
   messageId: string | null
   commitAt: number | null
@@ -236,6 +239,7 @@ function startAnswer(question: string, language: string | null): AnswerRun {
     text: "",
     firstTokenAt: null,
     model: null,
+    issues: [],
     messageId: null,
     commitAt: null,
   }
@@ -258,9 +262,12 @@ function startAnswer(question: string, language: string | null): AnswerRun {
           suggestedAnswer: a.suggestedAnswer + delta,
         }))
       },
-      onDone: ({ model }) => {
+      onDone: ({ model, issues }) => {
         run.model = model
-        if (run.messageId) updateMetrics(run.messageId, { model })
+        run.issues = issues
+        if (!run.messageId) return
+        updateMetrics(run.messageId, { model })
+        updateAnalysis(run.messageId, () => ({ issues }))
       },
     },
     run.controller.signal
@@ -286,7 +293,10 @@ function showAnswer(run: AnswerRun, messageId: string, commitAt: number) {
     })
   }
   // A promoted draft may have finished before it got a card
-  if (run.model) updateMetrics(messageId, { model: run.model })
+  if (run.model) {
+    updateMetrics(messageId, { model: run.model })
+    updateAnalysis(messageId, () => ({ issues: run.issues }))
+  }
   lastAnsweredQuestion = run.question
   store.setState({ status: "answering", skipReason: null })
 }

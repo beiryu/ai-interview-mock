@@ -162,6 +162,14 @@ function AnswerCard({
             </>
           )}
 
+          {response.issues && response.issues.length > 0 && (
+            <ul className="mt-2 space-y-0.5 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-800 dark:text-amber-300">
+              {response.issues.map((issue, i) => (
+                <li key={i}>⚠ Check: {issue.detail}</li>
+              ))}
+            </ul>
+          )}
+
           {response.metrics && (
             <div className="mt-2">
               <LatencyBadge metrics={response.metrics} />

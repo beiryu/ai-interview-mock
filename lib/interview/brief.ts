@@ -81,7 +81,9 @@ export function buildInterviewBrief(
 
   return [
     header.length > 0 ? `## Interview\n${header.join("\n")}` : "",
-    sections.length > 0 ? `## Candidate documents\n\n${sections.join("\n\n")}` : "",
+    sections.length > 0
+      ? `## Candidate documents\n\n${sections.join("\n\n")}`
+      : "",
   ]
     .filter(Boolean)
     .join("\n\n")

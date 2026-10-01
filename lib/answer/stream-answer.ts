@@ -1,3 +1,5 @@
+import type { AnswerIssue } from "./validate"
+
 export interface StreamAnswerRequest {
   /** The server builds the coach's brief (CV, JD, notes) from it */
   interviewId: string
@@ -8,8 +10,8 @@ export interface StreamAnswerRequest {
 
 export interface StreamAnswerHandlers {
   onDelta: (text: string) => void
-  /** Stream finished; `model` is the model that actually answered */
-  onDone?: (meta: { model: string | null }) => void
+  /** Stream finished: the model that actually answered + validator issues */
+  onDone?: (meta: { model: string | null; issues: AnswerIssue[] }) => void
 }
 
 /**
@@ -53,7 +55,10 @@ export async function streamAnswer(
       const event = JSON.parse(line)
       if (event.type === "delta") handlers.onDelta(event.text)
       else if (event.type === "done")
-        handlers.onDone?.({ model: event.model ?? null })
+        handlers.onDone?.({
+          model: event.model ?? null,
+          issues: event.issues ?? [],
+        })
     }
   }
 }

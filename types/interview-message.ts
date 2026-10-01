@@ -1,3 +1,5 @@
+import type { AnswerIssue } from "@/lib/answer/validate"
+
 export type RoleType = "interviewer" | "candidate" | "ai" | "system"
 export type MessageType =
   | "question"
@@ -49,6 +51,8 @@ export interface QuestionAnalysis {
   language: string | null
   metrics: AnswerMetrics | null
   error: string | null
+  /** Validator warnings once the answer is complete (lib/answer/validate) */
+  issues?: AnswerIssue[]
   /** Question kind from the judge (null until it answers) */
   kind?: string | null
 
