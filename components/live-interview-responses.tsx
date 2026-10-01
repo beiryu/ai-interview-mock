@@ -94,7 +94,9 @@ function AnswerCard({
   evidence: Map<string, string>
 }) {
   const regenerate = useInterviewSessionStore((s) => s.regenerate)
-  const { headline, points, script } = splitAnswer(response.suggestedAnswer)
+  const { headline, assumed, points, script } = splitAnswer(
+    response.suggestedAnswer
+  )
   const empty = response.suggestedAnswer.length === 0
 
   return (
@@ -135,6 +137,11 @@ function AnswerCard({
               {headline && (
                 <p className="mb-1 text-base font-bold leading-snug">
                   {headline}
+                </p>
+              )}
+              {assumed && (
+                <p className="mb-1 text-xs text-violet-700 dark:text-violet-300">
+                  ✎ Ví dụ giả định — không có trong prep, chỉnh nếu chưa đúng
                 </p>
               )}
               {points.length > 0 && (

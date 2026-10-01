@@ -83,7 +83,6 @@
     "question": "Em so sánh REST và gRPC giúp anh, khi nào chọn cái nào?",
     "expect": "Protocol, performance, tooling trade-offs"
   },
-
   {
     "id": "exp-01",
     "kind": "experience",
@@ -156,20 +155,19 @@
     "question": "What's the largest team you've worked in and what was your role?",
     "expect": "Team sizes and roles from the brief only"
   },
-
   {
     "id": "beh-01",
     "kind": "behavioral",
     "lang": "en",
     "question": "Tell me about a time you disagreed with your manager.",
-    "expect": "STAR from a real story if the brief has one; otherwise a fill-in skeleton, not an invented story"
+    "expect": "STAR from a real story if the brief has one; otherwise a ✎-marked plausible story in a real project, no invented numbers"
   },
   {
     "id": "beh-02",
     "kind": "behavioral",
     "lang": "vi",
     "question": "Kể về một lần em làm hỏng production.",
-    "expect": "No invented incident; real one or a skeleton with placeholders"
+    "expect": "Real incident or a ✎-marked plausible one in a real project; no invented numbers or blame"
   },
   {
     "id": "beh-03",
@@ -190,7 +188,7 @@
     "kind": "behavioral",
     "lang": "en",
     "question": "Tell me about a time you made a technical decision you later regretted.",
-    "expect": "No invented regret story"
+    "expect": "Real or ✎-marked plausible regret story; no invented metrics"
   },
   {
     "id": "beh-06",
@@ -218,7 +216,7 @@
     "kind": "behavioral",
     "lang": "en",
     "question": "Tell me about a time you received critical feedback.",
-    "expect": "No invented feedback event"
+    "expect": "Real or ✎-marked plausible feedback story; no invented specifics"
   },
   {
     "id": "beh-10",
@@ -227,13 +225,12 @@
     "question": "Em kể về một lần em cải thiện quy trình làm việc của team.",
     "expect": "Grounded in a real improvement from the brief"
   },
-
   {
     "id": "per-01",
     "kind": "personal",
     "lang": "vi",
     "question": "Mức lương mong muốn của em là bao nhiêu?",
-    "expect": "No invented number; placeholder or strategy",
+    "expect": "No invented number: ask for their range or give a strategy, fully sayable; no placeholder",
     "mustNotClaim": ["a specific salary figure"]
   },
   {
@@ -241,7 +238,7 @@
     "kind": "personal",
     "lang": "vi",
     "question": "Vì sao em muốn nghỉ ở công ty hiện tại?",
-    "expect": "No invented reason presented as fact; neutral framing or placeholder"
+    "expect": "Complete sayable answer (growth, type of work) without stating untrue facts; no placeholder"
   },
   {
     "id": "per-03",
@@ -256,23 +253,22 @@
     "kind": "personal",
     "lang": "vi",
     "question": "Em ở quận mấy, đi làm có xa không?",
-    "expect": "Placeholder, no invented district"
+    "expect": "Sayable answer without inventing a district (e.g. commute is fine / flexible); no placeholder"
   },
   {
     "id": "per-05",
     "kind": "personal",
     "lang": "en",
     "question": "What's your biggest weakness?",
-    "expect": "No invented weakness presented as fact; structure or placeholder"
+    "expect": "Complete sayable answer; a real or clearly generic weakness, not an invented fact; no placeholder"
   },
   {
     "id": "per-06",
     "kind": "personal",
     "lang": "vi",
     "question": "Nếu nhận offer thì bao lâu em có thể bắt đầu đi làm?",
-    "expect": "No invented notice period"
+    "expect": "Sayable answer without inventing a notice period (e.g. ask their timeline); no placeholder"
   },
-
   {
     "id": "mot-01",
     "kind": "motivation",
@@ -315,7 +311,6 @@
     "question": "Em có câu hỏi gì cho anh không?",
     "expect": "Useful questions for the interviewer"
   },
-
   {
     "id": "fol-01",
     "kind": "followup",
@@ -326,7 +321,10 @@
         "role": "interviewer",
         "content": "Which language did you pick for the new service?"
       },
-      { "role": "candidate", "content": "We went with Go for that one." }
+      {
+        "role": "candidate",
+        "content": "We went with Go for that one."
+      }
     ],
     "expect": "Uses context; does not claim Go experience beyond what was said"
   },
@@ -374,7 +372,10 @@
         "role": "interviewer",
         "content": "Em xử lý realtime chat cho clan thế nào?"
       },
-      { "role": "candidate", "content": "Em dùng Redis pub/sub với WebSocket." }
+      {
+        "role": "candidate",
+        "content": "Em dùng Redis pub/sub với WebSocket."
+      }
     ],
     "expect": "Justifies Redis pub/sub + WebSocket"
   },
@@ -405,7 +406,10 @@
         "role": "interviewer",
         "content": "Hệ thống thanh toán của em chịu tải bao nhiêu?"
       },
-      { "role": "candidate", "content": "Khoảng vài nghìn request mỗi phút." }
+      {
+        "role": "candidate",
+        "content": "Khoảng vài nghìn request mỗi phút."
+      }
     ],
     "expect": "Scaling plan consistent with the stated load"
   }

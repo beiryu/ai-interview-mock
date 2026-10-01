@@ -21,7 +21,7 @@ import {
  * (`compare`) — pairwise is the more reliable signal between two setups.
  */
 
-const SOURCE_RULES = `GROUND TRUTH is the candidate's own documents. A claim about the candidate (employer, project, role, team size, metric, technology they used, personal fact such as salary, hobbies, location, reasons) is SUPPORTED only if the ground truth or the conversation context states it. General technical knowledge is not a claim about the candidate. A placeholder the candidate is told to fill in (e.g. "[điền: …]", "[your example]") is not a claim — it is the correct move when the documents lack the fact. Inventing a plausible story, number or preference is the worst failure.`
+const SOURCE_RULES = `GROUND TRUTH is the candidate's own documents. A claim about the candidate (employer, project, role, team size, metric, technology they used, personal fact such as salary, location, notice period) is SUPPORTED only if the ground truth or the conversation context states it. General technical knowledge is not a claim about the candidate. Policy chosen by the candidate: answers must always be complete and sayable. When no documented story fits a behavioral question, a plausible ASSUMED story is acceptable if it is marked with "✎" in the headline, set in the candidate's real projects/technologies, and keeps invented details generic (no numbers, named people, big achievements). Failures: invented numbers/metrics, employers, titles, team sizes, technologies the candidate never used, personal specifics (salary figure, location, dates), an unmarked made-up story, or blanks/placeholders the candidate would have to fill in live.`
 
 const RubricSchema = z.object({
   groundedness: z

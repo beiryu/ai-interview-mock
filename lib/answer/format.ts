@@ -16,6 +16,8 @@ export interface KeyPoint {
 
 export interface ParsedAnswer {
   headline: string
+  /** The coach made up a plausible example (headline marked "✎") */
+  assumed: boolean
   points: KeyPoint[]
   script: string
 }
@@ -45,6 +47,16 @@ function cleanHeadline(line: string) {
     .trim()
 }
 
+const ASSUMED = /^✎\s*/
+
+function headlineOf(raw: string) {
+  const headline = cleanHeadline(raw)
+  return {
+    headline: headline.replace(ASSUMED, ""),
+    assumed: ASSUMED.test(headline),
+  }
+}
+
 export function splitAnswer(text: string): ParsedAnswer {
   const [head, ...rest] = text.split(/\n\s*---\s*\n?/)
   const hasSeparator = rest.length > 0
@@ -59,14 +71,14 @@ export function splitAnswer(text: string): ParsedAnswer {
     // Either a headline still streaming, or the model ignored the format
     const single = lines.length === 1 && lines[0].split(/\s+/).length <= 8
     return single && !/[.!?]$/.test(lines[0])
-      ? { headline: cleanHeadline(lines[0]), points: [], script: "" }
-      : { headline: "", points: [], script: text.trim() }
+      ? { ...headlineOf(lines[0]), points: [], script: "" }
+      : { headline: "", assumed: false, points: [], script: text.trim() }
   }
 
   const headerLines = firstBullet === -1 ? lines : lines.slice(0, firstBullet)
   const pointLines = firstBullet === -1 ? [] : lines.slice(firstBullet)
   return {
-    headline: cleanHeadline(headerLines.join(" ")),
+    ...headlineOf(headerLines.join(" ")),
     points: pointLines
       .filter((line) => BULLET.test(line))
       .map((line) => splitTags(line.replace(BULLET, ""))),

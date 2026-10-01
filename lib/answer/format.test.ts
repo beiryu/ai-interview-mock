@@ -10,6 +10,7 @@ describe("splitAnswer", () => {
       )
     ).toEqual({
       headline: "Caching cut DB load",
+      assumed: false,
       points: [
         { text: "Multi-level caching on Stellar", tags: ["P3"] },
         { text: "DAX + ElastiCache", tags: ["P3", "S2"] },
@@ -37,6 +38,7 @@ describe("splitAnswer", () => {
   it("shows the headline and points while streaming", () => {
     expect(splitAnswer("Honest: no Kafka yet")).toEqual({
       headline: "Honest: no Kafka yet",
+      assumed: false,
       points: [],
       script: "",
     })
@@ -51,9 +53,18 @@ describe("splitAnswer", () => {
   it("falls back to plain text when the model ignores the format", () => {
     expect(splitAnswer("I would use a token bucket.")).toEqual({
       headline: "",
+      assumed: false,
       points: [],
       script: "I would use a token bucket.",
     })
+  })
+
+  it("flags assumed examples marked with ✎", () => {
+    expect(
+      splitAnswer(
+        "✎ Data first, then a trial\n- Shared load test results [P1]\n---\nOn Claynosaurs…"
+      )
+    ).toMatchObject({ headline: "Data first, then a trial", assumed: true })
   })
 })
 
