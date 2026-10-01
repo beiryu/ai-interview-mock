@@ -7,6 +7,8 @@ export interface PrepState<T> {
   content: T | null
   error: string | null
   updatedAt: string | null
+  /** Why it can't be prepared yet (no documents), else null */
+  blocked: string | null
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {

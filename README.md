@@ -23,7 +23,7 @@ Requires Node 22 (`.nvmrc`), pnpm and Docker.
 ```bash
 pnpm install                 # also generates the Prisma client
 cp .env.example .env         # fill in the values below
-docker compose up -d         # PostgreSQL on :5432
+docker compose up -d         # PostgreSQL on :5434
 pnpm prisma migrate deploy   # apply migrations
 pnpm prisma db seed          # create the account(s) in ALLOWED_EMAILS
 pnpm dev                     # http://localhost:3000

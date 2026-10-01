@@ -59,11 +59,15 @@ export function InterviewPrepSheet({
   // First visit: prepare without waiting for a click
   const autoStarted = React.useRef(false)
   React.useEffect(() => {
-    if (prep.data?.status === "missing" && !autoStarted.current) {
+    if (
+      prep.data?.status === "missing" &&
+      !prep.data.blocked &&
+      !autoStarted.current
+    ) {
       autoStarted.current = true
       prep.generate.mutate()
     }
-  }, [prep.data?.status, prep.generate])
+  }, [prep.data?.status, prep.data?.blocked, prep.generate])
 
   return (
     <Sheet>
@@ -155,6 +159,7 @@ function InterviewPrepEditor({
         status={data?.status ?? "missing"}
         updatedAt={data?.updatedAt ?? null}
         error={data?.error ?? null}
+        blocked={data?.blocked ?? null}
         onGenerate={() => generate.mutate()}
         generating={generate.isPending}
         dirty={dirty}

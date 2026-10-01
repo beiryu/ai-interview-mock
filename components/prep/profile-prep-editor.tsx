@@ -55,6 +55,7 @@ export function ProfilePrepEditor() {
         status={data?.status ?? "missing"}
         updatedAt={data?.updatedAt ?? null}
         error={data?.error ?? null}
+        blocked={data?.blocked ?? null}
         onGenerate={() => generate.mutate()}
         generating={generate.isPending}
         dirty={dirty}

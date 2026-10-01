@@ -31,6 +31,19 @@ export interface PrepState<T> {
   content: T | null
   error: string | null
   updatedAt: Date | null
+  /** Why a prep can't be generated yet (e.g. no documents), else null */
+  blocked: string | null
+}
+
+export const NO_DOCUMENTS =
+  "Upload your CV, portfolio or notes under Documents first."
+
+/** Documents that describe the candidate (everything but job descriptions). */
+async function hasProfileDocuments(userId: string) {
+  const count = await db.document.count({
+    where: { userId, type: { not: DocumentType.JOB_DESCRIPTION } },
+  })
+  return count > 0
 }
 
 /** Readable one-paragraph error (gateway errors carry ANSI colors). */
@@ -79,8 +92,16 @@ export async function getProfilePrep(
   userId: string
 ): Promise<PrepState<ProfilePrep>> {
   const row = await db.profilePrep.findUnique({ where: { userId } })
-  if (!row)
-    return { status: "missing", content: null, error: null, updatedAt: null }
+  const blocked = (await hasProfileDocuments(userId)) ? null : NO_DOCUMENTS
+  if (!row) {
+    return {
+      status: "missing",
+      content: null,
+      error: null,
+      updatedAt: null,
+      blocked,
+    }
+  }
   const { hash } = await profileInputs(userId)
   const parsed = ProfilePrepSchema.safeParse(row.content)
   return {
@@ -88,6 +109,7 @@ export async function getProfilePrep(
     content: parsed.success ? parsed.data : null,
     error: row.error,
     updatedAt: row.updatedAt,
+    blocked,
   }
 }
 
@@ -153,6 +175,8 @@ export async function prepareInterviewNow(interviewId: string, userId: string) {
 
 /** Starts a background profile prep unless one is already running. */
 export async function startProfilePrep(userId: string) {
+  if (!(await hasProfileDocuments(userId)))
+    return { started: false, blocked: NO_DOCUMENTS }
   const existing = await db.profilePrep.findUnique({ where: { userId } })
   const started = await markPending(existing, () =>
     db.profilePrep.upsert({
@@ -162,7 +186,7 @@ export async function startProfilePrep(userId: string) {
     })
   )
   if (started) after(() => runProfilePrep(userId))
-  return started
+  return { started, blocked: null }
 }
 
 export async function saveProfilePrep(userId: string, content: ProfilePrep) {
@@ -225,15 +249,25 @@ export async function getInterviewPrep(
   userId: string
 ): Promise<PrepState<InterviewPrep>> {
   const row = await db.interviewPrep.findUnique({ where: { interviewId } })
-  if (!row)
-    return { status: "missing", content: null, error: null, updatedAt: null }
-  const { hash } = await interviewInputs(interviewId, userId)
+  const { hash } = await interviewInputs(interviewId, userId) // ownership check
+  // The interview prep builds on the profile prep, which needs documents
+  const blocked = (await hasProfileDocuments(userId)) ? null : NO_DOCUMENTS
+  if (!row) {
+    return {
+      status: "missing",
+      content: null,
+      error: null,
+      updatedAt: null,
+      blocked,
+    }
+  }
   const parsed = InterviewPrepSchema.safeParse(row.content)
   return {
     status: effectiveStatus(row, hash),
     content: parsed.success ? parsed.data : null,
     error: row.error,
     updatedAt: row.updatedAt,
+    blocked,
   }
 }
 
@@ -275,6 +309,8 @@ export async function runInterviewPrep(interviewId: string, userId: string) {
 
 export async function startInterviewPrep(interviewId: string, userId: string) {
   await interviewInputs(interviewId, userId) // ownership check
+  if (!(await hasProfileDocuments(userId)))
+    return { started: false, blocked: NO_DOCUMENTS }
   const existing = await db.interviewPrep.findUnique({ where: { interviewId } })
   const started = await markPending(existing, () =>
     db.interviewPrep.upsert({
@@ -284,7 +320,7 @@ export async function startInterviewPrep(interviewId: string, userId: string) {
     })
   )
   if (started) after(() => runInterviewPrep(interviewId, userId))
-  return started
+  return { started, blocked: null }
 }
 
 export async function saveInterviewPrep(

@@ -42,8 +42,8 @@ export async function POST(_req: Request, props: Params) {
   const ctx = await owned(props)
   if (!ctx) return new NextResponse("Unauthorized", { status: 401 })
   try {
-    const started = await startInterviewPrep(ctx.interviewId, ctx.userId)
-    return NextResponse.json({ started }, { status: 202 })
+    const result = await startInterviewPrep(ctx.interviewId, ctx.userId)
+    return NextResponse.json(result, { status: result.blocked ? 409 : 202 })
   } catch (error) {
     if (notFound(error)) return new NextResponse("Not found", { status: 404 })
     throw error

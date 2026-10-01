@@ -7,8 +7,9 @@ services:
       POSTGRES_PASSWORD: root
       POSTGRES_USER: postgres
       POSTGRES_DB: ai_interview_assistant
+    # 5434 on the host: 5432 is often taken by another local Postgres
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

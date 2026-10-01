@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { Lock, Plus, RefreshCw, Trash2 } from "lucide-react"
 
 import type { PrepStatus } from "@/lib/prep/schema"
@@ -41,6 +42,7 @@ export function PrepStatusBar({
   status,
   updatedAt,
   error,
+  blocked,
   onGenerate,
   generating,
   dirty,
@@ -50,6 +52,7 @@ export function PrepStatusBar({
   status: PrepStatus
   updatedAt: string | null
   error: string | null
+  blocked?: string | null
   onGenerate: () => void
   generating: boolean
   dirty: boolean
@@ -74,11 +77,19 @@ export function PrepStatusBar({
       {status === "failed" && error && (
         <span className="text-xs text-destructive">{error}</span>
       )}
+      {blocked && (
+        <span className="text-xs text-muted-foreground">
+          {blocked}{" "}
+          <Link href="/dashboard/documents" className="underline">
+            Documents
+          </Link>
+        </span>
+      )}
       <div className="ml-auto flex gap-2">
         <Button
           variant="outline"
           size="sm"
-          disabled={busy || dirty}
+          disabled={busy || dirty || !!blocked}
           title={dirty ? "Save your edits first" : "Edited items (🔒) are kept"}
           onClick={onGenerate}
         >

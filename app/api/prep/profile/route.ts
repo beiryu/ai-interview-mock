@@ -19,8 +19,8 @@ export async function GET() {
 export async function POST() {
   const user = await getCurrentUser()
   if (!user) return new NextResponse("Unauthorized", { status: 401 })
-  const started = await startProfilePrep(user.id)
-  return NextResponse.json({ started }, { status: 202 })
+  const result = await startProfilePrep(user.id)
+  return NextResponse.json(result, { status: result.blocked ? 409 : 202 })
 }
 
 export async function PUT(req: Request) {
