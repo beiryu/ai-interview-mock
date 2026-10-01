@@ -55,9 +55,8 @@ export const AI_TASKS = {
   },
   // Live: the chat panel in the interview (you type; latency-tolerant)
   chat: {
-    providers: DEEPSEEK_FLASH_PROVIDERS,
     reasoning: "none",
-    model: "deepseek/deepseek-v4.1-flash",
+    model: "deepseek/deepseek-v4-pro",
     fallback: ["openai/gpt-4.1-mini"],
     maxTokens: 1200,
     temperature: 0.3,
