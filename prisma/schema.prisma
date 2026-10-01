@@ -76,6 +76,7 @@ model User {
   interviewSessions InterviewSession[] @relation("UserInterviewSessions")
   documents         Document[]         @relation("UserDocuments")
   conversations     ChatConversation[] @relation("UserChatConversations")
+  profilePrep       ProfilePrep?
 
   @@map("users")
 }
@@ -94,6 +95,7 @@ model Interview {
   /// Documents the answer coach reads during this interview (CV, JD, notes…)
   documentIds String[]           @default([]) @map("document_ids")
   sessions    InterviewSession[]
+  prep        InterviewPrep?
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at")
 
@@ -102,23 +104,58 @@ model Interview {
 }
 
 model InterviewSession {
-  id             String    @id @default(cuid())
-  interviewId    String
-  interview      Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User      @relation("UserInterviewSessions", fields: [userId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  interviewId String
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation("UserInterviewSessions", fields: [userId], references: [id], onDelete: Cascade)
   /// "in_progress" | "completed"
-  status         String    @default("in_progress")
+  status      String    @default("in_progress")
   /// Array of { role: "interviewer" | "candidate", text: string, at: ISO string }
-  transcript     Json?
-  startedAt      DateTime  @default(now())
-  endedAt        DateTime?
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  transcript  Json?
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   @@index([interviewId])
   @@index([userId])
   @@map("interview_sessions")
+}
+
+// ─── Prep packs (lib/prep) ────────────────────────────────────────────────────
+// Digested before the interview by a strong model, reviewed by the user;
+// the live coach reads them. `content` follows lib/prep/schema.ts.
+
+model ProfilePrep {
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "pending" | "ready" | "failed" ("stale" is computed from sourceHash)
+  status     String    @default("pending")
+  sourceHash String?   @map("source_hash")
+  content    Json?
+  error      String?   @db.Text
+  startedAt  DateTime? @map("started_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@map("profile_preps")
+}
+
+model InterviewPrep {
+  id          String    @id @default(cuid())
+  interviewId String    @unique
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  status      String    @default("pending")
+  sourceHash  String?   @map("source_hash")
+  content     Json?
+  error       String?   @db.Text
+  startedAt   DateTime? @map("started_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("interview_preps")
 }
 
 // ─── Documents ────────────────────────────────────────────────────────────────

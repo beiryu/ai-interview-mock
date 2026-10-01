@@ -3,13 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useChatDocumentStore } from "@/stores/chat-document-store"
-import { Clock, FileText } from "lucide-react"
+import { Clock } from "lucide-react"
 
-import { cn } from "@/lib/utils"
-import {
-  useGetInterview,
-  type InterviewWithSessions,
-} from "@/hooks/api/interview/useGetInterview"
+import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
 import { useCopilotHotkeys } from "@/hooks/use-copilot-hotkeys"
 import { useInterviewSessionLifecycle } from "@/hooks/use-interview-session-lifecycle"
 import { Button } from "@/components/ui/button"
@@ -19,14 +15,13 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
 import { Separator } from "@/components/ui/separator"
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import StreamingChat from "@/components/chat/streaming-chat"
 import { CopilotStatus } from "@/components/copilot-status"
 import { LiveInterviewResponses } from "@/components/live-interview-responses"
-import EditDialog from "@/components/modals/edit-modal"
 import MicOnlyRecorder from "@/components/mic-only-recorder"
 import { MicrophoneConnectionStatus } from "@/components/microphone-connection-status"
+import { InterviewPrepSheet } from "@/components/prep/interview-prep-sheet"
 import RecorderTranscriber from "@/components/recorder-transcriber"
 import { TranscriptionDisplay } from "@/components/transcription-display"
 
@@ -161,7 +156,7 @@ export function LiveInterviewPlaygroundV2({
               >
                 <div className="flex h-10 shrink-0 items-center justify-between border-b px-4">
                   <CopilotStatus />
-                  {interview && <CoachBriefButton interview={interview} />}
+                  {interview && <InterviewPrepSheet interview={interview} />}
                 </div>
                 <div className="min-h-0 flex-1 overflow-hidden">
                   <LiveInterviewResponses />
@@ -211,35 +206,5 @@ function SessionTimer({ startedAt }: { startedAt: number | null }) {
       <Clock className="size-3.5" />
       <span className="font-mono tabular-nums">{label}</span>
     </div>
-  )
-}
-
-/** Which documents the coach reads; opens the interview form to change them. */
-function CoachBriefButton({ interview }: { interview: InterviewWithSessions }) {
-  const [open, setOpen] = useState(false)
-  const count = interview.documentIds.length
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "h-6 gap-1 px-2 text-xs",
-            count === 0 && "text-amber-600 dark:text-amber-400"
-          )}
-          title="Documents the answer coach reads (CV, job description…)"
-        >
-          <FileText className="size-3" />
-          {count === 0
-            ? "No documents"
-            : `${count} document${count > 1 ? "s" : ""}`}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[520px]">
-        <EditDialog interview={interview} onDone={() => setOpen(false)} />
-      </DialogContent>
-    </Dialog>
   )
 }

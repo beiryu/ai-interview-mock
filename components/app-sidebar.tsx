@@ -10,6 +10,7 @@ import {
   Mic,
   Podcast,
   Settings2,
+  UserRoundCheck,
 } from "lucide-react"
 
 import { siteConfig } from "@/config/defaults/site"
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard, exact: true },
   { title: "Interviews", url: "/dashboard/interviews", icon: Mic },
   { title: "Documents", url: "/dashboard/documents", icon: FileText },
+  { title: "Profile prep", url: "/dashboard/profile", icon: UserRoundCheck },
   { title: "Document Chat", url: "/dashboard/chat", icon: MessagesSquare },
   { title: "Settings", url: "/dashboard/settings", icon: Settings2 },
 ]

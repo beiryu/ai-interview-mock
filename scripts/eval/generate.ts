@@ -4,6 +4,7 @@ import {
   isFallback,
   loadQuestions,
   percentile,
+  prepBrief,
   rawBrief,
   writeRun,
   type AnswerRecord,
@@ -28,7 +29,8 @@ export async function generate(
   }
 
   const groundTruth = await rawBrief(opts.interviewId)
-  const brief = groundTruth
+  const brief =
+    preset.brief === "prep" ? await prepBrief(opts.interviewId) : groundTruth
   const questions = loadQuestions().filter(
     (q) => !opts.only || q.kind === opts.only || q.id === opts.only
   )

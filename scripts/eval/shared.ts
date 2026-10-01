@@ -6,6 +6,8 @@ import type { Turn } from "../../lib/ai/judge"
 import { db } from "../../lib/db"
 import { buildInterviewBrief } from "../../lib/interview/brief"
 import { loadInterviewBrief } from "../../lib/interview/load-brief"
+import { renderPrepBrief } from "../../lib/prep/render"
+import { ProfilePrepSchema } from "../../lib/prep/schema"
 
 export const EVAL_DIR = path.join(process.cwd(), "eval")
 export const RESULTS_DIR = path.join(EVAL_DIR, "results")
@@ -104,6 +106,40 @@ export async function rawBrief(interviewId?: string) {
     documents,
     BRIEF_MAX_CHARS
   )
+}
+
+export async function evalUserId() {
+  const user = await db.user.findFirst({ select: { id: true } })
+  if (!user) throw new Error("No user in the database")
+  return user.id
+}
+
+/** The coach brief from the prep pack, as the app builds it. */
+export async function prepBrief(interviewId?: string) {
+  const userId = await evalUserId()
+  if (interviewId) {
+    const brief = await loadInterviewBrief(interviewId, userId)
+    const prep = await db.profilePrep.findUnique({ where: { userId } })
+    if (!prep?.content)
+      throw new Error("No profile prep: run `pnpm ai:eval prep` first")
+    return brief
+  }
+  const row = await db.profilePrep.findUnique({ where: { userId } })
+  const profile = ProfilePrepSchema.safeParse(row?.content)
+  if (!profile.success) {
+    throw new Error("No profile prep: run `pnpm ai:eval prep` first")
+  }
+  const documents = await rawBrief()
+  return renderPrepBrief({
+    interview: {
+      companyName: "Acme",
+      jobTitle: "Senior Backend Engineer",
+      notes: null,
+    },
+    profile: profile.data,
+    interviewPrep: null,
+    documents: documents.slice(documents.indexOf("## Candidate documents")),
+  })
 }
 
 export function percentile(values: number[], p: number) {

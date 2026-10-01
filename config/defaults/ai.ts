@@ -31,6 +31,14 @@ export const AI_TASKS = {
     maxTokens: 260,
     cacheKey: "answer-coach",
   },
+  // Before the interview: digests documents into the prep pack (facts,
+  // STAR stories, JD mapping). Quality over speed; runs in the background.
+  prep: {
+    model: "deepseek/deepseek-v4-pro",
+    maxTokens: 8000,
+    temperature: 0.2,
+    timeoutMs: 180_000,
+  },
   // Scores answers in `pnpm ai:eval`; must be another model family than
   // the ones it grades (self-preference bias)
   grader: {
@@ -48,6 +56,9 @@ export const JUDGE_CONTEXT_CHARS = 1500
 
 // Interview brief (CV, JD, notes) in the coach's instructions; ~8k tokens
 export const BRIEF_MAX_CHARS = 32_000
+
+// Documents given to the prep model (it can read much more than the coach)
+export const PREP_MAX_DOC_CHARS = 60_000
 
 // Document Chat (OpenAI SDK + hosted vector store) until it is replaced by
 // the in-interview chat

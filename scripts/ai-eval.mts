@@ -8,6 +8,8 @@
  *       labelled turn-judge cases: pass/fail + latency
  *   pnpm ai:eval coach [--model …] [--interview <id>]
  *       a few coach answers twice: latency, prompt caching, format
+ *   pnpm ai:eval prep [--interview <id>]
+ *       builds the profile prep (and that interview's prep) now
  *   pnpm ai:eval generate --preset <name> [--interview <id>] [--only <kind|id>]
  *       answers eval/coach-questions.json, saves eval/results/<run>.json
  *   pnpm ai:eval grade <run.json> [--grader <model>]
@@ -19,9 +21,10 @@ import { parseArgs } from "node:util"
 
 import { AI_TASKS } from "../config/defaults/ai"
 import { db } from "../lib/db"
+import { prepareInterviewNow, prepareProfileNow } from "../lib/prep/service"
 import { generate } from "./eval/generate"
 import { compare, grade } from "./eval/grade"
-import { rawBrief } from "./eval/shared"
+import { evalUserId, rawBrief } from "./eval/shared"
 import { evalCoach, evalJudge } from "./eval/smoke"
 
 const { values: args, positionals } = parseArgs({
@@ -48,6 +51,19 @@ try {
         await rawBrief(args.interview)
       )
       break
+    case "prep": {
+      const userId = await evalUserId()
+      const started = performance.now()
+      if (args.interview) await prepareInterviewNow(args.interview, userId)
+      else await prepareProfileNow(userId)
+      const row = await db.profilePrep.findUnique({ where: { userId } })
+      console.log(
+        `profile prep: ${row?.status}${
+          row?.error ? ` (${row.error})` : ""
+        } · ${Math.round((performance.now() - started) / 1000)}s`
+      )
+      break
+    }
     case "generate":
       await generate(args.preset ?? "current", {
         interviewId: args.interview,
@@ -65,7 +81,7 @@ try {
       break
     default:
       console.log(
-        "Commands: judge | coach | generate | grade | compare (see scripts/ai-eval.mts)"
+        "Commands: judge | coach | prep | generate | grade | compare (see scripts/ai-eval.mts)"
       )
   }
 } finally {
