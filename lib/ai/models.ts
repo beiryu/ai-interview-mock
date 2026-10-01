@@ -1,46 +1,42 @@
-import { createOpenAI } from "@ai-sdk/openai"
-import type { LanguageModel } from "ai"
+import { createGateway, type LanguageModel } from "ai"
 
 import { env } from "@/env.mjs"
+import { AI_TASKS, type AiTask, type AiTaskName } from "@/config/defaults/ai"
 
-import { parseModelSpec, type ModelSpec } from "./model-spec"
+import { parseModelId } from "./model-spec"
 
 /**
- * The one place that knows about AI providers. Everything else asks for a
- * model by "provider:model" (config/defaults/ai.ts). To add a provider:
- * install its @ai-sdk package, add it to PROVIDERS in ./model-spec.ts and
- * to the two switches below.
+ * The one place that knows how models are reached: every call goes through
+ * the Vercel AI Gateway, so a model is just a gateway id from
+ * config/defaults/ai.ts and no provider SDK or key lives in the app.
  */
 
-const openai = createOpenAI({
-  apiKey: env.OPENAI_API_KEY,
-  baseURL: env.OPENAI_BASE_URL,
-})
+const gateway = createGateway({ apiKey: env.AI_GATEWAY_API_KEY })
 
-export function languageModel(spec: string): LanguageModel {
-  const { provider, modelId } = parseModelSpec(spec)
-  switch (provider) {
-    case "openai":
-      return openai(modelId)
-  }
+export function languageModel(id: string): LanguageModel {
+  parseModelId(id) // fail fast on a malformed id
+  return gateway(id)
 }
 
 /**
- * Per-provider request options: prompt caching for a stable prefix (e.g.
- * the coach's brief) and no server-side storage of interview content.
+ * Request options for a task: gateway routing (fallbacks, caching, usage
+ * tags) plus provider-specific settings for whichever provider serves it.
+ * `model` differs from the task's when an eval overrides it; fallbacks only
+ * apply to the configured model so an eval measures the model it names.
  */
-export function providerOptions(
-  spec: string,
-  opts: { cacheKey?: string } = {}
-) {
-  const { provider }: ModelSpec = parseModelSpec(spec)
-  switch (provider) {
-    case "openai":
-      return {
-        openai: {
-          store: false,
-          ...(opts.cacheKey ? { promptCacheKey: opts.cacheKey } : {}),
-        },
-      }
+export function providerOptions(name: AiTaskName, model: string) {
+  const task: AiTask = AI_TASKS[name]
+  const fallback = model === task.model ? task.fallback : undefined
+  return {
+    gateway: {
+      caching: "auto" as const,
+      tags: [`task:${name}`],
+      ...(fallback?.length ? { models: [...fallback] } : {}),
+    },
+    // Applied only if the request is served by OpenAI (primary or fallback)
+    openai: {
+      store: false,
+      ...(task.cacheKey ? { promptCacheKey: task.cacheKey } : {}),
+    },
   }
 }

@@ -47,7 +47,9 @@ export async function POST(req: Request) {
         for await (const delta of result.textStream) {
           controller.enqueue(line({ type: "delta", text: delta }))
         }
-        controller.enqueue(line({ type: "done" }))
+        // Which model actually answered (a gateway fallback shows here)
+        const { modelId } = await result.response
+        controller.enqueue(line({ type: "done", model: modelId }))
       } catch {
         // Aborted by the client; provider errors are logged in onError
       } finally {

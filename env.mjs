@@ -16,6 +16,8 @@ export const env = createEnv({
     OPENAI_BASE_URL: z.string().min(1),
     // Optional so the app boots without it; /api/stt/token reports it missing
     SONIOX_API_KEY: z.string().min(1).optional(),
+    // Vercel AI Gateway: every LLM call (judge, coach, …) goes through it
+    AI_GATEWAY_API_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().min(1),
@@ -31,5 +33,6 @@ export const env = createEnv({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
     SONIOX_API_KEY: process.env.SONIOX_API_KEY,
+    AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
   },
 })

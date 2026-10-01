@@ -36,6 +36,8 @@ export interface AnswerMetrics {
   endpointLagMs: number | null
   /** Judge round-trip for this question (null until it answers) */
   judgeMs: number | null
+  /** Model that wrote the answer (shows when the gateway fell back) */
+  model: string | null
 }
 
 export interface QuestionAnalysis {

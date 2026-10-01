@@ -1,9 +1,8 @@
-import { Output, generateText } from "ai"
 import { z } from "zod"
 
-import { AI_DEFAULTS } from "@/config/defaults/ai"
+import { JUDGE_CONTEXT_CHARS } from "@/config/defaults/ai"
 
-import { languageModel, providerOptions } from "./models"
+import { runObject } from "./run"
 
 /**
  * The turn judge: is the interviewer's latest speech an ask, is it finished,
@@ -69,7 +68,7 @@ export function buildJudgeInput({
   text,
   context,
   lastAnsweredQuestion,
-  maxContextChars = AI_DEFAULTS.judge.maxContextChars,
+  maxContextChars = JUDGE_CONTEXT_CHARS,
 }: {
   text: string
   context: Turn[]
@@ -92,31 +91,21 @@ export function buildJudgeInput({
 /** Throws on timeout, abort, provider or schema errors. */
 export async function judgeTurn({
   abortSignal,
-  model = AI_DEFAULTS.judge.model,
+  model,
   ...input
 }: {
   text: string
   context: Turn[]
   lastAnsweredQuestion: string | null
   abortSignal?: AbortSignal
-  /** Override for evals ("provider:model") */
+  /** Gateway id overriding the configured model (evals) */
   model?: string
 }): Promise<Verdict> {
-  const judge = AI_DEFAULTS.judge
-  const { output } = await generateText({
-    model: languageModel(model),
+  const { output } = await runObject("judge", VerdictSchema, {
     instructions: SYSTEM_PROMPT,
     prompt: buildJudgeInput(input),
-    output: Output.object({ schema: VerdictSchema }),
-    temperature: 0,
-    maxOutputTokens: judge.maxTokens,
-    // A retry would land after the timeout anyway
-    maxRetries: 0,
-    abortSignal: AbortSignal.any([
-      ...(abortSignal ? [abortSignal] : []),
-      AbortSignal.timeout(judge.timeoutMs),
-    ]),
-    providerOptions: providerOptions(model),
+    abortSignal,
+    model,
   })
   return output
 }

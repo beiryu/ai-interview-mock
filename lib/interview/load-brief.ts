@@ -1,4 +1,4 @@
-import { AI_DEFAULTS } from "@/config/defaults/ai"
+import { BRIEF_MAX_CHARS } from "@/config/defaults/ai"
 import { db } from "@/lib/db"
 
 import { buildInterviewBrief } from "./brief"
@@ -26,6 +26,6 @@ export async function loadInterviewBrief(interviewId: string, userId: string) {
   return buildInterviewBrief(
     interview,
     documents,
-    AI_DEFAULTS.coach.maxBriefChars
+    BRIEF_MAX_CHARS
   )
 }

@@ -8,6 +8,8 @@ export interface StreamAnswerRequest {
 
 export interface StreamAnswerHandlers {
   onDelta: (text: string) => void
+  /** Stream finished; `model` is the model that actually answered */
+  onDone?: (meta: { model: string | null }) => void
 }
 
 /**
@@ -50,6 +52,8 @@ export async function streamAnswer(
       if (!line.trim()) continue
       const event = JSON.parse(line)
       if (event.type === "delta") handlers.onDelta(event.text)
+      else if (event.type === "done")
+        handlers.onDone?.({ model: event.model ?? null })
     }
   }
 }

@@ -5,7 +5,7 @@
  * model or prompt (config/defaults/ai.ts, lib/ai/*).
  *
  *   pnpm ai:eval                                  # both, configured models
- *   pnpm ai:eval --only judge --model openai:gpt-4.1-nano
+ *   pnpm ai:eval --only judge --model openai/gpt-4.1-nano
  *   pnpm ai:eval --only coach --interview <interviewId>
  *
  * Needs OPENAI_API_KEY (+ provider keys for other models) and the database
@@ -13,7 +13,7 @@
  */
 import { parseArgs } from "node:util"
 
-import { AI_DEFAULTS } from "../config/defaults/ai"
+import { AI_TASKS, BRIEF_MAX_CHARS } from "../config/defaults/ai"
 import { streamCoachAnswer } from "../lib/ai/coach"
 import { judgeTurn, type Turn, type Verdict } from "../lib/ai/judge"
 import { splitAnswer } from "../lib/answer/format"
@@ -186,7 +186,7 @@ async function coachBrief() {
   return buildInterviewBrief(
     { companyName: "Acme", jobTitle: "Senior Backend Engineer", notes: null },
     documents,
-    AI_DEFAULTS.coach.maxBriefChars
+    BRIEF_MAX_CHARS
   )
 }
 
@@ -213,6 +213,7 @@ async function evalCoach(model: string) {
         answer += delta
       }
       const usage = await result.usage
+      const { modelId } = await result.response
       const { points, script } = splitAnswer(answer)
       const formatOk = points.length === 3 && script.length > 0
 
@@ -223,7 +224,7 @@ async function evalCoach(model: string) {
           `input ${usage.inputTokens} (cached ${
             usage.inputTokenDetails.cacheReadTokens ?? 0
           }) · ` +
-          `format ${formatOk ? "ok" : "✗"}`
+          `format ${formatOk ? "ok" : "✗"} · ${modelId}`
       )
       if (attempt === 1)
         console.log(`    ${answer.trim().replace(/\n/g, "\n    ")}`)
@@ -235,10 +236,8 @@ async function evalCoach(model: string) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 try {
-  if (args.only !== "coach")
-    await evalJudge(args.model ?? AI_DEFAULTS.judge.model)
-  if (args.only !== "judge")
-    await evalCoach(args.model ?? AI_DEFAULTS.coach.model)
+  if (args.only !== "coach") await evalJudge(args.model ?? AI_TASKS.judge.model)
+  if (args.only !== "judge") await evalCoach(args.model ?? AI_TASKS.coach.model)
 } finally {
   await db.$disconnect()
 }

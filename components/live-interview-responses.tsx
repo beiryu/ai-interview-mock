@@ -18,6 +18,11 @@ function ms(value: number | null) {
   return value === null ? "…" : `${value}ms`
 }
 
+/** "deepseek/deepseek-v4.1-flash" → "deepseek-v4.1-flash" */
+function shortModel(model: string) {
+  return model.slice(model.indexOf("/") + 1)
+}
+
 function LatencyBadge({ metrics }: { metrics: AnswerMetrics }) {
   const first =
     metrics.firstTokenMs === null
@@ -31,6 +36,7 @@ function LatencyBadge({ metrics }: { metrics: AnswerMetrics }) {
     metrics.endpointLagMs !== null && `<end> lag ${metrics.endpointLagMs}ms`,
     `judge ${ms(metrics.judgeMs)}`,
     `first token ${first}${metrics.speculated ? " ⚡" : ""}`,
+    metrics.model && shortModel(metrics.model),
     metrics.discardedSpeculations > 0 &&
       `${metrics.discardedSpeculations} draft${
         metrics.discardedSpeculations > 1 ? "s" : ""

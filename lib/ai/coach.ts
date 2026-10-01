@@ -1,8 +1,4 @@
-import { streamText } from "ai"
-
-import { AI_DEFAULTS } from "@/config/defaults/ai"
-
-import { languageModel, providerOptions } from "./models"
+import { runStream } from "./run"
 
 /**
  * The live answer coach: one streaming call, no tools, no memory. What it
@@ -80,26 +76,20 @@ export function streamCoachAnswer({
   language,
   text,
   abortSignal,
-  model = AI_DEFAULTS.coach.model,
+  model,
 }: {
   brief: string
   context: Turn[]
   language: string | null
   text: string
   abortSignal?: AbortSignal
-  /** Override for evals ("provider:model") */
+  /** Gateway id overriding the configured model (evals) */
   model?: string
 }) {
-  return streamText({
-    model: languageModel(model),
+  return runStream("coach", {
     instructions: coachInstructions(brief),
     prompt: buildCoachInput({ context, language, text }),
-    maxOutputTokens: AI_DEFAULTS.coach.maxTokens,
     abortSignal,
-    // Same key → same cache shard, so the brief prefix actually gets reused
-    providerOptions: providerOptions(model, { cacheKey: "answer-coach" }),
-    onError: ({ error }) => {
-      if (!abortSignal?.aborted) console.error("Answer coach error:", error)
-    },
+    model,
   })
 }

@@ -217,6 +217,8 @@ interface AnswerRun {
   controller: AbortController
   text: string
   firstTokenAt: number | null
+  /** Model that answered, once the stream is done */
+  model: string | null
   /** Card showing this run; null while it is a hidden draft */
   messageId: string | null
   commitAt: number | null
@@ -233,6 +235,7 @@ function startAnswer(question: string, language: string | null): AnswerRun {
     controller: new AbortController(),
     text: "",
     firstTokenAt: null,
+    model: null,
     messageId: null,
     commitAt: null,
   }
@@ -254,6 +257,10 @@ function startAnswer(question: string, language: string | null): AnswerRun {
         updateAnalysis(run.messageId, (a) => ({
           suggestedAnswer: a.suggestedAnswer + delta,
         }))
+      },
+      onDone: ({ model }) => {
+        run.model = model
+        if (run.messageId) updateMetrics(run.messageId, { model })
       },
     },
     run.controller.signal
@@ -278,6 +285,8 @@ function showAnswer(run: AnswerRun, messageId: string, commitAt: number) {
       firstTokenMs: Math.max(0, Math.round(run.firstTokenAt - commitAt)),
     })
   }
+  // A promoted draft may have finished before it got a card
+  if (run.model) updateMetrics(messageId, { model: run.model })
   lastAnsweredQuestion = run.question
   store.setState({ status: "answering", skipReason: null })
 }
@@ -434,6 +443,7 @@ function commitInterviewerTurn(turn: CommittedTurn) {
     discardedSpeculations: draftsDiscarded,
     endpointLagMs: turn.endpointLagMs,
     judgeMs: null,
+    model: null,
   }
   draftsDiscarded = 0
 

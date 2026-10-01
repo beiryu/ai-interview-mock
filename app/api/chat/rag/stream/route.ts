@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 import { z } from "zod"
 
-import { AI_DEFAULTS } from "@/config/defaults/ai"
+import { DOCUMENT_CHAT } from "@/config/defaults/ai"
 import { saveChatInteraction } from "@/lib/chat/persistence"
 import { db } from "@/lib/db"
 import {
@@ -93,9 +93,9 @@ export async function POST(req: NextRequest) {
           // With selected docs: file_search on vector store; otherwise general chat (no RAG).
           let newResponseId: string | undefined
           const modelArgs = {
-            model: AI_DEFAULTS.chat.model,
-            temperature: AI_DEFAULTS.chat.temperature,
-            maxOutputTokens: AI_DEFAULTS.chat.maxTokens,
+            model: DOCUMENT_CHAT.model,
+            temperature: DOCUMENT_CHAT.temperature,
+            maxOutputTokens: DOCUMENT_CHAT.maxTokens,
           }
           const streamIterator = hasDocSelection
             ? streamWithFileSearch(
