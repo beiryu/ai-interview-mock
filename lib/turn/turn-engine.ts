@@ -81,6 +81,11 @@ export interface TurnEngineCallbacks {
 // 0.02–0.2; headphone mic noise floors sit well under 0.01.
 export const SPEECH_RMS = 0.015
 
+// Words the interviewer may add after a commit and still count as amending
+// the same question ("Cụ thể là trên production nhé"). Longer, complete
+// sentences are a new question even if they come quickly.
+const AMEND_MAX_WORDS = 6
+
 interface Stream {
   finalText: string
   partial: string
@@ -130,7 +135,11 @@ export class TurnEngine {
   /** Text last handed to onPause (null = no pause in progress) */
   private pausedText: string | null = null
   private verdict: { forText: string; verdict: TurnVerdict } | null = null
-  private lastCommit: { text: string; at: number } | null = null
+  private lastCommit: {
+    text: string
+    language: string | null
+    at: number
+  } | null = null
   private amending = false
   private status: TurnStatus = "idle"
 
@@ -196,8 +205,18 @@ export class TurnEngine {
     const after = joinText(stream.finalText, stream.partial)
     this.callbacks.onLive?.(role, after, dominantLanguage(stream.languageChars))
 
+    // Words Soniox finalizes after our finalize request, while the speaker
+    // is silent, are the tail of what was already said — not new speech.
+    // Treating them as activity would drop the draft started at the pause.
+    const finalizing =
+      role === "interviewer" && this.finalizeSent && !stream.speaking
+
     // New words (not just re-punctuation of the same words) mean speech
-    if (textSimilarity(before, after) < 1 && after.length > before.length) {
+    if (
+      !finalizing &&
+      textSimilarity(before, after) < 1 &&
+      after.length > before.length
+    ) {
       stream.lastSpeechAt = Math.max(stream.lastSpeechAt, now)
       stream.endpointSeen = false
       if (role === "interviewer") this.onInterviewerActivity(now)
@@ -334,7 +353,10 @@ export class TurnEngine {
   ) {
     const s = this.streams.interviewer
     const language = dominantLanguage(s.languageChars)
-    const amends = this.amending && this.lastCommit !== null
+    const amends =
+      this.amending &&
+      this.lastCommit !== null &&
+      this.looksLikeAmendment(text, language, this.lastCommit.language)
     const fullText = amends ? joinText(`${this.lastCommit!.text} `, text) : text
     const answerable =
       reason === "manual" || (!isBackchannel(text) && worthJudging(fullText))
@@ -349,7 +371,7 @@ export class TurnEngine {
       endpointLagMs: s.endpointSeen ? s.endpointLagMs : null,
     })
 
-    if (answerable) this.lastCommit = { text: fullText, at: now }
+    if (answerable) this.lastCommit = { text: fullText, language, at: now }
     this.amending = false
     this.pausedText = null
     this.verdict = null
@@ -361,6 +383,19 @@ export class TurnEngine {
     }
     this.callbacks.onLive?.("interviewer", "", null)
     this.setStatus("idle")
+  }
+
+  /** A quick addition to the last question rather than a new one. */
+  private looksLikeAmendment(
+    text: string,
+    language: string | null,
+    previousLanguage: string | null
+  ) {
+    if (language && previousLanguage && language !== previousLanguage) {
+      return false
+    }
+    const words = text.split(/\s+/).filter(Boolean).length
+    return words <= AMEND_MAX_WORDS || scoreCompleteness(text) !== "complete"
   }
 
   private flushCandidate() {

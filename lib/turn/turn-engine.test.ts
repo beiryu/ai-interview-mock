@@ -201,6 +201,72 @@ describe("TurnEngine", () => {
     })
   })
 
+  it("does not amend with a question in another language", () => {
+    h.advance(1000, { interviewer: LOUD })
+    h.say(
+      "interviewer",
+      "Em hãy giới thiệu về dự án gần nhất được không?",
+      "vi"
+    )
+    h.advance(1000, {})
+    expect(h.commits).toHaveLength(1)
+
+    h.advance(800, { interviewer: LOUD })
+    h.say("interviewer", "Tell me about a time you disagreed with your team?")
+    h.advance(1000, {})
+    expect(h.commits).toHaveLength(2)
+    expect(h.commits[1]).toMatchObject({
+      amends: false,
+      text: "Tell me about a time you disagreed with your team?",
+      language: "en",
+    })
+  })
+
+  it("does not amend with a long, complete new question", () => {
+    h.advance(1000, { interviewer: LOUD })
+    h.say("interviewer", "Why did you choose Go for that service?")
+    h.advance(1000, {})
+    h.advance(800, { interviewer: LOUD })
+    h.say(
+      "interviewer",
+      "Okay and how did you test the payment flow end to end?"
+    )
+    h.advance(1000, {})
+    expect(h.commits).toHaveLength(2)
+    expect(h.commits[1].amends).toBe(false)
+  })
+
+  it("keeps the draft when Soniox finalizes words after the pause", () => {
+    h.advance(1000, { interviewer: LOUD })
+    h.engine.onTranscript(
+      "interviewer",
+      {
+        finalChunk: "",
+        partial: "Em hãy giới thiệu về dự án gần nhất",
+        languageChars: {},
+      },
+      h.now
+    )
+    h.advance(400, {}) // pause: finalize requested, judge + draft started
+    expect(h.finalizes).toBe(1)
+    expect(h.pauses).toHaveLength(1)
+
+    // Finalized tokens (with the last word that was still pending) arrive
+    // while the interviewer is silent
+    h.engine.onTranscript(
+      "interviewer",
+      {
+        finalChunk: "Em hãy giới thiệu về dự án gần nhất được không?",
+        partial: "",
+        languageChars: { vi: 48 },
+      },
+      h.now
+    )
+    h.advance(100, {})
+    expect(h.resumes).toBe(0)
+    expect(h.pauses).toHaveLength(1)
+  })
+
   it("starts a new question if the candidate answered in between", () => {
     h.advance(1000, { interviewer: LOUD })
     h.say("interviewer", "Why did you choose Go?")
