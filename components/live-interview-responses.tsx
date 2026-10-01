@@ -5,7 +5,7 @@ import { useInterviewSessionStore } from "@/stores/interview-session.store"
 import { RotateCcw, X } from "lucide-react"
 
 import type { AnswerMetrics, QuestionAnalysis } from "@/types/interview-message"
-import { splitAnswer } from "@/lib/answer/format"
+import { isAssumedStory, splitAnswer } from "@/lib/answer/format"
 import { useInterviewPrep, useProfilePrep } from "@/hooks/api/prep/usePrep"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -94,9 +94,9 @@ function AnswerCard({
   evidence: Map<string, string>
 }) {
   const regenerate = useInterviewSessionStore((s) => s.regenerate)
-  const { headline, assumed, points, script } = splitAnswer(
-    response.suggestedAnswer
-  )
+  const parsed = splitAnswer(response.suggestedAnswer)
+  const { headline, points, script } = parsed
+  const assumed = isAssumedStory(parsed, response.kind)
   const empty = response.suggestedAnswer.length === 0
 
   return (

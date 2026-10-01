@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { splitAnswer, splitTags } from "./format"
+import { isAssumedStory, splitAnswer, splitTags } from "./format"
 
 describe("splitAnswer", () => {
   it("parses headline, tagged points and the spoken answer", () => {
@@ -86,5 +86,18 @@ describe("splitTags", () => {
       text: "Matchmaking on Redis",
       tags: ["P1", "S2"],
     })
+  })
+})
+
+describe("isAssumedStory", () => {
+  const answer = (tags: string) =>
+    splitAnswer(
+      `Disagreement\n- Proposed a simpler path ${tags}\n---\nAt DZNS I…`
+    )
+
+  it("treats a behavioral answer without a prep story as assumed", () => {
+    expect(isAssumedStory(answer("[P7]"), "behavioral")).toBe(true)
+    expect(isAssumedStory(answer("[S3]"), "behavioral")).toBe(false)
+    expect(isAssumedStory(answer("[P7]"), "technical")).toBe(false)
   })
 })

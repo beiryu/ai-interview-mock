@@ -43,9 +43,12 @@ export const AI_TASKS = {
   },
   // Live: 3 key points + 1–3 spoken sentences; the cap bounds tail latency
   coach: {
-    providers: DEEPSEEK_FLASH_PROVIDERS,
+    // Pro over Flash (same 6 real-CV questions): honest about "Spring, not
+    // Spring Boot", no rule text leaking into answers, better salary
+    // answer; first token p50 1.69 s vs 1.56 s, a few cents more per
+    // interview thanks to the cached brief
     reasoning: "none",
-    model: "deepseek/deepseek-v4.1-flash",
+    model: "deepseek/deepseek-v4-pro",
     fallback: ["openai/gpt-4.1-mini"],
     maxTokens: 260,
     cacheKey: "answer-coach",

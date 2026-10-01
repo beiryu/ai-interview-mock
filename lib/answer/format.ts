@@ -67,6 +67,17 @@ function headlineOf(raw: string) {
   }
 }
 
+/**
+ * The model doesn't reliably mark assumed stories, so this also infers it:
+ * a behavioral answer that cites no prep story (S*) tells an event the
+ * candidate never wrote down.
+ */
+export function isAssumedStory(parsed: ParsedAnswer, kind?: string | null) {
+  if (parsed.assumed) return true
+  if (kind !== "behavioral" || !parsed.script) return false
+  return !parsed.points.some((p) => p.tags.some((t) => t.startsWith("S")))
+}
+
 export function splitAnswer(text: string): ParsedAnswer {
   const [head, ...rest] = text.split(/\n\s*---\s*\n?/)
   const hasSeparator = rest.length > 0

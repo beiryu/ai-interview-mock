@@ -12,9 +12,9 @@ export interface AnswerIssue {
 
 const NEGATION =
   /\b(not|never|no|haven't|hasn't|didn't|don't|without|yet to|chưa|không|chẳng)\b/i
-// Talking about learning something is not claiming it
+// Talking about learning something, or hedging, is not claiming it
 const LEARNING =
-  /\b(learn|learning|pick (it |\w+ )?up|ramp up|get up to speed|similar|carry over|transfer|sẵn sàng học|học nhanh|tìm hiểu)\b/i
+  /\b(learn|learning|pick (it |\w+ )?up|ramp up|get up to speed|similar|carry over|transfer|limited|basic|sẵn sàng học|học nhanh|tìm hiểu|hạn chế|cơ bản)\b/i
 
 // Numbers worth checking: percentages, amounts, counts with units, years
 const NUMBER =
