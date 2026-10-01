@@ -7,6 +7,28 @@ import {
   type ProfilePrep,
 } from "./schema"
 
+// The brief is sent with every answer: input size drives cost and time to
+// first token (a full CV prep rendered to ~31k chars ≈ 8k tokens). The
+// stored prep stays complete; only what the coach reads is trimmed.
+const MAX_HIGHLIGHTS = 4
+const MAX_STACK = 10
+const MAX_QUESTIONS = 8
+const MAX_POINTS = 2
+
+/** Highlights with numbers first (the concrete ones), original order kept. */
+export function topHighlights(highlights: string[], max = MAX_HIGHLIGHTS) {
+  const scored = highlights.map((text, index) => ({
+    text,
+    index,
+    score: /\d/.test(text) ? 1 : 0,
+  }))
+  return scored
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, max)
+    .sort((a, b) => a.index - b.index)
+    .map((h) => h.text)
+}
+
 /**
  * Renders the prep pack as the coach's brief: compact text with the ids
  * answers cite. Deterministic (same prep → same text) so the prefix stays
@@ -65,8 +87,10 @@ export function renderPrepBrief({
               .filter(Boolean)
               .join(", ")
             const lines = [`${f.id} ${f.title}${meta ? ` — ${meta}` : ""}`]
-            if (f.stack.length) lines.push(`  stack: ${f.stack.join(", ")}`)
-            for (const h of f.highlights) lines.push(`  - ${h}`)
+            if (f.stack.length) {
+              lines.push(`  stack: ${f.stack.slice(0, MAX_STACK).join(", ")}`)
+            }
+            for (const h of topHighlights(f.highlights)) lines.push(`  - ${h}`)
             return lines.join("\n")
           })
           .join("\n")
@@ -111,10 +135,14 @@ export function renderPrepBrief({
     sections.push(
       "## Prepared answers to likely questions\n" +
         interviewPrep.likelyQuestions
+          .slice(0, MAX_QUESTIONS)
           .map(
             (q) =>
               `Q: ${q.question}\n` +
-              q.points.map((p) => `  - ${p}`).join("\n") +
+              q.points
+                .slice(0, MAX_POINTS)
+                .map((p) => `  - ${p}`)
+                .join("\n") +
               (q.refs.length ? `\n  refs: ${q.refs.join(", ")}` : "")
           )
           .join("\n")

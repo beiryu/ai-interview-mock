@@ -32,6 +32,10 @@ export function providerOptions(name: AiTaskName, model: string) {
       caching: "auto" as const,
       tags: [`task:${name}`],
       ...(fallback?.length ? { models: [...fallback] } : {}),
+      // Pin hosts only for the configured model (an eval may name another)
+      ...(model === task.model && task.providers?.length
+        ? { order: [...task.providers] }
+        : {}),
     },
     // Applied only if the request is served by OpenAI (primary or fallback)
     openai: {

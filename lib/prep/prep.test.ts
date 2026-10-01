@@ -7,7 +7,7 @@ import {
   mergeInterviewPrep,
   mergePersonal,
 } from "./merge"
-import { renderPrepBrief } from "./render"
+import { renderPrepBrief, topHighlights } from "./render"
 import { EMPTY_PERSONAL, type Fact, type ProfilePrep } from "./schema"
 import { interviewSourceHash, profileSourceHash } from "./source"
 
@@ -179,5 +179,22 @@ describe("notInDocuments", () => {
         cv
       )
     ).toEqual(["Kafka", "Rust", "gRPC"])
+  })
+})
+
+describe("topHighlights", () => {
+  it("keeps the concrete (numbered) ones first, in original order", () => {
+    expect(
+      topHighlights(
+        [
+          "Built APIs",
+          "Cut load 40%",
+          "Mentored juniors",
+          "Sped up 2x",
+          "Wrote docs",
+        ],
+        3
+      )
+    ).toEqual(["Built APIs", "Cut load 40%", "Sped up 2x"])
   })
 })

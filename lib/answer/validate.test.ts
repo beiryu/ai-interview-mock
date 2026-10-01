@@ -62,7 +62,7 @@ describe("validateAnswer", () => {
     ])
     expect(
       check(
-        "Honest answer\n- RabbitMQ instead\n---\nI haven't used Kafka in production, but I ran RabbitMQ."
+        "Honest answer\n- Happy to learn Kafka; concepts carry over\n---\nI haven't used Kafka in production, but I ran RabbitMQ, so I'd pick Kafka up quickly."
       )
     ).toEqual([])
   })

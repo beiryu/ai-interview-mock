@@ -18,12 +18,23 @@ export interface AiTask {
    * output budget on it, so live tasks must say "none".
    */
   reasoning?: "none" | "low" | "medium" | "high" | "provider-default"
+  /**
+   * Gateway providers to try first, in order. A model like DeepSeek is
+   * served by many hosts; rotating between them misses the prompt cache
+   * (cached 0 / 512 / 8192 tokens on the same brief), pinning keeps it warm.
+   */
+  providers?: string[]
 }
+
+// Hosts for DeepSeek V4.1 Flash, fastest first in our runs; the gateway
+// falls back to others if both fail
+const DEEPSEEK_FLASH_PROVIDERS = ["baseten", "fireworks"]
 
 export const AI_TASKS = {
   // Live: is the interviewer done, and what exactly did they ask? On any
   // failure the turn engine falls back to its own heuristics.
   judge: {
+    providers: DEEPSEEK_FLASH_PROVIDERS,
     reasoning: "none",
     model: "deepseek/deepseek-v4.1-flash",
     maxTokens: 160,
@@ -32,6 +43,7 @@ export const AI_TASKS = {
   },
   // Live: 3 key points + 1–3 spoken sentences; the cap bounds tail latency
   coach: {
+    providers: DEEPSEEK_FLASH_PROVIDERS,
     reasoning: "none",
     model: "deepseek/deepseek-v4.1-flash",
     fallback: ["openai/gpt-4.1-mini"],
@@ -40,6 +52,7 @@ export const AI_TASKS = {
   },
   // Live: the chat panel in the interview (you type; latency-tolerant)
   chat: {
+    providers: DEEPSEEK_FLASH_PROVIDERS,
     reasoning: "none",
     model: "deepseek/deepseek-v4.1-flash",
     fallback: ["openai/gpt-4.1-mini"],
@@ -49,6 +62,7 @@ export const AI_TASKS = {
   },
   // Background, after each answered question: updates the session ledger
   ledger: {
+    providers: DEEPSEEK_FLASH_PROVIDERS,
     reasoning: "none",
     model: "deepseek/deepseek-v4.1-flash",
     maxTokens: 400,

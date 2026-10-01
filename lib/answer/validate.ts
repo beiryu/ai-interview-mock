@@ -12,6 +12,9 @@ export interface AnswerIssue {
 
 const NEGATION =
   /\b(not|never|no|haven't|hasn't|didn't|don't|without|yet to|chưa|không|chẳng)\b/i
+// Talking about learning something is not claiming it
+const LEARNING =
+  /\b(learn|learning|pick (it |\w+ )?up|ramp up|get up to speed|similar|carry over|transfer|sẵn sàng học|học nhanh|tìm hiểu)\b/i
 
 // Numbers worth checking: percentages, amounts, counts with units, years
 const NUMBER =
@@ -83,7 +86,9 @@ export function validateAnswer({
       `\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
       "i"
     )
-    const claimed = sentences.some((s) => pattern.test(s) && !NEGATION.test(s))
+    const claimed = sentences.some(
+      (s) => pattern.test(s) && !NEGATION.test(s) && !LEARNING.test(s)
+    )
     if (claimed) {
       issues.push({
         kind: "never-claim",

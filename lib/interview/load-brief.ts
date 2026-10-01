@@ -5,13 +5,11 @@ import { InterviewPrepSchema, ProfilePrepSchema } from "@/lib/prep/schema"
 
 import { buildInterviewBrief } from "./brief"
 
-const NO_INTERVIEW = { companyName: null, jobTitle: null, notes: null }
-
 /**
  * The coach's brief for one of the user's interviews ("" if none / not
- * theirs). With a profile prep it is the rendered prep pack plus the raw
- * documents for detail; without one it falls back to the raw documents, so
- * a missing or failed prep never blocks answering.
+ * theirs). With a profile prep it is the rendered prep pack; without one it
+ * falls back to the raw documents, so a missing or failed prep never blocks
+ * answering.
  */
 export async function loadInterviewBrief(interviewId: string, userId: string) {
   return (await loadCoachContext(interviewId, userId)).brief
@@ -67,12 +65,10 @@ export async function loadCoachContext(
     interviewPrep: interviewPrep.success ? interviewPrep.data : null,
     documents: "",
   })
-  // Raw documents fill whatever budget the prep leaves
-  const budget = BRIEF_MAX_CHARS - prepBrief.length
-  const raw =
-    budget > 500 ? buildInterviewBrief(NO_INTERVIEW, documents, budget) : ""
+  // The prep pack alone: raw documents would roughly double every answer's
+  // input (cost, time to first token) for details the prep already holds
   return {
-    brief: raw ? `${prepBrief}\n\n${raw}` : prepBrief,
+    brief: prepBrief.slice(0, BRIEF_MAX_CHARS),
     knownIds: new Set([
       ...profile.data.facts.map((f) => f.id),
       ...profile.data.stories.map((s) => s.id),
