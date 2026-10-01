@@ -4,7 +4,7 @@ import {
   EMPTY_PERSONAL,
   PERSONAL_LABELS,
   STORY_THEMES,
-  type Personal,
+  type PersonalField,
   type ProfilePrep,
 } from "@/lib/prep/schema"
 import { useProfilePrep } from "@/hooks/api/prep/usePrep"
@@ -76,22 +76,26 @@ export function ProfilePrepEditor() {
             description="Only you know these. Blank fields make the coach leave a [fill in] instead of guessing."
           >
             <div className="grid gap-3 md:grid-cols-2">
-              {(Object.keys(PERSONAL_LABELS) as (keyof Personal)[]).map(
-                (key) => (
-                  <TextField
-                    key={key}
-                    label={PERSONAL_LABELS[key]}
-                    multiline
-                    value={(draft.personal ?? EMPTY_PERSONAL)[key]}
-                    onChange={(value) =>
-                      update((d) => ({
-                        ...d,
-                        personal: { ...d.personal, [key]: value },
-                      }))
-                    }
-                  />
-                )
-              )}
+              {(Object.keys(PERSONAL_LABELS) as PersonalField[]).map((key) => (
+                <TextField
+                  key={key}
+                  label={PERSONAL_LABELS[key]}
+                  multiline
+                  value={(draft.personal ?? EMPTY_PERSONAL)[key]}
+                  onChange={(value) =>
+                    update((d) => ({
+                      ...d,
+                      personal: {
+                        ...d.personal,
+                        [key]: value,
+                        edited: [
+                          ...new Set([...(d.personal.edited ?? []), key]),
+                        ],
+                      },
+                    }))
+                  }
+                />
+              ))}
             </div>
           </Section>
 

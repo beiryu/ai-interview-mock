@@ -57,6 +57,8 @@ export const PersonalSchema = z.object({
   hobbies: z.string(),
   strengths: z.string(),
   weaknesses: z.string(),
+  /** Fields the candidate edited; regeneration never overwrites them */
+  edited: z.array(z.string()).optional(),
 })
 
 export const ProfilePrepSchema = z.object({
@@ -107,7 +109,9 @@ export const EMPTY_PERSONAL: Personal = {
   weaknesses: "",
 }
 
-export const PERSONAL_LABELS: Record<keyof Personal, string> = {
+export type PersonalField = Exclude<keyof Personal, "edited">
+
+export const PERSONAL_LABELS: Record<PersonalField, string> = {
   intro: "30-second intro",
   reasonForLeaving: "Why leaving",
   salaryExpectation: "Salary expectation",

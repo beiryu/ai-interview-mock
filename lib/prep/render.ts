@@ -3,7 +3,7 @@ import type { BriefInterview } from "@/lib/interview/brief"
 import {
   PERSONAL_LABELS,
   type InterviewPrep,
-  type Personal,
+  type PersonalField,
   type ProfilePrep,
 } from "./schema"
 
@@ -89,8 +89,8 @@ export function renderPrepBrief({
   }
 
   sections.push(
-    "## Personal answers (blank = unknown: leave a [fill in] placeholder, never guess)\n" +
-      (Object.keys(PERSONAL_LABELS) as (keyof Personal)[])
+    "## Personal answers (blank = unknown: answer without stating a specific, never guess)\n" +
+      (Object.keys(PERSONAL_LABELS) as PersonalField[])
         .map(
           (key) =>
             `${PERSONAL_LABELS[key]}: ${

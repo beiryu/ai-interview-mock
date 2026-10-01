@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import { notInDocuments } from "./claims"
 import {
   mergeDoNotClaim,
   mergeFacts,
@@ -47,10 +48,16 @@ describe("merge", () => {
 
   it("never overwrites personal answers the candidate filled in", () => {
     const merged = mergePersonal(
-      { ...EMPTY_PERSONAL, salaryExpectation: "2,500 USD" },
+      {
+        ...EMPTY_PERSONAL,
+        salaryExpectation: "2,500 USD",
+        intro: "old generated intro",
+        edited: ["salaryExpectation"],
+      },
       { ...EMPTY_PERSONAL, salaryExpectation: "guess", intro: "I am…" }
     )
     expect(merged.salaryExpectation).toBe("2,500 USD")
+    // Not edited by the candidate: a fresh generated intro replaces it
     expect(merged.intro).toBe("I am…")
   })
 
@@ -151,5 +158,26 @@ describe("source hashes", () => {
     ).not.toBe(
       interviewSourceHash({ interview, jobDocuments: [a], profileHash: "2" })
     )
+  })
+})
+
+describe("notInDocuments", () => {
+  it("drops never-claim entries the documents mention, and notes", () => {
+    const cv =
+      "Skills: Spring, Angular, Go. Nytnorge: Java, Spring, PostgreSQL, Angular."
+    expect(
+      notInDocuments(
+        [
+          "Spring",
+          "Angular",
+          "Go",
+          "Kafka",
+          "Rust",
+          "Team size for X (not specified)",
+          "gRPC",
+        ],
+        cv
+      )
+    ).toEqual(["Kafka", "Rust", "gRPC"])
   })
 })

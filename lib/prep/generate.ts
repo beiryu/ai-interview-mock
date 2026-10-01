@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import { runObject } from "@/lib/ai/run"
 
+import { notInDocuments } from "./claims"
 import {
   mergeDoNotClaim,
   mergeFacts,
@@ -38,12 +39,12 @@ const ClaimsOutput = z.object({
   doNotClaim: z
     .array(z.string())
     .describe(
-      "Skills/technologies interviewers for these roles often ask about that appear NOWHERE in the documents"
+      'Technologies interviewers for these roles often ask about that are NOT mentioned anywhere in the documents (not in skills lists, not in any project). Names only, e.g. "Kafka". Never list something the documents mention, and no notes about missing details.'
     ),
   intro: z
     .string()
     .describe(
-      "A 30-second first-person self-introduction built only from the facts"
+      "A spoken 30-second self-introduction, first person, 3–4 short sentences: current role and focus, the 2 most relevant projects, one strength. Built only from the facts; don't list every employer"
     ),
 })
 const InterviewOutput = z.object({
@@ -112,8 +113,10 @@ export async function generateProfilePrep(
     facts,
     stories,
     doNotClaim: mergeDoNotClaim(
-      previous?.doNotClaim ?? [],
-      claimsOut.output.doNotClaim
+      // Previous entries are re-checked too: an old run may have listed a
+      // skill the documents do mention
+      notInDocuments(previous?.doNotClaim ?? [], documents),
+      notInDocuments(claimsOut.output.doNotClaim, documents)
     ),
     // Only the intro is generated; the rest is the candidate's to fill in
     personal: mergePersonal(previous?.personal, {
@@ -127,20 +130,25 @@ export async function generateInterviewPrep({
   header,
   jobDescription,
   profile,
+  documents,
   previous,
 }: {
   header: string
   jobDescription: string
   profile: ProfilePrep
+  /** The candidate's documents: skills lists live here, not in the facts */
+  documents: string
   previous: InterviewPrep | null
 }): Promise<InterviewPrep> {
   const { output } = await runObject("prep", InterviewOutput, {
     maxRetries: 1,
-    instructions: `You prepare a candidate for a specific interview by mapping the job's requirements to the candidate's real evidence. ${TRUTH_RULES} Evidence must be fact/story ids from the list; when there is none, say so in "gap" and suggest an honest "bridge" to the closest real experience. Likely questions: 8–15, each with short answer points that cite ids in "refs".`,
+    instructions: `You prepare a candidate for a specific interview by mapping the job's requirements to the candidate's real evidence. ${TRUTH_RULES} Evidence must be fact/story ids from the list; count a technology as known when it appears in any fact's stack or highlights, including the skills list. When there is none, say so in "gap" and suggest an honest "bridge" to the closest real experience. Likely questions: 8–15, each with short answer points that cite ids in "refs".`,
     prompt: `${header}\n\nJOB DESCRIPTION:\n${
       jobDescription ||
       "(none — infer typical requirements from the role title only, and mark every requirement's evidence honestly)"
-    }\n\n${factsBlock(profile)}`,
+    }\n\n${factsBlock(
+      profile
+    )}\n\nCANDIDATE DOCUMENTS (a technology in a skills list counts as known):\n${documents}`,
   })
   const ids = new Set([...profile.facts, ...profile.stories].map((x) => x.id))
   return mergeInterviewPrep(previous, {

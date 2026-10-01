@@ -58,16 +58,26 @@ export function mergePersonal(
   generated: ProfilePrep["personal"]
 ): ProfilePrep["personal"] {
   if (!previous) return generated
+  const edited = new Set(previous.edited ?? [])
   const merged = { ...previous }
   for (const key of Object.keys(generated) as (keyof typeof generated)[]) {
-    if (!merged[key]?.trim()) merged[key] = generated[key]
+    if (key === "edited" || edited.has(key)) continue
+    const value = generated[key]
+    // A fresh generated value replaces an old generated one; blanks never
+    // wipe what is there
+    if (typeof value === "string" && value.trim()) merged[key] = value
   }
   return merged
 }
 
 export function mergeDoNotClaim(previous: string[], generated: string[]) {
-  const seen = new Set(previous.map((s) => s.toLowerCase()))
-  return [...previous, ...generated.filter((s) => !seen.has(s.toLowerCase()))]
+  const seen = new Set<string>()
+  return [...previous, ...generated].filter((s) => {
+    const key = s.trim().toLowerCase()
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 export function mergeInterviewPrep(

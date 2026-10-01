@@ -58,12 +58,15 @@ export const AI_TASKS = {
   // Before the interview: digests documents into the prep pack (facts,
   // STAR stories, JD mapping). Quality over speed; runs in the background.
   prep: {
-    reasoning: "provider-default",
+    // Thinking on, DeepSeek V4 Pro spent all 8000 tokens reasoning and
+    // returned nothing (67 s); off, a CV extracts cleanly in ~20 s
+    reasoning: "none",
     model: "deepseek/deepseek-v4-pro",
-    maxTokens: 8000,
+    maxTokens: 12_000,
     temperature: 0.2,
     timeoutMs: 180_000,
   },
+
   // Scores answers in `pnpm ai:eval`; must be another model family than
   // the ones it grades (self-preference bias)
   grader: {

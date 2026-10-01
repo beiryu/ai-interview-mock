@@ -289,6 +289,7 @@ export async function runInterviewPrep(interviewId: string, userId: string) {
       header: inputs.header,
       jobDescription: inputs.jobDescription,
       profile: profile.content,
+      documents: (await profileInputs(userId)).text,
       previous: previous.success ? previous.data : null,
     })
     await db.interviewPrep.update({
