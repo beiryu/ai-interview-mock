@@ -53,6 +53,8 @@ export interface QuestionAnalysis {
   error: string | null
   /** Validator warnings once the answer is complete (lib/answer/validate) */
   issues?: AnswerIssue[]
+  /** Already recorded in the session ledger */
+  recorded?: boolean
   /** Question kind from the judge (null until it answers) */
   kind?: string | null
 

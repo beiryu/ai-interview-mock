@@ -68,8 +68,6 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
-  openaiVectorStoreId String? @map("openai_vector_store_id")
-
   accounts          Account[]
   sessions          Session[]
   interviews        Interview[]        @relation("UserInterviews")
@@ -96,6 +94,7 @@ model Interview {
   documentIds String[]           @default([]) @map("document_ids")
   sessions    InterviewSession[]
   prep        InterviewPrep?
+  chat        ChatConversation?
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at")
 
@@ -113,6 +112,8 @@ model InterviewSession {
   status      String    @default("in_progress")
   /// Array of { role: "interviewer" | "candidate", text: string, at: ISO string }
   transcript  Json?
+  /// What happened so far (lib/ai/ledger.ts), read by the coach
+  ledger      Json?
   startedAt   DateTime  @default(now())
   endedAt     DateTime?
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -161,15 +162,14 @@ model InterviewPrep {
 // ─── Documents ────────────────────────────────────────────────────────────────
 
 model Document {
-  id           String       @id @default(cuid())
-  userId       String
-  user         User         @relation("UserDocuments", fields: [userId], references: [id], onDelete: Cascade)
-  title        String
-  type         DocumentType
-  content      String       @db.Text
-  openaiFileId String?      @map("openai_file_id")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation("UserDocuments", fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  type      DocumentType
+  content   String       @db.Text
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
 
   @@index([userId])
   @@map("documents")
@@ -178,15 +178,16 @@ model Document {
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
 model ChatConversation {
-  id                 String        @id @default(cuid())
-  userId             String
-  user               User          @relation("UserChatConversations", fields: [userId], references: [id], onDelete: Cascade)
-  title              String
-  documentIds        String[]
-  previousResponseId String?       @map("previous_response_id")
-  messages           ChatMessage[]
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @updatedAt @map("updated_at")
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation("UserChatConversations", fields: [userId], references: [id], onDelete: Cascade)
+  /// The interview whose chat this is (null: legacy Document Chat history)
+  interviewId String?       @unique @map("interview_id")
+  interview   Interview?    @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  title       String        @default("")
+  messages    ChatMessage[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
 
   @@index([userId])
   @@map("chat_conversations")
@@ -198,7 +199,6 @@ model ChatMessage {
   conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           MessageRole
   content        String           @db.Text
-  sources        Json[]
   createdAt      DateTime         @default(now()) @map("created_at")
 
   @@index([conversationId])

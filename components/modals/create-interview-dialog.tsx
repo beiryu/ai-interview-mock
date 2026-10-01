@@ -76,7 +76,8 @@ export function CreateInterviewDialog() {
         <DialogHeader>
           <DialogTitle>New interview</DialogTitle>
           <DialogDescription>
-            Company, role, notes and the documents you pick are what the answer coach knows about you.
+            Company, role, notes and the documents you pick are what the answer
+            coach knows about you.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

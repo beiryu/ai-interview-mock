@@ -12,7 +12,7 @@ function isTyping(target: EventTarget | null) {
 }
 
 /**
- * Playground shortcuts (ignored while typing, e.g. in document chat):
+ * Playground shortcuts (ignored while typing, e.g. in the chat):
  *   Alt+Enter  answer now
  *   Alt+S      skip the current answer
  *   Alt+R      regenerate the latest answer

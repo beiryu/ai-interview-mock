@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { db } from "@/lib/db"
-import {
-  addFileToVectorStore,
-  getOrCreateVectorStore,
-  removeFileFromVectorStore,
-} from "@/lib/openai/vector-store-service"
 import { getCurrentUser } from "@/lib/session"
 
 interface Params {
@@ -46,7 +41,7 @@ export async function GET(req: NextRequest, props: Params) {
 
 /**
  * DELETE /api/documents/[id]
- * Delete a document and remove its file from OpenAI
+ * Delete a document
  */
 export async function DELETE(req: NextRequest, props: Params) {
   const params = await props.params
@@ -61,28 +56,13 @@ export async function DELETE(req: NextRequest, props: Params) {
         id: params.id,
         userId: user.id,
       },
-      select: { openaiFileId: true },
+      select: { id: true },
     })
 
     if (!document) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 })
     }
 
-    // Remove from OpenAI before deleting from DB
-    if (document.openaiFileId) {
-      const userRecord = await db.user.findUnique({
-        where: { id: user.id },
-        select: { openaiVectorStoreId: true },
-      })
-      if (userRecord?.openaiVectorStoreId) {
-        await removeFileFromVectorStore(
-          document.openaiFileId,
-          userRecord.openaiVectorStoreId
-        )
-      }
-    }
-
-    // Delete document (chunks cascade via FK)
     await db.document.delete({
       where: { id: params.id },
     })
@@ -102,7 +82,7 @@ export async function DELETE(req: NextRequest, props: Params) {
 
 /**
  * PUT /api/documents/[id]
- * Update a document — removes old OpenAI file, uploads new one
+ * Update a document's title and/or content
  */
 export async function PUT(req: NextRequest, props: Params) {
   const params = await props.params
@@ -144,50 +124,10 @@ export async function PUT(req: NextRequest, props: Params) {
       newContent = body.content || existingDocument.content
     }
 
-    const contentChanged = newContent !== existingDocument.content
-
-    if (contentChanged) {
-      // Get user's vector store
-      const userRecord = await db.user.findUnique({
-        where: { id: user.id },
-        select: { openaiVectorStoreId: true },
-      })
-
-      // Remove old OpenAI file if it exists
-      if (existingDocument.openaiFileId && userRecord?.openaiVectorStoreId) {
-        await removeFileFromVectorStore(
-          existingDocument.openaiFileId,
-          userRecord.openaiVectorStoreId
-        )
-      }
-
-      // Upload new file
-      const vectorStoreId =
-        userRecord?.openaiVectorStoreId ??
-        (await getOrCreateVectorStore(user.id))
-
-      const newOpenaiFileId = await addFileToVectorStore(
-        newContent,
-        newTitle,
-        params.id,
-        vectorStoreId
-      )
-
-      await db.document.update({
-        where: { id: params.id },
-        data: {
-          title: newTitle,
-          content: newContent,
-          openaiFileId: newOpenaiFileId,
-        },
-      })
-    } else {
-      // No content change — just update the title
-      await db.document.update({
-        where: { id: params.id },
-        data: { title: newTitle },
-      })
-    }
+    await db.document.update({
+      where: { id: params.id },
+      data: { title: newTitle, content: newContent },
+    })
 
     return NextResponse.json({
       success: true,

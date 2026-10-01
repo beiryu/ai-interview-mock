@@ -8,7 +8,6 @@ export const DocumentSchema = z.object({
   title: z.string(),
   type: z.nativeEnum(DocumentType),
   content: z.string(),
-  openaiFileId: z.string().optional().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })

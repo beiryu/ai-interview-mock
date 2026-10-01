@@ -14,7 +14,7 @@ Single-user by design: only emails listed in `ALLOWED_EMAILS` can sign in.
 - Better Auth (email magic link via Resend)
 - Prisma 7 + PostgreSQL (`@prisma/adapter-pg`)
 - Soniox real-time speech-to-text (Vietnamese + English, per-word language ID, semantic end-of-turn)
-- Vercel AI SDK for the live turn judge and answer coach (model per task in `config/defaults/ai.ts`; the coach reads an interview brief built from your documents), OpenAI Responses API + hosted vector stores (`file_search`) for Document Chat
+- Vercel AI SDK through the Vercel AI Gateway (DeepSeek by default; model per task in `config/defaults/ai.ts`): prep packs before the interview, then the live turn judge, answer coach, session ledger and chat
 
 ## Getting started
 
@@ -28,25 +28,29 @@ pnpm prisma migrate deploy   # apply migrations
 pnpm dev                     # http://localhost:3000
 ```
 
-| Variable | Purpose |
-| --- | --- |
-| `NEXT_PUBLIC_APP_URL`, `BETTER_AUTH_URL` | App origin, e.g. `http://localhost:3000` |
-| `BETTER_AUTH_SECRET` | Random secret (`openssl rand -base64 32`) |
-| `ALLOWED_EMAILS` | Comma-separated emails allowed to sign in |
-| `SMTP_FROM`, `RESEND_API_KEY` | Sender and API key for magic-link emails |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `OPENAI_API_KEY`, `OPENAI_BASE_URL` | OpenAI access |
-| `SONIOX_API_KEY` | Soniox access (browser gets short-lived keys via `/api/stt/token`) |
+| Variable                                 | Purpose                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| `NEXT_PUBLIC_APP_URL`, `BETTER_AUTH_URL` | App origin, e.g. `http://localhost:3000`                           |
+| `BETTER_AUTH_SECRET`                     | Random secret (`openssl rand -base64 32`)                          |
+| `ALLOWED_EMAILS`                         | Comma-separated emails allowed to sign in                          |
+| `SMTP_FROM`, `RESEND_API_KEY`            | Sender and API key for magic-link emails                           |
+| `DATABASE_URL`                           | PostgreSQL connection string                                       |
+| `AI_GATEWAY_API_KEY`                     | Vercel AI Gateway (every LLM call)                                 |
+| `SONIOX_API_KEY`                         | Soniox access (browser gets short-lived keys via `/api/stt/token`) |
 
 ## Using it
 
-1. Upload your resume, job descriptions and notes under **Documents**.
-2. Create an **Interview** with the company, role, notes, and pick the
-   documents the coach should read (your CV + this job's description).
-3. Launch it, click **Share the meeting tab** and pick the tab running the
+1. Upload your resume, portfolio, notes and job descriptions under
+   **Documents**.
+2. Open **Profile prep**, click Prepare, then review it: fix the STAR
+   stories, fill in your personal answers (salary, why leaving, …), check
+   the never-claim list. The coach only says what's here.
+3. Create an **Interview** with the company, role and notes, and pick this
+   job's description. Its **Prep** sheet maps the JD to your evidence.
+4. Launch it, click **Share the meeting tab** and pick the tab running the
    call (with "share tab audio" enabled). Turn on your mic to transcribe your
    own answers too.
-4. Suggested answers appear as the interviewer asks questions. **End session**
+5. Suggested answers appear as the interviewer asks questions. **End session**
    saves the transcript, viewable under **Past sessions**.
 
 ## Scripts

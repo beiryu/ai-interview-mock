@@ -16,7 +16,6 @@ const SECTIONS: { path: string; title: string }[] = [
   { path: "/dashboard/interviews", title: "Interviews" },
   { path: "/dashboard/documents", title: "Documents" },
   { path: "/dashboard/profile", title: "Profile prep" },
-  { path: "/dashboard/chat", title: "Document Chat" },
   { path: "/dashboard/settings", title: "Settings" },
 ]
 

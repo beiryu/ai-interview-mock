@@ -2,12 +2,16 @@ import { headers } from "next/headers"
 import { z } from "zod"
 
 import { streamCoachAnswer } from "@/lib/ai/coach"
+import { LedgerSchema, renderLedger } from "@/lib/ai/ledger"
 import { validateAnswer } from "@/lib/answer/validate"
 import { auth } from "@/lib/auth"
+import { db } from "@/lib/db"
 import { loadCoachContext } from "@/lib/interview/load-brief"
 
 const RequestSchema = z.object({
   interviewId: z.string().min(1),
+  /** Live session, for the ledger of what happened so far */
+  sessionId: z.string().nullable().default(null),
   text: z.string().min(1),
   /** Dominant language of the question from speech-to-text ("vi", "en"…) */
   language: z.string().nullable().default(null),
@@ -27,11 +31,22 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return new Response("Invalid request", { status: 400 })
   }
-  const { interviewId, text, language, context } = parsed.data
+  const { interviewId, sessionId, text, language, context } = parsed.data
+  const userId = authSession.user.id
 
-  const coach = await loadCoachContext(interviewId, authSession.user.id)
+  const [coach, session] = await Promise.all([
+    loadCoachContext(interviewId, userId),
+    sessionId
+      ? db.interviewSession.findFirst({
+          where: { id: sessionId, userId },
+          select: { ledger: true },
+        })
+      : null,
+  ])
+  const ledger = LedgerSchema.safeParse(session?.ledger)
   const result = streamCoachAnswer({
     brief: coach.brief,
+    session: ledger.success ? renderLedger(ledger.data) : "",
     context,
     language,
     text,

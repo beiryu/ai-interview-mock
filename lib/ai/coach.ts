@@ -55,10 +55,13 @@ export function buildCoachInput({
   context,
   language,
   text,
+  session = "",
 }: {
   context: Turn[]
   language: string | null
   text: string
+  /** Rendered session ledger (lib/ai/ledger.ts), "" early on */
+  session?: string
 }) {
   const contextBlock =
     context.length > 0
@@ -74,7 +77,8 @@ export function buildCoachInput({
         "\n\n"
       : ""
   const languageLine = language ? `QUESTION LANGUAGE: ${language}\n` : ""
-  return `${contextBlock}${languageLine}NEW QUESTION FROM INTERVIEWER: ${text}`
+  const sessionBlock = session ? `${session}\n\n` : ""
+  return `${sessionBlock}${contextBlock}${languageLine}NEW QUESTION FROM INTERVIEWER: ${text}`
 }
 
 export function streamCoachAnswer({
@@ -82,10 +86,12 @@ export function streamCoachAnswer({
   context,
   language,
   text,
+  session,
   abortSignal,
   model,
 }: {
   brief: string
+  session?: string
   context: Turn[]
   language: string | null
   text: string
@@ -95,7 +101,7 @@ export function streamCoachAnswer({
 }) {
   return runStream("coach", {
     instructions: coachInstructions(brief),
-    prompt: buildCoachInput({ context, language, text }),
+    prompt: buildCoachInput({ context, language, text, session }),
     abortSignal,
     model,
   })

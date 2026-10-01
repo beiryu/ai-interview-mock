@@ -31,6 +31,21 @@ export const AI_TASKS = {
     maxTokens: 260,
     cacheKey: "answer-coach",
   },
+  // Live: the chat panel in the interview (you type; latency-tolerant)
+  chat: {
+    model: "deepseek/deepseek-v4.1-flash",
+    fallback: ["openai/gpt-4.1-mini"],
+    maxTokens: 1200,
+    temperature: 0.3,
+    cacheKey: "interview-chat",
+  },
+  // Background, after each answered question: updates the session ledger
+  ledger: {
+    model: "deepseek/deepseek-v4.1-flash",
+    maxTokens: 400,
+    temperature: 0,
+    timeoutMs: 15_000,
+  },
   // Before the interview: digests documents into the prep pack (facts,
   // STAR stories, JD mapping). Quality over speed; runs in the background.
   prep: {
@@ -54,16 +69,12 @@ export type AiTaskName = keyof typeof AI_TASKS
 // Rolling transcript sent to the judge (smaller input = faster)
 export const JUDGE_CONTEXT_CHARS = 1500
 
+// Transcript and chat history sent with each chat message
+export const CHAT_TRANSCRIPT_CHARS = 6000
+export const CHAT_HISTORY_MESSAGES = 20
+
 // Interview brief (CV, JD, notes) in the coach's instructions; ~8k tokens
 export const BRIEF_MAX_CHARS = 32_000
 
 // Documents given to the prep model (it can read much more than the coach)
 export const PREP_MAX_DOC_CHARS = 60_000
-
-// Document Chat (OpenAI SDK + hosted vector store) until it is replaced by
-// the in-interview chat
-export const DOCUMENT_CHAT = {
-  model: "gpt-4.1-mini",
-  temperature: 0.2,
-  maxTokens: 2000,
-}

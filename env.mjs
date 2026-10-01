@@ -12,8 +12,6 @@ export const env = createEnv({
     DATABASE_URL: z.string().min(1),
     SMTP_FROM: z.string().min(1),
     RESEND_API_KEY: z.string().min(1),
-    OPENAI_API_KEY: z.string().min(1),
-    OPENAI_BASE_URL: z.string().min(1),
     // Optional so the app boots without it; /api/stt/token reports it missing
     SONIOX_API_KEY: z.string().min(1).optional(),
     // Vercel AI Gateway: every LLM call (judge, coach, …) goes through it
@@ -30,8 +28,6 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     SMTP_FROM: process.env.SMTP_FROM,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
     SONIOX_API_KEY: process.env.SONIOX_API_KEY,
     AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
   },

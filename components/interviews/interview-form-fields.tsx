@@ -4,9 +4,9 @@ import Link from "next/link"
 import { Check } from "lucide-react"
 import type { Control } from "react-hook-form"
 
-import type { InterviewFormValues } from "@/lib/validations/interview"
-import { DOCUMENT_TYPE_OPTIONS } from "@/lib/validations/document"
 import { cn } from "@/lib/utils"
+import { DOCUMENT_TYPE_OPTIONS } from "@/lib/validations/document"
+import type { InterviewFormValues } from "@/lib/validations/interview"
 import { useGetDocuments } from "@/hooks/api/document/useGetDocuments"
 import {
   FormControl,
@@ -169,7 +169,9 @@ function DocumentPicker({
   }
 
   const toggle = (id: string) =>
-    onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id])
+    onChange(
+      value.includes(id) ? value.filter((v) => v !== id) : [...value, id]
+    )
 
   return (
     <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-1">

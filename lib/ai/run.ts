@@ -1,4 +1,4 @@
-import { Output, generateText, streamText } from "ai"
+import { Output, generateText, streamText, type ModelMessage } from "ai"
 import type { z } from "zod"
 
 import { AI_TASKS, type AiTask, type AiTaskName } from "@/config/defaults/ai"
@@ -12,7 +12,9 @@ import { languageModel, providerOptions } from "./models"
 
 interface RunInput {
   instructions: string
-  prompt: string
+  /** One-shot input; streaming tasks may pass `messages` instead */
+  prompt?: string
+  messages?: ModelMessage[]
   abortSignal?: AbortSignal
   /** Gateway id to use instead of the task's model (evals) */
   model?: string
@@ -25,7 +27,9 @@ export function runStream(name: AiTaskName, input: RunInput) {
   return streamText({
     model: languageModel(model),
     instructions: input.instructions,
-    prompt: input.prompt,
+    ...(input.messages
+      ? { messages: input.messages }
+      : { prompt: input.prompt ?? "" }),
     maxOutputTokens: task.maxTokens,
     temperature: task.temperature,
     abortSignal: input.abortSignal,
@@ -50,7 +54,7 @@ export async function runObject<T>(
   const result = await generateText({
     model: languageModel(model),
     instructions: input.instructions,
-    prompt: input.prompt,
+    prompt: input.prompt ?? "",
     output: Output.object({ schema }),
     maxOutputTokens: task.maxTokens,
     temperature: task.temperature,

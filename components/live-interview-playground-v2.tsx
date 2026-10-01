@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useChatDocumentStore } from "@/stores/chat-document-store"
 import { Clock } from "lucide-react"
 
 import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
@@ -16,8 +15,8 @@ import {
 } from "@/components/ui/resizable"
 import { Separator } from "@/components/ui/separator"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import StreamingChat from "@/components/chat/streaming-chat"
 import { CopilotStatus } from "@/components/copilot-status"
+import { InterviewChat } from "@/components/interview-chat"
 import { LiveInterviewResponses } from "@/components/live-interview-responses"
 import MicOnlyRecorder from "@/components/mic-only-recorder"
 import { MicrophoneConnectionStatus } from "@/components/microphone-connection-status"
@@ -38,13 +37,6 @@ export function LiveInterviewPlaygroundV2({
   const { data: interview } = useGetInterview(interviewId)
   const { startedAt, finish } = useInterviewSessionLifecycle(interviewId)
   useCopilotHotkeys()
-  const { clearDocumentSelection, clearActiveSession } = useChatDocumentStore()
-
-  // Reset document chat state when interview changes
-  useEffect(() => {
-    clearDocumentSelection()
-    clearActiveSession()
-  }, [interviewId, clearDocumentSelection, clearActiveSession])
 
   const [isEnding, setIsEnding] = useState(false)
   const handleEnd = useCallback(async () => {
@@ -174,7 +166,7 @@ export function LiveInterviewPlaygroundV2({
             className="flex min-h-0 flex-col"
           >
             <div className="flex h-full min-h-0 flex-col overflow-hidden">
-              <StreamingChat />
+              <InterviewChat interviewId={interviewId} />
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>

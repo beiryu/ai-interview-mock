@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation"
 import {
   FileText,
   LayoutDashboard,
-  MessagesSquare,
   Mic,
   Podcast,
   Settings2,
@@ -32,7 +31,6 @@ const NAV_ITEMS = [
   { title: "Interviews", url: "/dashboard/interviews", icon: Mic },
   { title: "Documents", url: "/dashboard/documents", icon: FileText },
   { title: "Profile prep", url: "/dashboard/profile", icon: UserRoundCheck },
-  { title: "Document Chat", url: "/dashboard/chat", icon: MessagesSquare },
   { title: "Settings", url: "/dashboard/settings", icon: Settings2 },
 ]
 

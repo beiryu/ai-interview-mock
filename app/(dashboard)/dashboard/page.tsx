@@ -35,7 +35,7 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const [upcoming, recentSessions, documentCount, indexedCount] =
+  const [upcoming, recentSessions, documentCount, profilePrep] =
     await Promise.all([
       db.interview.findMany({
         where: { userId: user.id, scheduledAt: { gte: new Date() } },
@@ -49,8 +49,9 @@ export default async function DashboardPage() {
         include: { interview: { select: { id: true, name: true } } },
       }),
       db.document.count({ where: { userId: user.id } }),
-      db.document.count({
-        where: { userId: user.id, openaiFileId: { not: null } },
+      db.profilePrep.findUnique({
+        where: { userId: user.id },
+        select: { status: true },
       }),
     ])
 
@@ -145,7 +146,15 @@ export default async function DashboardPage() {
             <CardDescription>
               {documentCount === 0
                 ? "Upload your resume and job descriptions so the answer coach can use them."
-                : `${indexedCount} of ${documentCount} documents are searchable by the answer coach.`}
+                : `${documentCount} document${
+                    documentCount === 1 ? "" : "s"
+                  } · profile prep ${
+                    profilePrep?.status === "ready"
+                      ? "ready"
+                      : profilePrep?.status === "pending"
+                      ? "in progress"
+                      : "not prepared yet (Profile prep page)"
+                  }.`}
             </CardDescription>
           </div>
           <Link

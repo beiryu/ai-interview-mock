@@ -3,8 +3,9 @@
  * interview and the candidate, placed in its instructions on every answer.
  *
  * A personal CV + JD + notes is a few thousand tokens, so it goes into the
- * prompt whole instead of through file_search: no extra tool round-trip, no
- * chunks lost to retrieval, and the stable prefix gets OpenAI prompt caching.
+ * prompt whole instead of through retrieval: no extra round-trip, no chunks
+ * lost to search, and the stable prefix gets prompt caching. It is the
+ * fallback when there is no prep pack (lib/prep).
  */
 
 export interface BriefInterview {

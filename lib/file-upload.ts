@@ -1,6 +1,6 @@
 /**
  * Reads an uploaded plain-text file in the browser before it is sent to
- * /api/documents (which indexes it in the user's OpenAI vector store).
+ * /api/documents (stored as text; the prep pack and coach read it).
  */
 
 import { toast } from "@/components/ui/use-toast"

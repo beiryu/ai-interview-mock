@@ -132,8 +132,8 @@ export function DocumentUploadDialog() {
         <DialogHeader>
           <DialogTitle>Upload Document</DialogTitle>
           <DialogDescription>
-            Uploaded documents are indexed so the answer coach and document chat
-            can cite them.
+            Your documents feed the profile prep and the answer coach. Job
+            descriptions are used per interview.
           </DialogDescription>
         </DialogHeader>
 

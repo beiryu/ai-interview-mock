@@ -232,7 +232,7 @@ const answers = new Map<string, AnswerRun>()
 let lastAnsweredQuestion: string | null = null
 
 function startAnswer(question: string, language: string | null): AnswerRun {
-  const { interviewId } = store.getState()
+  const { interviewId, currentSessionId } = store.getState()
   const run: AnswerRun = {
     question,
     controller: new AbortController(),
@@ -247,6 +247,7 @@ function startAnswer(question: string, language: string | null): AnswerRun {
   streamAnswer(
     {
       interviewId: interviewId ?? "",
+      sessionId: currentSessionId,
       text: question,
       language,
       context: recentContext(),
@@ -384,6 +385,37 @@ function abortPause() {
 
 // ─── Committing interviewer turns ─────────────────────────────────────────────
 
+/**
+ * Before a new question: record the previous one — and what the candidate
+ * actually said to it — in the session ledger (background, best effort).
+ */
+function recordPreviousAnswer() {
+  const { messages, currentSessionId } = store.getState()
+  if (!currentSessionId) return
+  const cardIndex = messages.findLastIndex((m) => m.questionAnalysis)
+  if (cardIndex === -1) return
+  const card = messages[cardIndex].questionAnalysis!
+  if (card.recorded) return
+  const said = messages
+    .slice(cardIndex + 1)
+    .filter((m) => m.role === "candidate")
+    .map((m) => m.content)
+    .join(" ")
+  if (!said.trim()) return
+  updateAnalysis(card.messageId, () => ({ recorded: true }))
+  void fetch("/api/assistant/ledger", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId: currentSessionId,
+      question: card.question,
+      kind: card.kind ?? "other",
+      suggested: card.suggestedAnswer,
+      said,
+    }),
+  }).catch(() => {})
+}
+
 function commitInterviewerTurn(turn: CommittedTurn) {
   const commitAt = performance.now()
 
@@ -393,6 +425,8 @@ function commitInterviewerTurn(turn: CommittedTurn) {
     store.setState({ status: "skipped", skipReason: "not a question" })
     return
   }
+
+  if (!turn.amends) recordPreviousAnswer()
 
   // Amend: re-answer the previous question's card with the longer question
   let messageId: string | null = null

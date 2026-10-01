@@ -3,6 +3,8 @@ import type { AnswerIssue } from "./validate"
 export interface StreamAnswerRequest {
   /** The server builds the coach's brief (CV, JD, notes) from it */
   interviewId: string
+  /** Live session (the server reads its ledger), null before it exists */
+  sessionId: string | null
   text: string
   language: string | null
   context: { role: string; content: string }[]
