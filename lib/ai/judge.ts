@@ -9,6 +9,16 @@ import { runObject } from "./run"
  * and what exactly should be answered. See app/api/assistant/judge.
  */
 
+export const QUESTION_KINDS = [
+  "technical",
+  "experience",
+  "behavioral",
+  "personal",
+  "motivation",
+  "followup",
+  "other",
+] as const
+
 export const VerdictSchema = z.object({
   isAsk: z
     .boolean()
@@ -26,9 +36,13 @@ export const VerdictSchema = z.object({
       "The full question to answer, self-contained, in the interviewer's language; empty if not an ask"
     ),
   duplicate: z.boolean().describe("Just restates the last answered question"),
+  kind: z
+    .enum(QUESTION_KINDS)
+    .describe('What kind of question it is ("other" if not an ask)'),
 })
 
 export type Verdict = z.infer<typeof VerdictSchema>
+export type QuestionKind = (typeof QUESTION_KINDS)[number]
 
 const SYSTEM_PROMPT = `You watch a live job interview transcript (Vietnamese, English, or mixed) and judge the INTERVIEWER's latest words, which may still be in progress.
 
@@ -39,6 +53,8 @@ complete — the ask is fully stated. An instruction like "Walk me through your 
 question — the ask rewritten as one self-contained question, in THE SAME LANGUAGE the interviewer used (Vietnamese stays Vietnamese, English stays English; keep English technical terms as spoken). Fold in context they gave ("Hệ thống bên anh dùng Kafka… em sẽ scale nó thế nào?" → "Em sẽ scale hệ thống dùng Kafka của bên anh như thế nào?"). Resolve follow-ups from the conversation ("Why?" after the candidate said they chose Go → "Why did you choose Go?"). Empty string if not an ask.
 
 duplicate — true if the ask requests the same thing as LAST ANSWERED QUESTION, even when reworded ("So again, why are you leaving?" duplicates "Why do you want to leave your current job?").
+
+kind — technical (concepts, design, how something works), experience (what the candidate did/used), behavioral ("tell me about a time…"), personal (salary, reasons, location, availability, hobbies, strengths/weaknesses), motivation (why us, introduce yourself, career goals), followup (digs into the previous answer), other.
 
 Transcripts contain speech recognition errors; judge the intent.`
 

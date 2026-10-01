@@ -70,51 +70,51 @@ const EMPTY_LIVE: Record<Role, LiveLine> = {
 
 export const useInterviewSessionStore = create<InterviewSessionStore>()(
   (set) => ({
-      microphoneStatus: "disconnected",
-      live: EMPTY_LIVE,
-      sttError: null,
-      status: "idle",
-      skipReason: null,
-      messages: [],
-      interviewId: null,
-      currentSessionId: null,
+    microphoneStatus: "disconnected",
+    live: EMPTY_LIVE,
+    sttError: null,
+    status: "idle",
+    skipReason: null,
+    messages: [],
+    interviewId: null,
+    currentSessionId: null,
 
-      setMicrophoneStatus: (status) => set({ microphoneStatus: status }),
-      setSttError: (error) => set({ sttError: error }),
+    setMicrophoneStatus: (status) => set({ microphoneStatus: status }),
+    setSttError: (error) => set({ sttError: error }),
 
-      startSession: (sessionId) => set({ currentSessionId: sessionId }),
+    startSession: (sessionId) => set({ currentSessionId: sessionId }),
 
-      resetSession: (interviewId = null) => {
-        abortPause()
-        for (const answer of answers.values()) answer.controller.abort()
-        answers.clear()
-        lastAnsweredQuestion = null
-        turnEngine.reset()
-        set({
-          interviewId,
-          currentSessionId: null,
-          messages: [],
-          live: EMPTY_LIVE,
-          sttError: null,
-          status: "idle",
-          skipReason: null,
-        })
-      },
+    resetSession: (interviewId = null) => {
+      abortPause()
+      for (const answer of answers.values()) answer.controller.abort()
+      answers.clear()
+      lastAnsweredQuestion = null
+      turnEngine.reset()
+      set({
+        interviewId,
+        currentSessionId: null,
+        messages: [],
+        live: EMPTY_LIVE,
+        sttError: null,
+        status: "idle",
+        skipReason: null,
+      })
+    },
 
-      answerNow: () => {
-        if (turnEngine.forceCommit(performance.now())) return
-        const last = lastAnswerCard()
-        if (last) regenerateAnswer(last.id)
-      },
+    answerNow: () => {
+      if (turnEngine.forceCommit(performance.now())) return
+      const last = lastAnswerCard()
+      if (last) regenerateAnswer(last.id)
+    },
 
-      skipCurrent: () => {
-        abortPause()
-        const last = lastAnswerCard()
-        if (last) dropCard(last.id, "skipped")
-      },
+    skipCurrent: () => {
+      abortPause()
+      const last = lastAnswerCard()
+      if (last) dropCard(last.id, "skipped")
+    },
 
-      regenerate: (messageId) => regenerateAnswer(messageId),
-    })
+    regenerate: (messageId) => regenerateAnswer(messageId),
+  })
 )
 
 const store = useInterviewSessionStore
@@ -476,6 +476,7 @@ function commitInterviewerTurn(turn: CommittedTurn) {
     updateMetrics(id, { judgeMs: verdict.judgeMs })
     if ("unavailable" in verdict) return
     if (!store.getState().messages.some((m) => m.id === id)) return
+    updateAnalysis(id, () => ({ kind: verdict.kind }))
 
     if (!verdict.isAsk) {
       dropCard(id, "not a question")

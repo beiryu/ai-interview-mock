@@ -49,6 +49,8 @@ export interface QuestionAnalysis {
   language: string | null
   metrics: AnswerMetrics | null
   error: string | null
+  /** Question kind from the judge (null until it answers) */
+  kind?: string | null
 
   createdAt: Date
   updatedAt: Date

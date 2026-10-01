@@ -24,6 +24,7 @@ function usePrepResource<T>(key: string[], url: string) {
   const query = useQuery({
     queryKey: key,
     queryFn: () => request<PrepState<T>>(url),
+    enabled: !url.includes("/interviews//"),
     refetchInterval: (q) => (q.state.data?.status === "pending" ? 3000 : false),
   })
   const generate = useMutation({

@@ -1,8 +1,12 @@
+"use client"
+
+import { useMemo } from "react"
 import { useInterviewSessionStore } from "@/stores/interview-session.store"
 import { RotateCcw, X } from "lucide-react"
 
 import type { AnswerMetrics, QuestionAnalysis } from "@/types/interview-message"
 import { splitAnswer } from "@/lib/answer/format"
+import { useInterviewPrep, useProfilePrep } from "@/hooks/api/prep/usePrep"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -50,9 +54,47 @@ function LatencyBadge({ metrics }: { metrics: AnswerMetrics }) {
   )
 }
 
-function AnswerCard({ response }: { response: QuestionAnalysis }) {
+/** Prep ids → what they refer to, for the evidence chips' tooltips. */
+function useEvidenceLabels() {
+  const interviewId = useInterviewSessionStore((s) => s.interviewId)
+  const profile = useProfilePrep()
+  const interview = useInterviewPrep(interviewId ?? "")
+  return useMemo(() => {
+    const labels = new Map<string, string>()
+    for (const f of profile.data?.content?.facts ?? [])
+      labels.set(f.id, f.title)
+    for (const s of profile.data?.content?.stories ?? [])
+      labels.set(s.id, s.title)
+    for (const r of interview.data?.content?.requirements ?? [])
+      labels.set(r.id, r.text)
+    return labels
+  }, [profile.data, interview.data])
+}
+
+function EvidenceChip({ id, label }: { id: string; label?: string }) {
+  return (
+    <span
+      title={label ?? "Not in your prep — check this"}
+      className={
+        label
+          ? "ml-1 rounded bg-primary/10 px-1 font-mono text-[10px] font-normal text-primary"
+          : "ml-1 rounded bg-amber-500/15 px-1 font-mono text-[10px] font-normal text-amber-700 dark:text-amber-300"
+      }
+    >
+      {id}
+    </span>
+  )
+}
+
+function AnswerCard({
+  response,
+  evidence,
+}: {
+  response: QuestionAnalysis
+  evidence: Map<string, string>
+}) {
   const regenerate = useInterviewSessionStore((s) => s.regenerate)
-  const { points, script } = splitAnswer(response.suggestedAnswer)
+  const { headline, points, script } = splitAnswer(response.suggestedAnswer)
   const empty = response.suggestedAnswer.length === 0
 
   return (
@@ -90,11 +132,23 @@ function AnswerCard({ response }: { response: QuestionAnalysis }) {
             <p className="text-sm text-destructive">{response.error}</p>
           ) : (
             <>
+              {headline && (
+                <p className="mb-1 text-base font-bold leading-snug">
+                  {headline}
+                </p>
+              )}
               {points.length > 0 && (
                 <ul className="mb-2 space-y-0.5">
                   {points.map((point, i) => (
                     <li key={i} className="text-sm font-semibold leading-snug">
-                      • {point}
+                      • {point.text}
+                      {point.tags.map((tag) => (
+                        <EvidenceChip
+                          key={tag}
+                          id={tag}
+                          label={evidence.get(tag)}
+                        />
+                      ))}
                     </li>
                   ))}
                 </ul>
@@ -140,6 +194,7 @@ function SkipButton({ messageId }: { messageId: string }) {
 
 export function LiveInterviewResponses() {
   const messages = useInterviewSessionStore((s) => s.messages)
+  const evidence = useEvidenceLabels()
 
   const analyzedResponses = messages
     .map((m) => m.questionAnalysis)
@@ -150,7 +205,11 @@ export function LiveInterviewResponses() {
     <ScrollArea className="h-full">
       <div className="flex flex-col gap-2 p-4 pt-0">
         {analyzedResponses.map((response) => (
-          <AnswerCard key={response.id} response={response} />
+          <AnswerCard
+            key={response.id}
+            response={response}
+            evidence={evidence}
+          />
         ))}
       </div>
     </ScrollArea>

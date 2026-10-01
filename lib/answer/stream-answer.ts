@@ -64,6 +64,8 @@ export interface JudgeVerdict {
   /** Self-contained question to answer (merged / follow-up resolved) */
   question: string
   duplicate: boolean
+  /** technical | experience | behavioral | personal | motivation | followup | other */
+  kind: string
   judgeMs: number
 }
 
