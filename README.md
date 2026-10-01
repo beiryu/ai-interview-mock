@@ -25,6 +25,7 @@ pnpm install                 # also generates the Prisma client
 cp .env.example .env         # fill in the values below
 docker compose up -d         # PostgreSQL on :5432
 pnpm prisma migrate deploy   # apply migrations
+pnpm prisma db seed          # create the account(s) in ALLOWED_EMAILS
 pnpm dev                     # http://localhost:3000
 ```
 

@@ -20,6 +20,7 @@ Database setup (requires Docker):
 ```bash
 docker-compose up -d  # Start PostgreSQL on port 5432
 pnpm prisma migrate dev   # Run migrations
+pnpm prisma db seed       # Create the ALLOWED_EMAILS account(s) (prisma/seed.ts)
 pnpm prisma studio        # Open Prisma Studio GUI
 ```
 
