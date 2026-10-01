@@ -44,11 +44,23 @@ export interface Turn {
 }
 
 /** Rules + brief. Same for a whole interview → a cacheable prefix. */
+// With no documents the model knows nothing about the candidate, even if
+// the brief has a role and company. Both DeepSeek and gpt-4.1-mini invented
+// employers ("Netflix", "LoyaltyNow"), metrics and ids until told so.
+const NO_CANDIDATE_FACTS = `NO CANDIDATE FACTS: the brief has no documents about this candidate, so you know NOTHING about their experience. Do not cite any ids or brackets. Do not name any employer, company, product, project, team size, date or number as theirs. Technical questions: answer from general knowledge. Experience or behavioral questions: give a sayable answer about how they approach it, with at most one short generic example, and start the headline with "✎".`
+
+/** The brief carries facts or documents about the candidate. */
+export function knowsCandidate(brief: string) {
+  return /^## Candidate (facts|documents)/m.test(brief)
+}
+
 export function coachInstructions(brief: string) {
   return `${INSTRUCTIONS}
 
 INTERVIEW BRIEF:
-${brief || "(none — the candidate added no role, notes or documents)"}`
+${brief.trim() || "(none)"}${
+    knowsCandidate(brief) ? "" : `\n\n${NO_CANDIDATE_FACTS}`
+  }`
 }
 
 /** Per-question input; the new question goes last. */

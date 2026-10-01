@@ -48,13 +48,17 @@ export function validateAnswer({
   const issues: AnswerIssue[] = []
   const { points } = splitAnswer(answer)
 
-  if (knownIds.size > 0) {
-    const unknown = new Set(
-      points.flatMap((p) => p.tags).filter((id) => !knownIds.has(id))
-    )
-    for (const id of unknown) {
-      issues.push({ kind: "unknown-id", detail: `${id} is not in your prep` })
-    }
+  const unknown = new Set(
+    points.flatMap((p) => p.tags).filter((id) => !knownIds.has(id))
+  )
+  for (const id of unknown) {
+    issues.push({
+      kind: "unknown-id",
+      detail:
+        knownIds.size > 0
+          ? `${id} is not in your prep`
+          : `${id}: no prep loaded, so this evidence is made up`,
+    })
   }
 
   const text = withoutPlaceholders(answer)

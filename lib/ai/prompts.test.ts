@@ -60,9 +60,13 @@ describe("coach prompts", () => {
   })
 
   it("ends the instructions with the brief", () => {
-    expect(coachInstructions("Role: SRE")).toMatch(
-      /INTERVIEW BRIEF:\nRole: SRE$/
+    expect(coachInstructions("## Candidate documents\nCV")).toMatch(
+      /INTERVIEW BRIEF:\n## Candidate documents\nCV$/
     )
-    expect(coachInstructions("")).toMatch(/\(none — .*\)$/)
+    expect(coachInstructions("")).toContain("INTERVIEW BRIEF:\n(none)")
+    // A role but no candidate documents: the no-facts rules are appended
+    expect(coachInstructions("## Interview\nRole: SRE")).toContain(
+      "NO CANDIDATE FACTS"
+    )
   })
 })

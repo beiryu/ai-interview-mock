@@ -33,6 +33,16 @@ export function splitTags(line: string): KeyPoint {
     const match = text.match(/\s*\[([^\]]+)\]\s*$/)
     if (!match) break
     const ids = match[1].split(/[,\s]+/).filter(Boolean)
+    // Models sometimes add short non-id tags ("[general]", "[ ]"): noise
+    const inner = match[1].trim()
+    if (
+      (ids.length === 0 || !ids.every((id) => ID.test(id))) &&
+      inner.length <= 24 &&
+      !/^(fill in|điền)/i.test(inner)
+    ) {
+      text = text.slice(0, match.index).trimEnd()
+      continue
+    }
     if (ids.length === 0 || !ids.every((id) => ID.test(id))) break
     tags.unshift(...ids)
     text = text.slice(0, match.index).trimEnd()

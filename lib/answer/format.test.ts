@@ -74,6 +74,14 @@ describe("splitTags", () => {
       text: "Uses [fill in: your district]",
       tags: [],
     })
+    expect(splitTags("Say it honestly [ ]")).toEqual({
+      text: "Say it honestly",
+      tags: [],
+    })
+    expect(splitTags("Locks rows up front [general knowledge]")).toEqual({
+      text: "Locks rows up front",
+      tags: [],
+    })
     expect(splitTags("Matchmaking on Redis [P1] [S2]")).toEqual({
       text: "Matchmaking on Redis",
       tags: ["P1", "S2"],

@@ -13,12 +13,18 @@ export interface AiTask {
   timeoutMs?: number
   /** Prompt-cache routing key for a stable prefix (OpenAI-style providers) */
   cacheKey?: string
+  /**
+   * Model "thinking". DeepSeek thinks by default and spends the whole
+   * output budget on it, so live tasks must say "none".
+   */
+  reasoning?: "none" | "low" | "medium" | "high" | "provider-default"
 }
 
 export const AI_TASKS = {
   // Live: is the interviewer done, and what exactly did they ask? On any
   // failure the turn engine falls back to its own heuristics.
   judge: {
+    reasoning: "none",
     model: "deepseek/deepseek-v4.1-flash",
     maxTokens: 160,
     temperature: 0,
@@ -26,6 +32,7 @@ export const AI_TASKS = {
   },
   // Live: 3 key points + 1–3 spoken sentences; the cap bounds tail latency
   coach: {
+    reasoning: "none",
     model: "deepseek/deepseek-v4.1-flash",
     fallback: ["openai/gpt-4.1-mini"],
     maxTokens: 260,
@@ -33,6 +40,7 @@ export const AI_TASKS = {
   },
   // Live: the chat panel in the interview (you type; latency-tolerant)
   chat: {
+    reasoning: "none",
     model: "deepseek/deepseek-v4.1-flash",
     fallback: ["openai/gpt-4.1-mini"],
     maxTokens: 1200,
@@ -41,6 +49,7 @@ export const AI_TASKS = {
   },
   // Background, after each answered question: updates the session ledger
   ledger: {
+    reasoning: "none",
     model: "deepseek/deepseek-v4.1-flash",
     maxTokens: 400,
     temperature: 0,
@@ -49,6 +58,7 @@ export const AI_TASKS = {
   // Before the interview: digests documents into the prep pack (facts,
   // STAR stories, JD mapping). Quality over speed; runs in the background.
   prep: {
+    reasoning: "provider-default",
     model: "deepseek/deepseek-v4-pro",
     maxTokens: 8000,
     temperature: 0.2,
@@ -57,6 +67,7 @@ export const AI_TASKS = {
   // Scores answers in `pnpm ai:eval`; must be another model family than
   // the ones it grades (self-preference bias)
   grader: {
+    reasoning: "low",
     model: "openai/gpt-5.5",
     maxTokens: 800,
     temperature: 0,

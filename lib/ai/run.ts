@@ -32,6 +32,7 @@ export function runStream(name: AiTaskName, input: RunInput) {
       : { prompt: input.prompt ?? "" }),
     maxOutputTokens: task.maxTokens,
     temperature: task.temperature,
+    reasoning: task.reasoning,
     abortSignal: input.abortSignal,
     providerOptions: providerOptions(name, model),
     onError: ({ error }) => {
@@ -58,6 +59,7 @@ export async function runObject<T>(
     output: Output.object({ schema }),
     maxOutputTokens: task.maxTokens,
     temperature: task.temperature,
+    reasoning: task.reasoning,
     maxRetries: input.maxRetries ?? 0,
     abortSignal: AbortSignal.any([
       ...(input.abortSignal ? [input.abortSignal] : []),

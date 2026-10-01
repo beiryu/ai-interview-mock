@@ -40,8 +40,13 @@ describe("validateAnswer", () => {
     expect(check("X\n- Did something [S9]\n---\nI did.")).toEqual([
       { kind: "unknown-id", detail: "S9 is not in your prep" },
     ])
-    // No prep loaded: ids can't be checked
-    expect(check("X\n- Did something [S9]\n---\nI did.", new Set())).toEqual([])
+    // No prep loaded: any id is made up
+    expect(check("X\n- Did something [S9]\n---\nI did.", new Set())).toEqual([
+      {
+        kind: "unknown-id",
+        detail: "S9: no prep loaded, so this evidence is made up",
+      },
+    ])
   })
 
   it("flags never-claim items unless negated", () => {
