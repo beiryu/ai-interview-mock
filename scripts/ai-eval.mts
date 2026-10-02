@@ -6,11 +6,11 @@
  *
  *   pnpm ai:eval judge [--model deepseek/deepseek-v4.1-flash]
  *       labelled turn-judge cases: pass/fail + latency
- *   pnpm ai:eval coach [--model …] [--interview <id>]
+ *   pnpm ai:eval coach [--model …] [--job <id>]
  *       a few coach answers twice: latency, prompt caching, format
- *   pnpm ai:eval prep [--interview <id>]
- *       builds the profile prep (and that interview's prep) now
- *   pnpm ai:eval generate --preset <name> [--interview <id>] [--only <kind|id>]
+ *   pnpm ai:eval prep [--job <id>]
+ *       builds the profile prep (and that job's prep) now
+ *   pnpm ai:eval generate --preset <name> [--job <id>] [--only <kind|id>]
  *       answers eval/coach-questions.json, saves eval/results/<run>.json
  *   pnpm ai:eval grade <run.json> [--grader <model>]
  *       rubric scores (groundedness, relevance, specificity, STAR, …)
@@ -21,7 +21,7 @@ import { parseArgs } from "node:util"
 
 import { AI_TASKS } from "../config/defaults/ai"
 import { db } from "../lib/db"
-import { prepareInterviewNow, prepareProfileNow } from "../lib/prep/service"
+import { prepareJobPrepNow, prepareProfileNow } from "../lib/prep/service"
 import { generate } from "./eval/generate"
 import { compare, grade } from "./eval/grade"
 import { evalUserId, rawBrief } from "./eval/shared"
@@ -31,7 +31,7 @@ const { values: args, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     model: { type: "string" },
-    interview: { type: "string" },
+    job: { type: "string" },
     preset: { type: "string" },
     only: { type: "string" },
     grader: { type: "string" },
@@ -48,13 +48,13 @@ try {
     case "coach":
       await evalCoach(
         args.model ?? AI_TASKS.coach.model,
-        await rawBrief(args.interview)
+        await rawBrief(args.job)
       )
       break
     case "prep": {
       const userId = await evalUserId()
       const started = performance.now()
-      if (args.interview) await prepareInterviewNow(args.interview, userId)
+      if (args.job) await prepareJobPrepNow(args.job, userId)
       else await prepareProfileNow(userId)
       const row = await db.profilePrep.findUnique({ where: { userId } })
       console.log(
@@ -66,7 +66,7 @@ try {
     }
     case "generate":
       await generate(args.preset ?? "current", {
-        interviewId: args.interview,
+        jobId: args.job,
         only: args.only,
       })
       break

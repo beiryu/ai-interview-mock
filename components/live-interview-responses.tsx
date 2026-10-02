@@ -6,7 +6,7 @@ import { RotateCcw, X } from "lucide-react"
 
 import type { AnswerMetrics, QuestionAnalysis } from "@/types/interview-message"
 import { isAssumedStory, splitAnswer } from "@/lib/answer/format"
-import { useInterviewPrep, useProfilePrep } from "@/hooks/api/prep/usePrep"
+import { useJobPrep, useProfilePrep } from "@/hooks/api/prep/usePrep"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -56,19 +56,19 @@ function LatencyBadge({ metrics }: { metrics: AnswerMetrics }) {
 
 /** Prep ids → what they refer to, for the evidence chips' tooltips. */
 function useEvidenceLabels() {
-  const interviewId = useInterviewSessionStore((s) => s.interviewId)
+  const jobId = useInterviewSessionStore((s) => s.jobId)
   const profile = useProfilePrep()
-  const interview = useInterviewPrep(interviewId ?? "")
+  const jobPrep = useJobPrep(jobId ?? "")
   return useMemo(() => {
     const labels = new Map<string, string>()
     for (const f of profile.data?.content?.facts ?? [])
       labels.set(f.id, f.title)
     for (const s of profile.data?.content?.stories ?? [])
       labels.set(s.id, s.title)
-    for (const r of interview.data?.content?.requirements ?? [])
+    for (const r of jobPrep.data?.content?.requirements ?? [])
       labels.set(r.id, r.text)
     return labels
-  }, [profile.data, interview.data])
+  }, [profile.data, jobPrep.data])
 }
 
 function EvidenceChip({ id, label }: { id: string; label?: string }) {

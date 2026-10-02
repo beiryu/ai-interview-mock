@@ -2,26 +2,24 @@ import { describe, expect, it } from "vitest"
 
 import { buildInterviewBrief } from "./brief"
 
-const interview = {
-  companyName: "Acme",
-  jobTitle: "Backend Engineer",
+const job = {
+  company: "Acme",
+  title: "Backend Engineer",
   notes: "Panel of two.\n\n\n\nEmphasize Go.",
+  jdText: "Kafka, Go",
 }
 
 describe("buildInterviewBrief", () => {
-  it("includes the interview and documents, JD first", () => {
+  it("includes the job, its JD first, then documents", () => {
     const brief = buildInterviewBrief(
-      interview,
-      [
-        { title: "My CV", type: "RESUME", content: "5 years of Go" },
-        { title: "Acme JD", type: "JOB_DESCRIPTION", content: "Kafka, Go" },
-      ],
+      job,
+      [{ title: "My CV", type: "RESUME", content: "5 years of Go" }],
       10_000
     )
     expect(brief).toContain("Role: Backend Engineer")
     expect(brief).toContain("Company: Acme")
     expect(brief).toContain("Panel of two.\n\nEmphasize Go.")
-    expect(brief.indexOf("Acme JD (Job description)")).toBeLessThan(
+    expect(brief.indexOf("Job description (Job description)")).toBeLessThan(
       brief.indexOf("My CV (Resume)")
     )
     expect(brief).not.toContain("truncated")
@@ -30,7 +28,7 @@ describe("buildInterviewBrief", () => {
   it("is empty with nothing to say", () => {
     expect(
       buildInterviewBrief(
-        { companyName: null, jobTitle: null, notes: null },
+        { company: "", title: "", notes: null, jdText: "" },
         [{ title: "Empty", type: "NOTES", content: "  \n " }],
         1000
       )
@@ -39,7 +37,7 @@ describe("buildInterviewBrief", () => {
 
   it("fits the budget, letting short documents keep everything", () => {
     const brief = buildInterviewBrief(
-      { companyName: null, jobTitle: null, notes: null },
+      { company: "", title: "", notes: null, jdText: "" },
       [
         { title: "Short", type: "NOTES", content: "a".repeat(100) },
         { title: "Long", type: "PORTFOLIO", content: "b".repeat(5000) },

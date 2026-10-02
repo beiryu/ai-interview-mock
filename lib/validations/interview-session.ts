@@ -7,7 +7,7 @@ export const TranscriptEntrySchema = z.object({
 })
 
 export const CreateInterviewSessionRequestSchema = z.object({
-  interviewId: z.string(),
+  jobId: z.string(),
 })
 
 export const UpdateInterviewSessionRequestSchema = z.object({

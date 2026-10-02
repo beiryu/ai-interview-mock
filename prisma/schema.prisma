@@ -70,7 +70,7 @@ model User {
 
   accounts          Account[]
   sessions          Session[]
-  interviews        Interview[]        @relation("UserInterviews")
+  jobs              Job[]              @relation("UserJobs")
   interviewSessions InterviewSession[] @relation("UserInterviewSessions")
   documents         Document[]         @relation("UserDocuments")
   conversations     ChatConversation[] @relation("UserChatConversations")
@@ -81,32 +81,46 @@ model User {
 
 // ─── Interviews ───────────────────────────────────────────────────────────────
 
-model Interview {
+/// Where a job application stands
+enum JobStatus {
+  SAVED
+  APPLIED
+  INTERVIEWING
+  OFFER
+  REJECTED
+  ARCHIVED
+}
+
+/// A job you might apply to: its description, the CV you send for it and,
+/// once you're invited, the interview (one per job; sessions are its runs).
+model Job {
   id          String             @id @default(cuid())
   userId      String
-  user        User               @relation("UserInterviews", fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  companyName String?
-  jobTitle    String?
+  user        User               @relation("UserJobs", fields: [userId], references: [id], onDelete: Cascade)
+  company     String             @default("")
+  title       String             @default("")
+  /// The job description, as pasted or extracted
+  jdText      String             @default("") @map("jd_text") @db.Text
+  sourceUrl   String?            @map("source_url")
+  status      JobStatus          @default(SAVED)
+  /// When the interview is (null: not invited yet)
   scheduledAt DateTime?
   notes       String?            @db.Text
-  /// Documents the answer coach reads during this interview (CV, JD, notes…)
-  documentIds String[]           @default([]) @map("document_ids")
   sessions    InterviewSession[]
-  prep        InterviewPrep?
+  prep        JobPrep?
   cv          TailoredCv?
   chat        ChatConversation?
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at")
 
   @@index([userId])
-  @@map("interviews")
+  @@map("jobs")
 }
 
 model InterviewSession {
   id          String    @id @default(cuid())
-  interviewId String
-  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
   userId      String
   user        User      @relation("UserInterviewSessions", fields: [userId], references: [id], onDelete: Cascade)
   /// "in_progress" | "completed"
@@ -120,7 +134,7 @@ model InterviewSession {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  @@index([interviewId])
+  @@index([jobId])
   @@index([userId])
   @@map("interview_sessions")
 }
@@ -145,10 +159,10 @@ model ProfilePrep {
   @@map("profile_preps")
 }
 
-model InterviewPrep {
+model JobPrep {
   id          String    @id @default(cuid())
-  interviewId String    @unique
-  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  jobId       String    @unique
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
   status      String    @default("pending")
   sourceHash  String?   @map("source_hash")
   content     Json?
@@ -157,15 +171,15 @@ model InterviewPrep {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  @@map("interview_preps")
+  @@map("job_preps")
 }
 
 // A CV tailored to one interview's job (lib/cv), built from the profile prep
 // and the JD; `content` follows lib/cv/schema.ts.
 model TailoredCv {
   id          String    @id @default(cuid())
-  interviewId String    @unique
-  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  jobId       String    @unique
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
   status      String    @default("pending")
   sourceHash  String?   @map("source_hash")
   content     Json?
@@ -199,9 +213,9 @@ model ChatConversation {
   id          String        @id @default(cuid())
   userId      String
   user        User          @relation("UserChatConversations", fields: [userId], references: [id], onDelete: Cascade)
-  /// The interview whose chat this is (null: legacy Document Chat history)
-  interviewId String?       @unique @map("interview_id")
-  interview   Interview?    @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  /// The job whose interview chat this is (null: legacy Document Chat history)
+  jobId       String?       @unique @map("job_id")
+  job         Job?          @relation(fields: [jobId], references: [id], onDelete: Cascade)
   title       String        @default("")
   messages    ChatMessage[]
   createdAt   DateTime      @default(now()) @map("created_at")
@@ -229,7 +243,6 @@ enum DocumentType {
   RESUME
   COVER_LETTER
   PORTFOLIO
-  JOB_DESCRIPTION
   NOTES
   PROJECT_DOCUMENTATION
 }

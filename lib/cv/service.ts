@@ -6,7 +6,7 @@ import {
   effectiveStatus,
   errorMessage,
   getProfilePrep,
-  interviewInputs,
+  jobInputs,
   markPending,
   prepareProfileNow,
   profileInputs,
@@ -17,7 +17,7 @@ import { generateTailoredCv } from "./generate"
 import { TailoredCvSchema, pendingStretches, type TailoredCv } from "./schema"
 
 /**
- * Tailored CVs in the database (one per interview): status, background
+ * Tailored CVs in the database (one per job): status, background
  * generation and your edits — the same lifecycle as the prep packs. A CV is
  * stale when the profile prep or the job description changed.
  */
@@ -28,13 +28,13 @@ export interface CvState extends PrepState<TailoredCv> {
 }
 
 export async function getTailoredCv(
-  interviewId: string,
+  jobId: string,
   userId: string
 ): Promise<CvState> {
-  const { hash } = await interviewInputs(interviewId, userId) // ownership check
+  const { hash } = await jobInputs(jobId, userId) // ownership check
   const { text } = await profileInputs(userId)
   const blocked = text.trim() ? null : NO_DOCUMENTS
-  const row = await db.tailoredCv.findUnique({ where: { interviewId } })
+  const row = await db.tailoredCv.findUnique({ where: { jobId } })
   if (!row) {
     return {
       status: "missing",
@@ -57,7 +57,7 @@ export async function getTailoredCv(
   }
 }
 
-export async function runTailoredCv(interviewId: string, userId: string) {
+export async function runTailoredCv(jobId: string, userId: string) {
   try {
     let profile = await getProfilePrep(userId)
     if (!profile.content) {
@@ -66,8 +66,8 @@ export async function runTailoredCv(interviewId: string, userId: string) {
       if (!profile.content)
         throw new Error(profile.error ?? "Profile prep failed")
     }
-    const inputs = await interviewInputs(interviewId, userId)
-    const row = await db.tailoredCv.findUnique({ where: { interviewId } })
+    const inputs = await jobInputs(jobId, userId)
+    const row = await db.tailoredCv.findUnique({ where: { jobId } })
     const previous = TailoredCvSchema.safeParse(row?.content)
     const content = await generateTailoredCv({
       header: inputs.header,
@@ -77,63 +77,63 @@ export async function runTailoredCv(interviewId: string, userId: string) {
       previous: previous.success ? previous.data : null,
     })
     await db.tailoredCv.update({
-      where: { interviewId },
+      where: { jobId },
       data: { status: "ready", content, sourceHash: inputs.hash, error: null },
     })
   } catch (error) {
     console.error("Tailored CV failed:", error)
     await db.tailoredCv.update({
-      where: { interviewId },
+      where: { jobId },
       data: { status: "failed", error: errorMessage(error) },
     })
   }
 }
 
 /** Marks the CV pending and builds it, awaited (scripts, the prep chain). */
-export async function prepareCvNow(interviewId: string, userId: string) {
+export async function prepareCvNow(jobId: string, userId: string) {
   await db.tailoredCv.upsert({
-    where: { interviewId },
-    create: { interviewId, status: "pending", startedAt: new Date() },
+    where: { jobId },
+    create: { jobId, status: "pending", startedAt: new Date() },
     update: { status: "pending", startedAt: new Date(), error: null },
   })
-  await runTailoredCv(interviewId, userId)
+  await runTailoredCv(jobId, userId)
 }
 
-/** The CV, building it first if there is none yet (interview prep needs it). */
-export async function ensureTailoredCv(interviewId: string, userId: string) {
-  const state = await getTailoredCv(interviewId, userId)
+/** The CV, building it first if there is none yet (the job prep needs it). */
+export async function ensureTailoredCv(jobId: string, userId: string) {
+  const state = await getTailoredCv(jobId, userId)
   if (state.content) return state.content
-  await prepareCvNow(interviewId, userId)
-  const fresh = await getTailoredCv(interviewId, userId)
+  await prepareCvNow(jobId, userId)
+  const fresh = await getTailoredCv(jobId, userId)
   if (!fresh.content) throw new Error(fresh.error ?? "Tailored CV failed")
   return fresh.content
 }
 
-export async function startTailoredCv(interviewId: string, userId: string) {
-  const state = await getTailoredCv(interviewId, userId)
+export async function startTailoredCv(jobId: string, userId: string) {
+  const state = await getTailoredCv(jobId, userId)
   if (state.blocked) return { started: false, blocked: state.blocked }
-  const existing = await db.tailoredCv.findUnique({ where: { interviewId } })
+  const existing = await db.tailoredCv.findUnique({ where: { jobId } })
   const started = await markPending(existing, () =>
     db.tailoredCv.upsert({
-      where: { interviewId },
-      create: { interviewId, status: "pending", startedAt: new Date() },
+      where: { jobId },
+      create: { jobId, status: "pending", startedAt: new Date() },
       update: { status: "pending", startedAt: new Date(), error: null },
     })
   )
-  if (started) after(() => runTailoredCv(interviewId, userId))
+  if (started) after(() => runTailoredCv(jobId, userId))
   return { started, blocked: null }
 }
 
 export async function saveTailoredCv(
-  interviewId: string,
+  jobId: string,
   userId: string,
   content: TailoredCv
 ) {
-  await interviewInputs(interviewId, userId) // ownership check
+  await jobInputs(jobId, userId) // ownership check
   const parsed = TailoredCvSchema.parse(content)
   await db.tailoredCv.upsert({
-    where: { interviewId },
-    create: { interviewId, status: "ready", content: parsed },
+    where: { jobId },
+    create: { jobId, status: "ready", content: parsed },
     update: { content: parsed },
   })
 }

@@ -92,17 +92,22 @@ export function writeRun(run: RunFile, file?: string) {
 }
 
 /** The raw document brief (documents + role), also the grader's truth. */
-export async function rawBrief(interviewId?: string) {
+export async function rawBrief(jobId?: string) {
   const user = await db.user.findFirst({ select: { id: true } })
   if (!user) throw new Error("No user in the database")
-  if (interviewId) return loadInterviewBrief(interviewId, user.id)
+  if (jobId) return loadInterviewBrief(jobId, user.id)
 
   const documents = await db.document.findMany({
     where: { userId: user.id },
     select: { title: true, type: true, content: true },
   })
   return buildInterviewBrief(
-    { companyName: "Acme", jobTitle: "Senior Backend Engineer", notes: null },
+    {
+      company: "Acme",
+      title: "Senior Backend Engineer",
+      notes: null,
+      jdText: "",
+    },
     documents,
     BRIEF_MAX_CHARS
   )
@@ -115,10 +120,10 @@ export async function evalUserId() {
 }
 
 /** The coach brief from the prep pack, as the app builds it. */
-export async function prepBrief(interviewId?: string) {
+export async function prepBrief(jobId?: string) {
   const userId = await evalUserId()
-  if (interviewId) {
-    const brief = await loadInterviewBrief(interviewId, userId)
+  if (jobId) {
+    const brief = await loadInterviewBrief(jobId, userId)
     const prep = await db.profilePrep.findUnique({ where: { userId } })
     if (!prep?.content)
       throw new Error("No profile prep: run `pnpm ai:eval prep` first")
@@ -131,11 +136,7 @@ export async function prepBrief(interviewId?: string) {
   }
   const documents = await rawBrief()
   return renderPrepBrief({
-    interview: {
-      companyName: "Acme",
-      jobTitle: "Senior Backend Engineer",
-      notes: null,
-    },
+    job: { company: "Acme", title: "Senior Backend Engineer", notes: null },
     profile: profile.data,
     interviewPrep: null,
     documents: documents.slice(documents.indexOf("## Candidate documents")),

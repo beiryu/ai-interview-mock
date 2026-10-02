@@ -41,6 +41,15 @@ export const AI_TASKS = {
     temperature: 0,
     timeoutMs: 2500,
   },
+  // New job: company and title read from the pasted JD (you can fix them)
+  jobInfo: {
+    providers: DEEPSEEK_FLASH_PROVIDERS,
+    reasoning: "none",
+    model: "deepseek/deepseek-v4.1-flash",
+    maxTokens: 120,
+    temperature: 0,
+    timeoutMs: 8000,
+  },
   // Live: 3 key points + 1–3 spoken sentences; the cap bounds tail latency
   coach: {
     // Pro over Flash (same 6 real-CV questions): honest about "Spring, not

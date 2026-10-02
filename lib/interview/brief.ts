@@ -8,10 +8,12 @@
  * fallback when there is no prep pack (lib/prep).
  */
 
-export interface BriefInterview {
-  companyName: string | null
-  jobTitle: string | null
+export interface BriefJob {
+  company: string
+  title: string
   notes: string | null
+  /** The job description ("" when none) */
+  jdText: string
 }
 
 export interface BriefDocument {
@@ -45,17 +47,28 @@ function clean(text: string) {
  * equal share of what is left (short documents free space for long ones).
  */
 export function buildInterviewBrief(
-  interview: BriefInterview,
+  job: BriefJob,
   documents: BriefDocument[],
   maxChars: number
 ): string {
   const header = [
-    interview.jobTitle && `Role: ${interview.jobTitle}`,
-    interview.companyName && `Company: ${interview.companyName}`,
-    interview.notes && `Notes from the candidate:\n${clean(interview.notes)}`,
+    job.title && `Role: ${job.title}`,
+    job.company && `Company: ${job.company}`,
+    job.notes && `Notes from the candidate:\n${clean(job.notes)}`,
   ].filter(Boolean)
 
-  const docs = documents
+  // The JD lives on the job; it shares the budget like a document, first
+  const all: BriefDocument[] = job.jdText.trim()
+    ? [
+        {
+          title: "Job description",
+          type: "JOB_DESCRIPTION",
+          content: job.jdText,
+        },
+        ...documents,
+      ]
+    : documents
+  const docs = all
     .map((doc) => ({ ...doc, content: clean(doc.content) }))
     .filter((doc) => doc.content.length > 0)
     .sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type))

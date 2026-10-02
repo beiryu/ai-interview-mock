@@ -2,7 +2,6 @@ import { after } from "next/server"
 
 import { PREP_MAX_DOC_CHARS } from "@/config/defaults/ai"
 import { db } from "@/lib/db"
-import { DocumentType } from "@/lib/generated/prisma/enums"
 import { buildInterviewBrief } from "@/lib/interview/brief"
 
 import { generateInterviewPrep, generateProfilePrep } from "./generate"
@@ -13,7 +12,7 @@ import {
   type PrepStatus,
   type ProfilePrep,
 } from "./schema"
-import { interviewSourceHash, profileSourceHash } from "./source"
+import { jobSourceHash, profileSourceHash } from "./source"
 
 /**
  * Prep packs in the database: status, background generation and saving the
@@ -24,7 +23,7 @@ import { interviewSourceHash, profileSourceHash } from "./source"
 // A pending run older than this was lost (server restart): allow a new one
 const PENDING_TIMEOUT_MS = 5 * 60_000
 
-const NO_INTERVIEW = { companyName: null, jobTitle: null, notes: null }
+const NO_JOB = { company: "", title: "", notes: null, jdText: "" }
 
 export interface PrepState<T> {
   status: PrepStatus
@@ -38,10 +37,10 @@ export interface PrepState<T> {
 export const NO_DOCUMENTS =
   "Upload your CV, portfolio or notes under Documents first."
 
-/** Documents that describe the candidate (everything but job descriptions). */
+/** Documents describe the candidate (job descriptions live on jobs). */
 async function hasProfileDocuments(userId: string) {
   const count = await db.document.count({
-    where: { userId, type: { not: DocumentType.JOB_DESCRIPTION } },
+    where: { userId },
   })
   return count > 0
 }
@@ -69,10 +68,10 @@ export function effectiveStatus(
 
 // ─── Profile (per user) ───────────────────────────────────────────────────────
 
-/** Everything except job descriptions describes the candidate. */
+/** Every document describes the candidate. */
 export async function profileInputs(userId: string) {
   const documents = await db.document.findMany({
-    where: { userId, type: { not: DocumentType.JOB_DESCRIPTION } },
+    where: { userId },
     select: {
       id: true,
       title: true,
@@ -84,7 +83,7 @@ export async function profileInputs(userId: string) {
   })
   return {
     hash: profileSourceHash(documents),
-    text: buildInterviewBrief(NO_INTERVIEW, documents, PREP_MAX_DOC_CHARS),
+    text: buildInterviewBrief(NO_JOB, documents, PREP_MAX_DOC_CHARS),
   }
 }
 
@@ -163,14 +162,14 @@ export async function prepareProfileNow(userId: string) {
   await runProfilePrep(userId)
 }
 
-/** Same for an interview prep. */
-export async function prepareInterviewNow(interviewId: string, userId: string) {
-  await db.interviewPrep.upsert({
-    where: { interviewId },
-    create: { interviewId, status: "pending", startedAt: new Date() },
+/** Same for a job prep. */
+export async function prepareJobPrepNow(jobId: string, userId: string) {
+  await db.jobPrep.upsert({
+    where: { jobId },
+    create: { jobId, status: "pending", startedAt: new Date() },
     update: { status: "pending", startedAt: new Date(), error: null },
   })
-  await runInterviewPrep(interviewId, userId)
+  await runJobPrep(jobId, userId)
 }
 
 /** Starts a background profile prep unless one is already running. */
@@ -198,58 +197,38 @@ export async function saveProfilePrep(userId: string, content: ProfilePrep) {
   })
 }
 
-// ─── Interview (per JD) ───────────────────────────────────────────────────────
+// ─── Job (per JD) ───────────────────────────────────────────────────────
 
-export async function interviewInputs(interviewId: string, userId: string) {
-  const interview = await db.interview.findFirst({
-    where: { id: interviewId, userId },
-    select: {
-      jobTitle: true,
-      companyName: true,
-      notes: true,
-      documentIds: true,
-    },
+export async function jobInputs(jobId: string, userId: string) {
+  const job = await db.job.findFirst({
+    where: { id: jobId, userId },
+    select: { title: true, company: true, notes: true, jdText: true },
   })
-  if (!interview) throw new Error("Interview not found")
-  const jobDocuments = await db.document.findMany({
-    where: {
-      userId,
-      id: { in: interview.documentIds },
-      type: DocumentType.JOB_DESCRIPTION,
-    },
-    select: { id: true, title: true, content: true, updatedAt: true },
-  })
+  if (!job) throw new Error("Job not found")
   const profile = await db.profilePrep.findUnique({
     where: { userId },
     select: { sourceHash: true },
   })
   const header = [
-    interview.jobTitle && `ROLE: ${interview.jobTitle}`,
-    interview.companyName && `COMPANY: ${interview.companyName}`,
-    interview.notes && `CANDIDATE NOTES: ${interview.notes}`,
+    job.title && `ROLE: ${job.title}`,
+    job.company && `COMPANY: ${job.company}`,
+    job.notes && `CANDIDATE NOTES: ${job.notes}`,
   ]
     .filter(Boolean)
     .join("\n")
   return {
-    hash: interviewSourceHash({
-      interview,
-      jobDocuments,
-      profileHash: profile?.sourceHash ?? null,
-    }),
+    hash: jobSourceHash({ job, profileHash: profile?.sourceHash ?? null }),
     header,
-    jobDescription: jobDocuments
-      .map((d) => `### ${d.title}\n${d.content}`)
-      .join("\n\n")
-      .slice(0, PREP_MAX_DOC_CHARS),
+    jobDescription: job.jdText.slice(0, PREP_MAX_DOC_CHARS),
   }
 }
 
-export async function getInterviewPrep(
-  interviewId: string,
+export async function getJobPrep(
+  jobId: string,
   userId: string
 ): Promise<PrepState<InterviewPrep>> {
-  const row = await db.interviewPrep.findUnique({ where: { interviewId } })
-  const { hash } = await interviewInputs(interviewId, userId) // ownership check
+  const row = await db.jobPrep.findUnique({ where: { jobId } })
+  const { hash } = await jobInputs(jobId, userId) // ownership check
   // The interview prep builds on the profile prep, which needs documents
   const blocked = (await hasProfileDocuments(userId)) ? null : NO_DOCUMENTS
   if (!row) {
@@ -271,7 +250,7 @@ export async function getInterviewPrep(
   }
 }
 
-export async function runInterviewPrep(interviewId: string, userId: string) {
+export async function runJobPrep(jobId: string, userId: string) {
   try {
     // The interview prep cites profile ids, so the profile comes first
     let profile = await getProfilePrep(userId)
@@ -285,10 +264,10 @@ export async function runInterviewPrep(interviewId: string, userId: string) {
     // Then the CV for this job: the prep is about what the employer saw
     // (dynamic import: lib/cv/service builds on this module)
     const { ensureTailoredCv } = await import("@/lib/cv/service")
-    const cv = await ensureTailoredCv(interviewId, userId)
+    const cv = await ensureTailoredCv(jobId, userId)
 
-    const inputs = await interviewInputs(interviewId, userId)
-    const row = await db.interviewPrep.findUnique({ where: { interviewId } })
+    const inputs = await jobInputs(jobId, userId)
+    const row = await db.jobPrep.findUnique({ where: { jobId } })
     const previous = InterviewPrepSchema.safeParse(row?.content)
     const content = await generateInterviewPrep({
       header: inputs.header,
@@ -298,14 +277,14 @@ export async function runInterviewPrep(interviewId: string, userId: string) {
       documents: (await profileInputs(userId)).text,
       previous: previous.success ? previous.data : null,
     })
-    await db.interviewPrep.update({
-      where: { interviewId },
+    await db.jobPrep.update({
+      where: { jobId },
       data: { status: "ready", content, sourceHash: inputs.hash, error: null },
     })
   } catch (error) {
     console.error("Interview prep failed:", error)
-    await db.interviewPrep.update({
-      where: { interviewId },
+    await db.jobPrep.update({
+      where: { jobId },
       data: {
         status: "failed",
         error: errorMessage(error),
@@ -314,32 +293,32 @@ export async function runInterviewPrep(interviewId: string, userId: string) {
   }
 }
 
-export async function startInterviewPrep(interviewId: string, userId: string) {
-  await interviewInputs(interviewId, userId) // ownership check
+export async function startJobPrep(jobId: string, userId: string) {
+  await jobInputs(jobId, userId) // ownership check
   if (!(await hasProfileDocuments(userId)))
     return { started: false, blocked: NO_DOCUMENTS }
-  const existing = await db.interviewPrep.findUnique({ where: { interviewId } })
+  const existing = await db.jobPrep.findUnique({ where: { jobId } })
   const started = await markPending(existing, () =>
-    db.interviewPrep.upsert({
-      where: { interviewId },
-      create: { interviewId, status: "pending", startedAt: new Date() },
+    db.jobPrep.upsert({
+      where: { jobId },
+      create: { jobId, status: "pending", startedAt: new Date() },
       update: { status: "pending", startedAt: new Date(), error: null },
     })
   )
-  if (started) after(() => runInterviewPrep(interviewId, userId))
+  if (started) after(() => runJobPrep(jobId, userId))
   return { started, blocked: null }
 }
 
-export async function saveInterviewPrep(
-  interviewId: string,
+export async function saveJobPrep(
+  jobId: string,
   userId: string,
   content: InterviewPrep
 ) {
-  await interviewInputs(interviewId, userId) // ownership check
+  await jobInputs(jobId, userId) // ownership check
   const parsed = InterviewPrepSchema.parse(content)
-  await db.interviewPrep.upsert({
-    where: { interviewId },
-    create: { interviewId, status: "ready", content: parsed },
+  await db.jobPrep.upsert({
+    where: { jobId },
+    create: { jobId, status: "ready", content: parsed },
     update: { content: parsed },
   })
 }

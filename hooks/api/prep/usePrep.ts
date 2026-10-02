@@ -38,7 +38,7 @@ function usePrepResource<T, S extends PrepState<T> = PrepState<T>>(
   const query = useQuery({
     queryKey: key,
     queryFn: () => request<S>(url),
-    enabled: !url.includes("/interviews//"),
+    enabled: !url.includes("/jobs//"),
     refetchInterval: (q) => (q.state.data?.status === "pending" ? 3000 : false),
   })
   const generate = useMutation({
@@ -60,16 +60,16 @@ export function useProfilePrep() {
   return usePrepResource<ProfilePrep>(["prep", "profile"], "/api/prep/profile")
 }
 
-export function useInterviewPrep(interviewId: string) {
+export function useJobPrep(jobId: string) {
   return usePrepResource<InterviewPrep>(
-    ["prep", "interview", interviewId],
-    `/api/interviews/${interviewId}/prep`
+    ["prep", "job", jobId],
+    `/api/jobs/${jobId}/prep`
   )
 }
 
-export function useTailoredCv(interviewId: string) {
+export function useTailoredCv(jobId: string) {
   return usePrepResource<TailoredCv, CvState>(
-    ["cv", interviewId],
-    `/api/interviews/${interviewId}/cv`
+    ["cv", jobId],
+    `/api/jobs/${jobId}/cv`
   )
 }

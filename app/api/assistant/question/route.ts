@@ -9,7 +9,7 @@ import { db } from "@/lib/db"
 import { loadCoachContext } from "@/lib/interview/load-brief"
 
 const RequestSchema = z.object({
-  interviewId: z.string().min(1),
+  jobId: z.string().min(1),
   /** Live session, for the ledger of what happened so far */
   sessionId: z.string().nullable().default(null),
   text: z.string().min(1),
@@ -31,11 +31,11 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return new Response("Invalid request", { status: 400 })
   }
-  const { interviewId, sessionId, text, language, context } = parsed.data
+  const { jobId, sessionId, text, language, context } = parsed.data
   const userId = authSession.user.id
 
   const [coach, session] = await Promise.all([
-    loadCoachContext(interviewId, userId),
+    loadCoachContext(jobId, userId),
     sessionId
       ? db.interviewSession.findFirst({
           where: { id: sessionId, userId },

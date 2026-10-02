@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { DashboardHeader } from "@/components/header"
-import { CreateInterviewDialog } from "@/components/modals/create-interview-dialog"
+import { NewJobDialog } from "@/components/jobs/new-job-dialog"
 import { DashboardShell } from "@/components/shell"
 
 export const metadata = {
@@ -37,7 +37,7 @@ export default async function DashboardPage() {
 
   const [upcoming, recentSessions, documentCount, profilePrep] =
     await Promise.all([
-      db.interview.findMany({
+      db.job.findMany({
         where: { userId: user.id, scheduledAt: { gte: new Date() } },
         orderBy: { scheduledAt: "asc" },
         take: 5,
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
         where: { userId: user.id },
         orderBy: { startedAt: "desc" },
         take: 5,
-        include: { interview: { select: { id: true, name: true } } },
+        include: { job: { select: { id: true, company: true, title: true } } },
       }),
       db.document.count({ where: { userId: user.id } }),
       db.profilePrep.findUnique({
@@ -59,9 +59,9 @@ export default async function DashboardPage() {
     <DashboardShell>
       <DashboardHeader
         heading={user.name ? `Hi, ${user.name}` : "Home"}
-        text="Your upcoming interviews and recent sessions."
+        text="Paste a job you like to get a CV for it; your upcoming interviews and recent sessions are here."
       >
-        <CreateInterviewDialog />
+        <NewJobDialog />
       </DashboardHeader>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -77,25 +77,28 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="divide-y">
             {upcoming.length === 0 ? (
-              <EmptyLine>Nothing scheduled.</EmptyLine>
+              <EmptyLine>
+                Nothing scheduled. Invited? Open the job and click Schedule
+                interview.
+              </EmptyLine>
             ) : (
-              upcoming.map((interview) => (
+              upcoming.map((job) => (
                 <Link
-                  key={interview.id}
-                  href={`/dashboard/interviews/${interview.id}`}
+                  key={job.id}
+                  href={`/dashboard/jobs/${job.id}`}
                   className="flex items-center justify-between gap-4 py-3 text-sm hover:underline"
                 >
                   <span className="truncate font-medium">
-                    {interview.name}
-                    {interview.companyName && (
+                    {job.company || "Unknown company"}
+                    {job.title && (
                       <span className="font-normal text-muted-foreground">
                         {" "}
-                        · {interview.companyName}
+                        · {job.title}
                       </span>
                     )}
                   </span>
                   <span className="shrink-0 text-muted-foreground">
-                    {dateTime(interview.scheduledAt!)}
+                    {dateTime(job.scheduledAt!)}
                   </span>
                 </Link>
               ))
@@ -114,18 +117,20 @@ export default async function DashboardPage() {
           <CardContent className="divide-y">
             {recentSessions.length === 0 ? (
               <EmptyLine>
-                No sessions yet. Launch an interview and share the meeting tab
-                to record one.
+                No sessions yet. Launch a job&apos;s interview and share the
+                meeting tab to record one.
               </EmptyLine>
             ) : (
               recentSessions.map((session) => (
                 <Link
                   key={session.id}
-                  href={`/dashboard/interviews/${session.interview.id}/sessions`}
+                  href={`/dashboard/jobs/${session.job.id}?tab=sessions`}
                   className="flex items-center justify-between gap-4 py-3 text-sm hover:underline"
                 >
                   <span className="truncate font-medium">
-                    {session.interview.name}
+                    {[session.job.company, session.job.title]
+                      .filter(Boolean)
+                      .join(" — ") || "Untitled job"}
                   </span>
                   <span className="shrink-0 text-muted-foreground">
                     {session.status === "completed"
@@ -145,7 +150,7 @@ export default async function DashboardPage() {
             <CardTitle className="text-lg">Documents</CardTitle>
             <CardDescription>
               {documentCount === 0
-                ? "Upload your resume and job descriptions so the answer coach can use them."
+                ? "Upload your resume, portfolio and notes: every CV and the coach are built from them."
                 : `${documentCount} document${
                     documentCount === 1 ? "" : "s"
                   } · profile prep ${

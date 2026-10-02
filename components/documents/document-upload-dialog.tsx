@@ -56,9 +56,6 @@ const MIN_EXTRACTED_CHARS = 200
 function guessType(fileName: string): DocumentType | undefined {
   const name = fileName.toLowerCase()
   if (/(^|[^a-z])(cv|resume)([^a-z]|$)/.test(name)) return DocumentType.RESUME
-  if (/(^|[^a-z])(jd|job)([^a-z]|$)/.test(name)) {
-    return DocumentType.JOB_DESCRIPTION
-  }
   return undefined
 }
 
@@ -101,10 +98,7 @@ export function DocumentUploadDialog() {
         resetForm()
         toast({
           title: "Document saved",
-          description:
-            data.type === DocumentType.JOB_DESCRIPTION
-              ? "Pick it on an interview to use it in that interview's prep."
-              : "Re-run Profile prep so the coach uses it.",
+          description: "Re-run Profile prep so the coach uses it.",
         })
         router.refresh()
       },
@@ -156,8 +150,8 @@ export function DocumentUploadDialog() {
         <DialogHeader>
           <DialogTitle>Upload Document</DialogTitle>
           <DialogDescription>
-            Your documents feed the profile prep and the answer coach. Job
-            descriptions are used per interview.
+            Everything about you: it feeds the profile prep, every tailored CV
+            and the coach. Job descriptions go on Jobs.
           </DialogDescription>
         </DialogHeader>
 
@@ -212,7 +206,7 @@ export function DocumentUploadDialog() {
                   </FormControl>
                   <FormDescription>
                     A descriptive title for your document (e.g., Software
-                    Engineer Resume, Google SWE Job Description)
+                    Engineer Resume, Portfolio 2026)
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

@@ -52,11 +52,6 @@ export const DOCUMENT_TYPE_OPTIONS = [
     description: "Your professional background and experience",
   },
   {
-    value: DocumentType.JOB_DESCRIPTION,
-    label: "Job Description",
-    description: "Target position details and requirements",
-  },
-  {
     value: DocumentType.PORTFOLIO,
     label: "Portfolio",
     description: "Projects, accomplishments, and work samples",

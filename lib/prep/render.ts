@@ -1,6 +1,6 @@
 import { cvBlock } from "@/lib/cv/render"
 import type { TailoredCv } from "@/lib/cv/schema"
-import type { BriefInterview } from "@/lib/interview/brief"
+import type { BriefJob } from "@/lib/interview/brief"
 
 import {
   PERSONAL_LABELS,
@@ -37,13 +37,13 @@ export function topHighlights(highlights: string[], max = MAX_HIGHLIGHTS) {
  * prompt-cacheable for the whole interview.
  */
 export function renderPrepBrief({
-  interview,
+  job,
   profile,
   interviewPrep,
   cv = null,
   documents,
 }: {
-  interview: BriefInterview
+  job: Pick<BriefJob, "company" | "title" | "notes">
   profile: ProfilePrep
   interviewPrep: InterviewPrep | null
   /** The CV sent to this employer: answers must match it */
@@ -54,9 +54,9 @@ export function renderPrepBrief({
   const sections: string[] = []
 
   const header = [
-    interview.jobTitle && `Role: ${interview.jobTitle}`,
-    interview.companyName && `Company: ${interview.companyName}`,
-    interview.notes && `Notes from the candidate: ${interview.notes.trim()}`,
+    job.title && `Role: ${job.title}`,
+    job.company && `Company: ${job.company}`,
+    job.notes && `Notes from the candidate: ${job.notes.trim()}`,
   ].filter(Boolean)
   if (header.length) sections.push(`## Interview\n${header.join("\n")}`)
 

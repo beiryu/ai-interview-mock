@@ -12,19 +12,20 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const { interviewId } = CreateInterviewSessionRequestSchema.parse(
+    const { jobId } = CreateInterviewSessionRequestSchema.parse(
       await req.json()
     )
 
-    const interview = await db.interview.findFirst({
-      where: { id: interviewId, userId: user.id },
+    const job = await db.job.findFirst({
+      where: { id: jobId, userId: user.id },
+      select: { id: true },
     })
-    if (!interview) {
+    if (!job) {
       return new NextResponse("Not found", { status: 404 })
     }
 
     const interviewSession = await db.interviewSession.create({
-      data: { interviewId, userId: user.id },
+      data: { jobId, userId: user.id },
     })
 
     return NextResponse.json(interviewSession)

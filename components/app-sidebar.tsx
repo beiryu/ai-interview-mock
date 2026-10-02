@@ -4,9 +4,9 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  Briefcase,
   FileText,
   LayoutDashboard,
-  Mic,
   Podcast,
   Settings2,
   UserRoundCheck,
@@ -28,7 +28,7 @@ import { NavUser } from "@/components/nav-user"
 
 const NAV_ITEMS = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard, exact: true },
-  { title: "Interviews", url: "/dashboard/interviews", icon: Mic },
+  { title: "Jobs", url: "/dashboard/jobs", icon: Briefcase },
   { title: "Documents", url: "/dashboard/documents", icon: FileText },
   { title: "Profile prep", url: "/dashboard/profile", icon: UserRoundCheck },
   { title: "Settings", url: "/dashboard/settings", icon: Settings2 },

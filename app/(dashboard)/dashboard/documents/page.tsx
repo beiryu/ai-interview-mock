@@ -7,7 +7,8 @@ import { DashboardShell } from "@/components/shell"
 
 export const metadata: Metadata = {
   title: "Documents",
-  description: "Manage your interview documents and knowledge base.",
+  description:
+    "Your CV, portfolio and notes: what the CVs and the coach are built from. Job descriptions live on Jobs.",
 }
 
 export default async function DocumentsPage() {
@@ -15,7 +16,7 @@ export default async function DocumentsPage() {
     <DashboardShell>
       <DashboardHeader
         heading="Documents"
-        text="Manage your interview documents and knowledge base."
+        text="Your CV, portfolio and notes: what the CVs and the coach are built from. Job descriptions live on Jobs."
       >
         <DocumentUploadDialog />
       </DashboardHeader>

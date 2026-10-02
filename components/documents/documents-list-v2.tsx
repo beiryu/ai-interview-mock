@@ -32,7 +32,6 @@ import EditDocumentDialog from "@/components/modals/edit-document-modal"
 
 const documentTypeLabels = {
   RESUME: "Resume",
-  JOB_DESCRIPTION: "Job Description",
   PORTFOLIO: "Portfolio",
   COVER_LETTER: "Cover Letter",
   NOTES: "Notes",
@@ -41,8 +40,6 @@ const documentTypeLabels = {
 
 const documentTypeColors = {
   RESUME: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  JOB_DESCRIPTION:
-    "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   PORTFOLIO:
     "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
   COVER_LETTER:
@@ -54,7 +51,6 @@ const documentTypeColors = {
 
 const documentTypeIcons = {
   RESUME: Icons.user,
-  JOB_DESCRIPTION: Icons.briefcase,
   PORTFOLIO: Icons.folder,
   COVER_LETTER: Icons.mail,
   NOTES: Icons.fileText,
@@ -113,7 +109,8 @@ export function DocumentsListV2() {
         <EmptyPlaceholder.Title>No documents uploaded</EmptyPlaceholder.Title>
         <EmptyPlaceholder.Description>
           You haven&apos;t uploaded any documents yet. Start by uploading your
-          resume or job descriptions to get personalized interview assistance.
+          resume, portfolio or notes: everything about you. Job descriptions go
+          on Jobs.
         </EmptyPlaceholder.Description>
       </EmptyPlaceholder>
     )

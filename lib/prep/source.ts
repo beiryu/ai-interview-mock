@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 
 /**
  * Fingerprints of what a prep was built from. A stored prep whose hash no
- * longer matches is "stale" (documents or the interview changed).
+ * longer matches is "stale" (documents or the job changed).
  */
 
 type Versioned = { id: string; updatedAt: Date | string }
@@ -24,25 +24,18 @@ export function profileSourceHash(documents: Versioned[]) {
   return hash(versions(documents))
 }
 
-export function interviewSourceHash({
-  interview,
-  jobDocuments,
+export function jobSourceHash({
+  job,
   profileHash,
 }: {
-  interview: {
-    jobTitle: string | null
-    companyName: string | null
+  job: {
+    company: string
+    title: string
     notes: string | null
+    jdText: string
   }
-  jobDocuments: Versioned[]
   /** The profile prep it was built against (facts/story ids) */
   profileHash: string | null
 }) {
-  return hash([
-    interview.jobTitle,
-    interview.companyName,
-    interview.notes,
-    versions(jobDocuments),
-    profileHash,
-  ])
+  return hash([job.title, job.company, job.notes, job.jdText, profileHash])
 }

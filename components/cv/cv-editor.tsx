@@ -13,12 +13,10 @@ import {
 } from "@/lib/cv/schema"
 import type { Contact, Fact } from "@/lib/prep/schema"
 import { cn } from "@/lib/utils"
-import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
 import { useProfilePrep, useTailoredCv } from "@/hooks/api/prep/usePrep"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
-import { DashboardHeader } from "@/components/header"
 import {
   AddButton,
   ItemCard,
@@ -32,15 +30,14 @@ import {
 } from "@/components/prep/fields"
 
 /**
- * The CV for one interview: edit on the left, a PDF-like preview on the
+ * The CV for one job: edit on the left, a PDF-like preview on the
  * right. Wording that goes beyond your documents (a stretch) has an amber
  * frame until you approve it, fix the wording, or remove the line — the PDF
  * download waits for that.
  */
-export function CvEditor({ interviewId }: { interviewId: string }) {
-  const cv = useTailoredCv(interviewId)
+export function CvEditor({ jobId }: { jobId: string }) {
+  const cv = useTailoredCv(jobId)
   const profile = useProfilePrep()
-  const { data: interview } = useGetInterview(interviewId)
   const { draft, dirty, update, reset } = useDraft<TailoredCv>(
     cv.data?.content ?? null
   )
@@ -78,18 +75,24 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
       experience: d.experience.map((e, i) => (i === index ? fn(e) : e)),
     }))
 
-  const subtitle = [interview?.companyName, interview?.jobTitle]
-    .filter(Boolean)
-    .join(" · ")
-
   return (
     <div className="grid gap-6">
-      <DashboardHeader
-        heading="Tailored CV"
-        text={subtitle || interview?.name || "CV for this job"}
-      >
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <PrepStatusBar
+            status={cv.data?.status ?? "missing"}
+            updatedAt={cv.data?.updatedAt ?? null}
+            error={cv.data?.error ?? null}
+            blocked={cv.data?.blocked ?? null}
+            onGenerate={() => cv.generate.mutate()}
+            generating={cv.generate.isPending}
+            dirty={dirty}
+            onSave={onSave}
+            saving={cv.save.isPending}
+          />
+        </div>
         <DownloadButton
-          interviewId={interviewId}
+          jobId={jobId}
           disabled={!draft || dirty || pending > 0}
           reason={
             dirty
@@ -101,26 +104,13 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
               : null
           }
         />
-      </DashboardHeader>
-
-      <PrepStatusBar
-        status={cv.data?.status ?? "missing"}
-        updatedAt={cv.data?.updatedAt ?? null}
-        error={cv.data?.error ?? null}
-        blocked={cv.data?.blocked ?? null}
-        onGenerate={() => cv.generate.mutate()}
-        generating={cv.generate.isPending}
-        dirty={dirty}
-        onSave={onSave}
-        saving={cv.save.isPending}
-      />
+      </div>
 
       {!draft ? (
         <p className="text-sm text-muted-foreground">
-          The CV is built from your profile prep and this interview&apos;s job
-          description: your real experience, chosen and reworded for the job.
-          Pick the job description in the interview&apos;s prep (Documents) for
-          the best fit.
+          The CV is built from your profile prep and this job&apos;s
+          description: your real experience, chosen and reworded for the job. It
+          takes about ten seconds.
         </p>
       ) : (
         <div className="grid items-start gap-6 xl:grid-cols-2">
@@ -392,11 +382,11 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
 }
 
 function DownloadButton({
-  interviewId,
+  jobId,
   disabled,
   reason,
 }: {
-  interviewId: string
+  jobId: string
   disabled: boolean
   reason: string | null
 }) {
@@ -408,10 +398,7 @@ function DownloadButton({
           Download PDF
         </Button>
       ) : (
-        <a
-          href={`/api/interviews/${interviewId}/cv/pdf`}
-          className={buttonVariants()}
-        >
+        <a href={`/api/jobs/${jobId}/cv/pdf`} className={buttonVariants()}>
           <Download className="mr-2 size-4" />
           Download PDF
         </a>

@@ -9,7 +9,7 @@ import {
 } from "./merge"
 import { renderPrepBrief, topHighlights } from "./render"
 import { EMPTY_PERSONAL, type Fact, type ProfilePrep } from "./schema"
-import { interviewSourceHash, profileSourceHash } from "./source"
+import { jobSourceHash, profileSourceHash } from "./source"
 
 const fact = (over: Partial<Fact>): Fact => ({
   id: "P1",
@@ -127,7 +127,7 @@ describe("renderPrepBrief", () => {
 
   it("renders ids, blanks and never-claim deterministically", () => {
     const input = {
-      interview: { companyName: "Acme", jobTitle: "Backend", notes: null },
+      job: { company: "Acme", title: "Backend", notes: null },
       profile,
       interviewPrep: null,
       documents: "",
@@ -152,11 +152,12 @@ describe("source hashes", () => {
     expect(profileSourceHash([a, b])).not.toBe(
       profileSourceHash([a, { ...b, updatedAt: "2026-02-01T00:00:00Z" }])
     )
-    const interview = { jobTitle: "x", companyName: null, notes: null }
-    expect(
-      interviewSourceHash({ interview, jobDocuments: [a], profileHash: "1" })
-    ).not.toBe(
-      interviewSourceHash({ interview, jobDocuments: [a], profileHash: "2" })
+    const job = { title: "x", company: "", notes: null, jdText: "Go" }
+    expect(jobSourceHash({ job, profileHash: "1" })).not.toBe(
+      jobSourceHash({ job, profileHash: "2" })
+    )
+    expect(jobSourceHash({ job, profileHash: "1" })).not.toBe(
+      jobSourceHash({ job: { ...job, jdText: "Go, Kafka" }, profileHash: "1" })
     )
   })
 })
@@ -202,7 +203,7 @@ describe("topHighlights", () => {
 describe("renderPrepBrief with a tailored CV", () => {
   it("adds the CV with stretch defenses", () => {
     const brief = renderPrepBrief({
-      interview: { companyName: "Acme", jobTitle: "Full-stack", notes: null },
+      job: { company: "Acme", title: "Full-stack", notes: null },
       profile: {
         facts: [],
         stories: [],

@@ -40,25 +40,28 @@ pnpm dev                     # http://localhost:3000
 
 ## Using it
 
-1. Upload your resume, portfolio, notes and job descriptions under
-   **Documents** (PDF, DOCX, TXT or MD — or paste the text; you review the
-   extracted text before saving).
+1. Upload your resume, portfolio and notes under **Documents** (PDF, DOCX,
+   TXT or MD — or paste the text; you review the extracted text before
+   saving). Documents are only about you.
 2. Open **Profile prep**, click Prepare, then review it: fix the STAR
    stories, fill in your personal answers (salary, why leaving, …), check
-   the never-claim list. The coach only says what's here.
-3. Create an **Interview** with the company, role and notes, and pick this
-   job's description. Its **Prep** sheet maps the JD to your evidence.
-4. Open its **CV** (Interviews list → CV): a version of your CV tailored to
-   the job, built only from your documents. Wording that goes a little
-   beyond them is framed in amber with what to say if asked; approve it, fix
-   it or remove the line, then **Download PDF**. Fill in the CV header
-   (name, phone, links) once under Profile prep. The coach stays consistent
+   the never-claim list, and fill in the CV header (name, phone, links) once.
+   The coach only says what's here.
+3. See a job you like? **Jobs → New job**, paste its description (or drop
+   the PDF). Company and role are read from it, and a **CV tailored to the
+   job** is written from your documents in about ten seconds. Wording that
+   goes a little beyond them is framed in amber with what to say if asked;
+   approve it, fix it or remove the line, then **Download PDF**. Track where
+   each application stands with its status.
+4. Invited? Open the job and click **Schedule interview**. It moves to
+   Interviewing, shows on Home, and its **Prep** tab maps the JD to your
+   evidence (and to the CV you sent).
+5. On the day, **Launch interview**, click **Share the meeting tab** and
+   pick the tab running the call (with "share tab audio" enabled). Turn on
+   your mic to transcribe your own answers too. The coach stays consistent
    with the CV you sent.
-5. Launch it, click **Share the meeting tab** and pick the tab running the
-   call (with "share tab audio" enabled). Turn on your mic to transcribe your
-   own answers too.
 6. Suggested answers appear as the interviewer asks questions. **End session**
-   saves the transcript, viewable under **Past sessions**.
+   saves the transcript, viewable in the job's **Sessions** tab.
 
 ## Scripts
 
