@@ -1,14 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Clock } from "lucide-react"
+import { Clock, FileText } from "lucide-react"
 
+import { cn } from "@/lib/utils"
 import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
 import { useCopilotHotkeys } from "@/hooks/use-copilot-hotkeys"
 import { useDesktop } from "@/hooks/use-desktop"
 import { useInterviewSessionLifecycle } from "@/hooks/use-interview-session-lifecycle"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   ResizableHandle,
   ResizablePanel,
@@ -167,7 +169,22 @@ export function LiveInterviewPlaygroundV2({
               >
                 <div className="flex h-10 shrink-0 items-center justify-between border-b px-4">
                   <CopilotStatus />
-                  {interview && <InterviewPrepSheet interview={interview} />}
+                  {interview && (
+                    <div className="flex items-center gap-1">
+                      <Link
+                        href={`/dashboard/interviews/${interview.id}/cv`}
+                        title="The CV you send for this job"
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "sm" }),
+                          "h-6 gap-1 px-2 text-xs"
+                        )}
+                      >
+                        <FileText className="size-3" />
+                        CV
+                      </Link>
+                      <InterviewPrepSheet interview={interview} />
+                    </div>
+                  )}
                 </div>
                 <div className="min-h-0 flex-1 overflow-hidden">
                   <LiveInterviewResponses />

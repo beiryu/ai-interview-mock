@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { Row } from "@tanstack/react-table"
-import { History, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { FileText, History, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 
 import type { Interview } from "@/lib/validations/interview"
 import { Button } from "@/components/ui/button"
@@ -43,6 +43,12 @@ export function DataTableRowActions<TData>({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[180px]">
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/interviews/${interview.id}/cv`}>
+              <FileText className="mr-2 size-4" />
+              Tailored CV
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href={`/dashboard/interviews/${interview.id}/sessions`}>
               <History className="mr-2 size-4" />

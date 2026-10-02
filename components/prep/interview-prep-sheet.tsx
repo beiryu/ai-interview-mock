@@ -12,7 +12,7 @@ import {
   useProfilePrep,
   useTailoredCv,
 } from "@/hooks/api/prep/usePrep"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
@@ -162,15 +162,16 @@ function CvRow({ interviewId }: { interviewId: string }) {
   const pending = data?.pending ?? 0
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs">
-      <span>
-        Tailored CV:{" "}
-        <Link
-          href={`/dashboard/interviews/${interviewId}/cv`}
-          className="font-medium underline"
-        >
-          {data ? CV_LABEL[data.status] : "…"}
-        </Link>
-      </span>
+      <span>Tailored CV: {data ? CV_LABEL[data.status] : "…"}</span>
+      <Link
+        href={`/dashboard/interviews/${interviewId}/cv`}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "h-6 px-2 text-xs"
+        )}
+      >
+        Open CV
+      </Link>
       {pending > 0 && (
         <span className="text-amber-700 dark:text-amber-300">
           {pending} stretch{pending > 1 ? "es" : ""} to approve

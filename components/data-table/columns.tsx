@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { ColumnDef } from "@tanstack/react-table"
-import { Play } from "lucide-react"
+import { FileText, Play } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Interview } from "@/lib/validations/interview"
@@ -80,25 +80,27 @@ export const columns: ColumnDef<Interview>[] = [
     cell: ({ row }) => {
       const cv = row.original.cv
       const label = !cv
-        ? "Make CV"
+        ? "Tailor CV"
         : cv.status === "pending"
         ? "Writing…"
         : cv.status === "failed"
-        ? "Failed"
+        ? "CV failed"
         : cv.pending > 0
         ? `${cv.pending} to approve`
-        : "Ready"
+        : "CV ready"
       return (
         <Link
           href={`/dashboard/interviews/${row.original.id}/cv`}
+          title="A CV for this job, built from your documents"
           className={cn(
-            "text-sm underline-offset-4 hover:underline",
-            !cv && "text-muted-foreground",
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "gap-2",
             cv &&
               (cv.status === "failed" || cv.pending > 0) &&
-              "text-amber-700 dark:text-amber-300"
+              "border-amber-500/60 text-amber-700 dark:text-amber-300"
           )}
         >
+          <FileText className="size-4" />
           {label}
         </Link>
       )
