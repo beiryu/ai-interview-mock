@@ -1,4 +1,5 @@
 import { BRIEF_MAX_CHARS } from "@/config/defaults/ai"
+import { TailoredCvSchema } from "@/lib/cv/schema"
 import { db } from "@/lib/db"
 import { renderPrepBrief } from "@/lib/prep/render"
 import { InterviewPrepSchema, ProfilePrepSchema } from "@/lib/prep/schema"
@@ -36,6 +37,7 @@ export async function loadCoachContext(
       notes: true,
       documentIds: true,
       prep: { select: { content: true } },
+      cv: { select: { content: true } },
       user: { select: { profilePrep: { select: { content: true } } } },
     },
   })
@@ -59,10 +61,12 @@ export async function loadCoachContext(
   }
 
   const interviewPrep = InterviewPrepSchema.safeParse(interview.prep?.content)
+  const cv = TailoredCvSchema.safeParse(interview.cv?.content)
   const prepBrief = renderPrepBrief({
     interview,
     profile: profile.data,
     interviewPrep: interviewPrep.success ? interviewPrep.data : null,
+    cv: cv.success ? cv.data : null,
     documents: "",
   })
   // The prep pack alone: raw documents would roughly double every answer's
@@ -74,6 +78,9 @@ export async function loadCoachContext(
       ...profile.data.stories.map((s) => s.id),
       ...(interviewPrep.success
         ? interviewPrep.data.requirements.map((r) => r.id)
+        : []),
+      ...(cv.success
+        ? cv.data.experience.flatMap((e) => e.bullets.map((b) => b.id))
         : []),
     ]),
     doNotClaim: profile.data.doNotClaim,

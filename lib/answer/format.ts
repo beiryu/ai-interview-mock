@@ -23,7 +23,7 @@ export interface ParsedAnswer {
 }
 
 const BULLET = /^[-•*]\s/
-const ID = /^[PSR]\d+$/
+const ID = /^[PSRB]\d+$/
 
 /** "Cut DB load 60% [P3] [S1, R2]" → text + ["P3", "S1", "R2"] */
 export function splitTags(line: string): KeyPoint {

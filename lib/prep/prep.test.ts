@@ -198,3 +198,50 @@ describe("topHighlights", () => {
     ).toEqual(["Built APIs", "Cut load 40%", "Sped up 2x"])
   })
 })
+
+describe("renderPrepBrief with a tailored CV", () => {
+  it("adds the CV with stretch defenses", () => {
+    const brief = renderPrepBrief({
+      interview: { companyName: "Acme", jobTitle: "Full-stack", notes: null },
+      profile: {
+        facts: [],
+        stories: [],
+        doNotClaim: [],
+        personal: EMPTY_PERSONAL,
+      },
+      interviewPrep: null,
+      documents: "",
+      cv: {
+        headline: "Full-stack Developer",
+        summary: "React and Spring.",
+        summaryStretch: null,
+        skills: [{ group: "Backend", items: ["Spring"] }],
+        experience: [
+          {
+            id: "E1",
+            company: "Netpower",
+            role: "Fullstack",
+            period: "2023",
+            bullets: [
+              {
+                id: "B1",
+                text: "Spring Boot REST APIs",
+                factIds: ["P16"],
+                stretch: {
+                  note: "CV says Spring",
+                  defense: "I built REST APIs in Spring",
+                  approved: true,
+                },
+              },
+            ],
+          },
+        ],
+        education: [],
+        learning: [],
+      },
+    })
+    expect(brief).toContain("## CV sent to this employer")
+    expect(brief).toContain("B1 Spring Boot REST APIs (P16)")
+    expect(brief).toContain("if asked: I built REST APIs in Spring")
+  })
+})

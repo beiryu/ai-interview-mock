@@ -94,6 +94,7 @@ model Interview {
   documentIds String[]           @default([]) @map("document_ids")
   sessions    InterviewSession[]
   prep        InterviewPrep?
+  cv          TailoredCv?
   chat        ChatConversation?
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at")
@@ -157,6 +158,23 @@ model InterviewPrep {
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   @@map("interview_preps")
+}
+
+// A CV tailored to one interview's job (lib/cv), built from the profile prep
+// and the JD; `content` follows lib/cv/schema.ts.
+model TailoredCv {
+  id          String    @id @default(cuid())
+  interviewId String    @unique
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  status      String    @default("pending")
+  sourceHash  String?   @map("source_hash")
+  content     Json?
+  error       String?   @db.Text
+  startedAt   DateTime? @map("started_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("tailored_cvs")
 }
 
 // ─── Documents ────────────────────────────────────────────────────────────────
