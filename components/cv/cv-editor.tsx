@@ -32,7 +32,7 @@ import {
  * A CV: edit on the left, a PDF-like preview on the right. Wording that goes
  * beyond the source CV (a stretch) has an amber frame until you approve it,
  * fix the wording, or remove the line — the PDF download waits for that. A
- * practice persona is fictional: no download.
+ * practice persona downloads marked as fictional.
  */
 export function CvEditor({
   state,
@@ -42,6 +42,8 @@ export function CvEditor({
   rebuilding,
   rebuildLabel = "Regenerate",
   emptyText,
+  toolbarStart,
+  toolbarActions,
 }: {
   state: CvState | undefined
   onSave: (content: CvContent, done: () => void) => void
@@ -51,6 +53,9 @@ export function CvEditor({
   rebuildLabel?: string
   /** What to say while there is no content yet */
   emptyText: string
+  /** Toolbar: where the CV comes from (left), extra actions (right) */
+  toolbarStart?: React.ReactNode
+  toolbarActions?: React.ReactNode
 }) {
   const { draft, dirty, update, reset } = useDraft<CvContent>(
     state?.content ?? null
@@ -72,39 +77,45 @@ export function CvEditor({
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <PrepStatusBar
-            status={state?.status ?? "missing"}
-            updatedAt={state?.updatedAt ?? null}
-            error={state?.error ?? null}
-            blocked={state?.blocked ?? null}
-            onGenerate={onRebuild}
-            generating={rebuilding}
-            generateLabel={rebuildLabel}
-            dirty={dirty}
-            onSave={save}
-            saving={saving}
-          />
-        </div>
-        {state?.cv && (
-          <DownloadButton
-            cvId={state.cv.id}
-            disabled={!draft || dirty || pending > 0}
-            reason={
-              dirty
-                ? "Save your edits first"
-                : pending > 0
-                ? `Approve, fix or remove ${pending} stretch${
-                    pending > 1 ? "es" : ""
-                  } first`
-                : practice
-                ? "Every page is marked as a fictional practice persona"
-                : null
-            }
-          />
-        )}
-      </div>
+      <PrepStatusBar
+        status={state?.status ?? "missing"}
+        updatedAt={state?.updatedAt ?? null}
+        error={state?.error ?? null}
+        blocked={state?.blocked ?? null}
+        onGenerate={onRebuild}
+        generating={rebuilding}
+        generateLabel={rebuildLabel}
+        dirty={dirty}
+        onSave={save}
+        saving={saving}
+        leading={toolbarStart}
+        info={
+          pending > 0 && (
+            <span className="text-xs text-amber-700 dark:text-amber-300">
+              {pending} stretch{pending > 1 ? "es" : ""} to approve before
+              download
+            </span>
+          )
+        }
+        actionsBefore={toolbarActions}
+        actionsAfter={
+          state?.cv && (
+            <DownloadButton
+              cvId={state.cv.id}
+              disabled={!draft || dirty || pending > 0}
+              reason={
+                dirty
+                  ? "Save your edits first"
+                  : pending > 0
+                  ? "Approve, fix or remove the stretches first"
+                  : practice
+                  ? "Every page is marked as a fictional practice persona"
+                  : "Download the CV as a PDF"
+              }
+            />
+          )
+        }
+      />
 
       {!draft ? (
         <p className="text-sm text-muted-foreground">{emptyText}</p>
@@ -425,25 +436,22 @@ function DownloadButton({
 }: {
   cvId: string
   disabled: boolean
-  reason: string | null
+  reason: string
 }) {
-  return (
-    <div className="flex flex-col items-end gap-1">
-      {disabled ? (
-        <Button disabled>
-          <Download className="mr-2 size-4" />
-          Download PDF
-        </Button>
-      ) : (
-        <a href={`/api/cvs/${cvId}/pdf`} className={buttonVariants()}>
-          <Download className="mr-2 size-4" />
-          Download PDF
-        </a>
-      )}
-      {reason && (
-        <span className="text-xs text-muted-foreground">{reason}</span>
-      )}
-    </div>
+  return disabled ? (
+    <Button size="sm" disabled title={reason}>
+      <Download className="mr-1 size-3.5" />
+      Download PDF
+    </Button>
+  ) : (
+    <a
+      href={`/api/cvs/${cvId}/pdf`}
+      title={reason}
+      className={buttonVariants({ size: "sm" })}
+    >
+      <Download className="mr-1 size-3.5" />
+      Download PDF
+    </a>
   )
 }
 

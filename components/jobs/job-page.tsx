@@ -62,41 +62,50 @@ export function JobPage({ jobId, tab }: { jobId: string; tab?: string }) {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid gap-1">
-          <h1 className="font-heading text-3xl md:text-4xl">
+      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0 space-y-1">
+          <h1 className="truncate font-heading text-3xl md:text-4xl">
             {job.company || "Unknown company"}
           </h1>
           <p className="text-lg text-muted-foreground">
             {job.title || "Untitled role"}
-            {job.sourceUrl && (
+          </p>
+          {job.sourceUrl && (
+            <div className="pt-1 text-sm">
               <a
                 href={job.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="ml-2 inline-flex items-center gap-1 text-sm underline-offset-4 hover:underline"
+                className="inline-flex items-center gap-1 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
               >
-                posting
+                Job posting
                 <ExternalLink className="size-3.5" />
               </a>
-            )}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusSelect jobId={job.id} status={job.status} />
-          {job.scheduledAt && (
-            <span className="flex items-center gap-1 text-sm text-muted-foreground">
-              <CalendarClock className="size-4" />
-              {formatInterviewTime(job.scheduledAt)}
-            </span>
+            </div>
           )}
-          <ScheduleDialog job={job} />
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <StatusSelect
+            jobId={job.id}
+            status={job.status}
+            className="h-10 w-[150px]"
+          />
+          <ScheduleDialog
+            job={job}
+            trigger={
+              <Button variant="outline" className="gap-2">
+                <CalendarClock className="size-4" />
+                {job.scheduledAt
+                  ? formatInterviewTime(job.scheduledAt)
+                  : "Schedule interview"}
+              </Button>
+            }
+          />
           <Link
             href={`/dashboard/jobs/${job.id}/live`}
             className={cn(
               buttonVariants({
                 variant: job.scheduledAt ? "default" : "secondary",
-                size: "sm",
               }),
               "gap-2"
             )}
@@ -105,7 +114,7 @@ export function JobPage({ jobId, tab }: { jobId: string; tab?: string }) {
             Launch interview
           </Link>
         </div>
-      </div>
+      </header>
 
       <Tabs
         value={current}
@@ -133,16 +142,16 @@ export function JobPage({ jobId, tab }: { jobId: string; tab?: string }) {
             )}
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="cv" className="mt-6">
+        <TabsContent value="cv" className="mt-5">
           <JobCvTab jobId={job.id} />
         </TabsContent>
-        <TabsContent value="prep" className="mt-6">
+        <TabsContent value="prep" className="mt-5">
           <JobPrepPanel jobId={job.id} />
         </TabsContent>
-        <TabsContent value="jd" className="mt-6">
+        <TabsContent value="jd" className="mt-5">
           <JobDetailsForm job={job} />
         </TabsContent>
-        <TabsContent value="sessions" className="mt-6">
+        <TabsContent value="sessions" className="mt-5">
           <SessionsPanel job={job} />
         </TabsContent>
       </Tabs>

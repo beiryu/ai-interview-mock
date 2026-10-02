@@ -61,29 +61,6 @@ export function JobCvTab({ jobId }: { jobId: string }) {
   const origin = state.cv.origin
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md bg-muted/50 px-3 py-2 text-xs">
-        <span>
-          <span className="font-medium">{CV_ORIGIN_LABEL[origin]}</span>
-          {state.cv.basedOn && (
-            <>
-              {" "}
-              from{" "}
-              <Link
-                href={`/dashboard/cvs/${state.cv.basedOn.id}`}
-                className="underline"
-              >
-                {state.cv.basedOn.title}
-              </Link>
-            </>
-          )}
-        </span>
-        <StartOverDialog busy={cv.start.isPending} onSubmit={start} />
-        <span className="text-muted-foreground">
-          {origin === "GENERATED"
-            ? "Made up from the job description, to practise with."
-            : "The coach answers consistently with this CV."}
-        </span>
-      </div>
       <CvEditor
         state={state}
         saving={cv.save.isPending}
@@ -99,6 +76,26 @@ export function JobCvTab({ jobId }: { jobId: string }) {
         }
         onRebuild={() => start()}
         rebuilding={cv.start.isPending}
+        toolbarStart={
+          <span className="text-xs text-muted-foreground">
+            {CV_ORIGIN_LABEL[origin]}
+            {state.cv.basedOn && (
+              <>
+                {" from "}
+                <Link
+                  href={`/dashboard/cvs/${state.cv.basedOn.id}`}
+                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                >
+                  {state.cv.basedOn.title}
+                </Link>
+              </>
+            )}{" "}
+            ·
+          </span>
+        }
+        toolbarActions={
+          <StartOverDialog busy={cv.start.isPending} onSubmit={start} />
+        }
         emptyText={
           origin === "GENERATED"
             ? "Writing a practice persona for this job (about 15 seconds)…"
@@ -147,9 +144,9 @@ function StartOverDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-6 gap-1 px-2 text-xs">
-          <RotateCcw className="size-3" />
-          Start from another CV
+        <Button variant="ghost" size="sm" className="gap-1">
+          <RotateCcw className="size-3.5" />
+          Another CV
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[640px]">

@@ -48,6 +48,10 @@ export function PrepStatusBar({
   dirty,
   onSave,
   saving,
+  leading,
+  info,
+  actionsBefore,
+  actionsAfter,
 }: {
   status: PrepStatus
   updatedAt: string | null
@@ -60,10 +64,18 @@ export function PrepStatusBar({
   dirty: boolean
   onSave: () => void
   saving: boolean
+  /** Before the status badge (e.g. where a CV comes from) */
+  leading?: React.ReactNode
+  /** After "updated …" (e.g. stretches to approve) */
+  info?: React.ReactNode
+  /** Buttons before Regenerate / after Save */
+  actionsBefore?: React.ReactNode
+  actionsAfter?: React.ReactNode
 }) {
   const busy = status === "pending" || generating
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {leading}
       <Badge
         variant="outline"
         className={cn("border-0", STATUS[status].className)}
@@ -73,7 +85,11 @@ export function PrepStatusBar({
       </Badge>
       {updatedAt && status !== "pending" && (
         <span className="text-xs text-muted-foreground">
-          updated {new Date(updatedAt).toLocaleString()}
+          updated{" "}
+          {new Date(updatedAt).toLocaleString([], {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
         </span>
       )}
       {status === "failed" && error && (
@@ -82,7 +98,9 @@ export function PrepStatusBar({
       {blocked && (
         <span className="text-xs text-muted-foreground">{blocked}</span>
       )}
-      <div className="ml-auto flex gap-2">
+      {info}
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        {actionsBefore}
         <Button
           variant="outline"
           size="sm"
@@ -97,6 +115,7 @@ export function PrepStatusBar({
           {saving && <Icons.spinner className="mr-1 size-3.5 animate-spin" />}
           Save
         </Button>
+        {actionsAfter}
       </div>
     </div>
   )
