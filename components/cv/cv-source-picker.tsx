@@ -58,23 +58,28 @@ export function CvSourcePicker({
   onChange,
   disabled,
   uploadOnly = false,
+  initial,
 }: {
   onChange: (source: CvSource | null) => void
   disabled?: boolean
   /** Only the upload form (uploading a CV on its own) */
   uploadOnly?: boolean
+  /** Preselected source (e.g. the CV's current one when regenerating) */
+  initial?: { type: "cv"; cvId: string } | { type: "generate" }
 }) {
   const { data: cvs } = useCvs()
   const usable = (cvs ?? []).filter((cv) => cv.origin !== "GENERATED")
-  const [mode, setMode] = React.useState<Mode>("upload")
+  const [mode, setMode] = React.useState<Mode>(initial?.type ?? "upload")
   const [title, setTitle] = React.useState("")
   const [rawText, setRawText] = React.useState("")
-  const [cvId, setCvId] = React.useState("")
+  const [cvId, setCvId] = React.useState(
+    initial?.type === "cv" ? initial.cvId : ""
+  )
   const extract = useExtractFile()
   const fileInput = React.useRef<HTMLInputElement>(null)
 
   // Default to your CVs once you have some
-  const defaulted = React.useRef(false)
+  const defaulted = React.useRef(!!initial)
   React.useEffect(() => {
     if (!defaulted.current && !uploadOnly && usable.length > 0) {
       defaulted.current = true

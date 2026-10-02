@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { RotateCcw } from "lucide-react"
+import { RefreshCw } from "lucide-react"
 
 import { CV_ORIGIN_LABEL } from "@/lib/cv/schema"
 import type { CvSource } from "@/lib/validations/job"
@@ -93,9 +93,20 @@ export function JobCvTab({ jobId }: { jobId: string }) {
             ·
           </span>
         }
-        toolbarActions={
-          <StartOverDialog busy={cv.start.isPending} onSubmit={start} />
-        }
+        renderRebuild={({ disabled }) => (
+          <RegenerateDialog
+            disabled={disabled}
+            busy={cv.start.isPending}
+            onSubmit={start}
+            initial={
+              origin === "GENERATED"
+                ? { type: "generate" }
+                : state.cv?.basedOn
+                ? { type: "cv", cvId: state.cv.basedOn.id }
+                : undefined
+            }
+          />
+        )}
         emptyText={
           origin === "GENERATED"
             ? "Writing a practice persona for this job (about 15 seconds)…"
@@ -131,12 +142,19 @@ function SourceForm({
   )
 }
 
-/** Remake the job's CV from another source (edits don't carry over). */
-function StartOverDialog({
+/**
+ * Regenerate: writes a new CV from the chosen source (the current one by
+ * default). Nothing from the current CV carries over.
+ */
+function RegenerateDialog({
+  disabled,
   busy,
+  initial,
   onSubmit,
 }: {
+  disabled: boolean
   busy: boolean
+  initial?: { type: "cv"; cvId: string } | { type: "generate" }
   onSubmit: (source: CvSource) => void
 }) {
   const [open, setOpen] = React.useState(false)
@@ -144,20 +162,31 @@ function StartOverDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1">
-          <RotateCcw className="size-3.5" />
-          Another CV
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          title={disabled ? "Save your edits first" : undefined}
+        >
+          <RefreshCw className="mr-1 size-3.5" />
+          Regenerate
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[640px]">
         <DialogHeader>
-          <DialogTitle>Start this job&apos;s CV over</DialogTitle>
+          <DialogTitle>Regenerate this job&apos;s CV</DialogTitle>
           <DialogDescription>
-            The CV is rewritten from the new source; your edits to the current
-            one don&apos;t carry over.
+            A new CV is written from the source below. It replaces the current
+            one, including your edits and approved stretches.
           </DialogDescription>
         </DialogHeader>
-        <CvSourcePicker onChange={setSource} disabled={busy} />
+        {open && (
+          <CvSourcePicker
+            initial={initial}
+            onChange={setSource}
+            disabled={busy}
+          />
+        )}
         <DialogFooter>
           <Button
             disabled={!source || busy}
@@ -167,7 +196,7 @@ function StartOverDialog({
               setOpen(false)
             }}
           >
-            Rewrite the CV
+            Regenerate
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -43,7 +43,7 @@ export function CvEditor({
   rebuildLabel = "Regenerate",
   emptyText,
   toolbarStart,
-  toolbarActions,
+  renderRebuild,
 }: {
   state: CvState | undefined
   onSave: (content: CvContent, done: () => void) => void
@@ -53,9 +53,10 @@ export function CvEditor({
   rebuildLabel?: string
   /** What to say while there is no content yet */
   emptyText: string
-  /** Toolbar: where the CV comes from (left), extra actions (right) */
+  /** Toolbar: where the CV comes from (left) */
   toolbarStart?: React.ReactNode
-  toolbarActions?: React.ReactNode
+  /** Replaces the plain rebuild button (e.g. a dialog to choose the source) */
+  renderRebuild?: (options: { disabled: boolean }) => React.ReactNode
 }) {
   const { draft, dirty, update, reset } = useDraft<CvContent>(
     state?.content ?? null
@@ -97,7 +98,10 @@ export function CvEditor({
             </span>
           )
         }
-        actionsBefore={toolbarActions}
+        hideGenerate={!!renderRebuild}
+        actionsBefore={renderRebuild?.({
+          disabled: dirty || state?.status === "pending" || rebuilding,
+        })}
         actionsAfter={
           state?.cv && (
             <DownloadButton
@@ -221,8 +225,8 @@ export function CvEditor({
               title="Experience"
               description={
                 state?.cv?.origin === "REFINED"
-                  ? "Each line shows the lines of your CV it comes from. Edited lines (🔒) are kept when you regenerate."
-                  : "Edited lines (🔒) are kept when you regenerate."
+                  ? "Each line shows the lines of your CV it comes from."
+                  : undefined
               }
             >
               <div className="space-y-4">
@@ -479,7 +483,7 @@ function BulletEditor({
       <div className="flex items-start gap-2">
         <div className="flex-1">
           <TextField
-            label={`${bullet.id}${bullet.locked ? " 🔒" : ""}`}
+            label={bullet.id}
             multiline
             value={bullet.text}
             onChange={(text) => onChange({ text })}

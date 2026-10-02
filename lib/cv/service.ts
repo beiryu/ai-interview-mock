@@ -231,13 +231,14 @@ export async function getJobCv(
   }
 }
 
-/** Builds the job's CV now (awaited): refined from its base, or generated. */
+/** Builds the job's CV now (awaited), from scratch: refined from its base, or generated. */
 export async function runJobCv(jobId: string, userId: string) {
   const job = await jobFor(jobId, userId)
   const row = job.cv
   if (!row) throw new Error("This job has no CV to build")
   try {
-    const previous = parseContent(row.content)
+    // Regenerating writes a new CV: earlier edits and approvals don't carry over
+    const previous = null
     let content: CvContent
     let hash: string
     if (row.origin === "GENERATED") {
@@ -313,7 +314,6 @@ async function prepareJobCv(jobId: string, userId: string, source?: CvSource) {
 
   const data = { origin, basedOnId, ...pending }
   if (job.cv) {
-    // A different starting point: earlier edits don't carry over
     await db.cv.update({
       where: { id: job.cv.id },
       data: { ...data, content: Prisma.DbNull },

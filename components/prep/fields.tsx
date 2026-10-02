@@ -52,6 +52,7 @@ export function PrepStatusBar({
   info,
   actionsBefore,
   actionsAfter,
+  hideGenerate = false,
 }: {
   status: PrepStatus
   updatedAt: string | null
@@ -71,6 +72,8 @@ export function PrepStatusBar({
   /** Buttons before Regenerate / after Save */
   actionsBefore?: React.ReactNode
   actionsAfter?: React.ReactNode
+  /** The caller renders its own regenerate control (in actionsBefore) */
+  hideGenerate?: boolean
 }) {
   const busy = status === "pending" || generating
   return (
@@ -101,16 +104,20 @@ export function PrepStatusBar({
       {info}
       <div className="ml-auto flex flex-wrap items-center gap-2">
         {actionsBefore}
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={busy || dirty || !!blocked}
-          title={dirty ? "Save your edits first" : "Edited items (🔒) are kept"}
-          onClick={onGenerate}
-        >
-          <RefreshCw className="mr-1 size-3.5" />
-          {status === "missing" ? "Prepare" : generateLabel ?? "Regenerate"}
-        </Button>
+        {!hideGenerate && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy || dirty || !!blocked}
+            title={
+              dirty ? "Save your edits first" : "Edited items (🔒) are kept"
+            }
+            onClick={onGenerate}
+          >
+            <RefreshCw className="mr-1 size-3.5" />
+            {status === "missing" ? "Prepare" : generateLabel ?? "Regenerate"}
+          </Button>
+        )}
         <Button size="sm" disabled={!dirty || saving} onClick={onSave}>
           {saving && <Icons.spinner className="mr-1 size-3.5 animate-spin" />}
           Save
