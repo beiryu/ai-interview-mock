@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/use-toast"
 import { JobCvTab } from "@/components/cv/job-cv-tab"
-import { TextField } from "@/components/prep/fields"
+import { Section, TextField } from "@/components/prep/fields"
 import { JobPrepPanel } from "@/components/prep/interview-prep-sheet"
 
 import { ScheduleDialog, formatInterviewTime } from "./schedule-dialog"
@@ -225,69 +225,93 @@ function JobDetailsForm({ job }: { job: JobWithSessions }) {
     )
 
   return (
-    <div className="grid max-w-3xl gap-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <TextField
-          label="Company"
-          value={draft.company}
-          onChange={(company) => set({ company })}
-        />
-        <TextField
-          label="Role"
-          value={draft.title}
-          onChange={(title) => set({ title })}
-        />
+    <div className="grid gap-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          {dirty
+            ? "Unsaved changes. Changing the JD or notes makes the CV and prep out of date."
+            : "The CV and the prep are built from this description and your notes."}
+        </span>
+        <div className="ml-auto flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!dirty || update.isPending}
+            onClick={() => setDraft(initial)}
+          >
+            Discard
+          </Button>
+          <Button
+            size="sm"
+            disabled={!dirty || update.isPending}
+            onClick={save}
+          >
+            Save
+          </Button>
+        </div>
       </div>
-      <TextField
-        label="Link to the posting"
-        value={draft.sourceUrl}
-        placeholder="https://…"
-        onChange={(sourceUrl) => set({ sourceUrl })}
-      />
-      <TextField
-        label="Job description"
-        multiline
-        className="[&_textarea]:min-h-[320px]"
-        value={draft.jdText}
-        onChange={(jdText) => set({ jdText })}
-      />
-      <TextField
-        label="Notes for the coach (who interviews you, the round, what to prepare)"
-        multiline
-        value={draft.notes}
-        onChange={(notes) => set({ notes })}
-      />
-      <div className="mt-2">
-        <h2 className="text-sm font-semibold">Your answers for this job</h2>
-        <p className="text-xs text-muted-foreground">
-          Only you know these. A new job starts with your latest job&apos;s
-          answers; blank ones make the coach answer without stating a specific.
-        </p>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        {(Object.keys(ANSWER_LABELS) as AnswerField[]).map((key) => (
-          <TextField
-            key={key}
-            label={ANSWER_LABELS[key]}
-            multiline
-            value={draft.answers[key]}
-            onChange={(value) =>
-              set({ answers: { ...draft.answers, [key]: value } })
-            }
-          />
-        ))}
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button
-          variant="ghost"
-          disabled={!dirty || update.isPending}
-          onClick={() => setDraft(initial)}
+
+      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Section
+          title="Job description"
+          description="As posted. Requirements, stack and benefits all help the CV and the prep."
         >
-          Discard
-        </Button>
-        <Button disabled={!dirty || update.isPending} onClick={save}>
-          Save
-        </Button>
+          <TextField
+            label="Description"
+            multiline
+            className="[&_textarea]:min-h-[560px]"
+            value={draft.jdText}
+            onChange={(jdText) => set({ jdText })}
+          />
+        </Section>
+
+        <div className="space-y-8">
+          <Section title="Details">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField
+                label="Company"
+                value={draft.company}
+                onChange={(company) => set({ company })}
+              />
+              <TextField
+                label="Role"
+                value={draft.title}
+                onChange={(title) => set({ title })}
+              />
+            </div>
+            <TextField
+              label="Link to the posting"
+              value={draft.sourceUrl}
+              placeholder="https://…"
+              onChange={(sourceUrl) => set({ sourceUrl })}
+            />
+            <TextField
+              label="Notes for the coach (who interviews you, the round, what to prepare)"
+              multiline
+              value={draft.notes}
+              onChange={(notes) => set({ notes })}
+            />
+          </Section>
+
+          <Section
+            title="Your answers for this job"
+            description="Only you know these. A new job starts with your latest job's answers; blank ones make the coach answer without stating a specific."
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(Object.keys(ANSWER_LABELS) as AnswerField[]).map((key) => (
+                <TextField
+                  key={key}
+                  label={ANSWER_LABELS[key]}
+                  multiline
+                  value={draft.answers[key]}
+                  onChange={(value) =>
+                    set({ answers: { ...draft.answers, [key]: value } })
+                  }
+                />
+              ))}
+            </div>
+          </Section>
+        </div>
       </div>
     </div>
   )
