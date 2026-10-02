@@ -8,7 +8,7 @@ import { STORY_THEMES, type JobPrep, type PrepStatus } from "@/lib/prep/schema"
 import { cn } from "@/lib/utils"
 import { useJobCv } from "@/hooks/api/cv/useCvs"
 import { useJobPrep } from "@/hooks/api/prep/usePrep"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
@@ -108,55 +108,60 @@ export function JobPrepPanel({ jobId }: { jobId: string }) {
   useAutoPrep(prep)
 
   return (
-    <div className="space-y-6">
-      <CvRow jobId={jobId} />
-      <InterviewPrepEditor prep={prep} />
-    </div>
+    <InterviewPrepEditor
+      prep={prep}
+      leading={<CvSource jobId={jobId} />}
+      info={<CvWarning jobId={jobId} />}
+    />
   )
 }
 
-const CV_LABEL: Record<PrepStatus, string> = {
-  missing: "not made yet",
-  pending: "writing…",
-  ready: "ready",
-  stale: "out of date",
-  failed: "failed",
-}
-
-/** The CV sent for this job: the prep and the coach build on it. */
-function CvRow({ jobId }: { jobId: string }) {
-  const { data } = useJobCv(jobId)
-  const pending = data?.pending ?? 0
+/** Where the prep comes from: this job's CV (a link to its tab). */
+function CvSource({ jobId }: { jobId: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs">
-      <span>
-        CV: {data ? (data.cv ? CV_LABEL[data.status] : "none yet") : "…"}
-      </span>
+    <span className="text-xs text-muted-foreground">
+      Built from{" "}
       <Link
         href={`/dashboard/jobs/${jobId}?tab=cv`}
-        className={cn(
-          buttonVariants({ variant: "outline", size: "sm" }),
-          "h-6 px-2 text-xs"
-        )}
+        className="font-medium text-foreground underline-offset-4 hover:underline"
       >
-        Open CV
-      </Link>
-      {pending > 0 && (
-        <span className="text-amber-700 dark:text-amber-300">
-          {pending} stretch{pending > 1 ? "es" : ""} to approve
-        </span>
-      )}
-      <span className="text-muted-foreground">
-        The prep is built from this CV; the coach stays consistent with it.
-      </span>
-    </div>
+        this job&apos;s CV
+      </Link>{" "}
+      ·
+    </span>
   )
+}
+
+/** What about the CV needs you first (the prep follows the CV). */
+function CvWarning({ jobId }: { jobId: string }) {
+  const { data } = useJobCv(jobId)
+  if (!data) return null
+  const message = !data.cv
+    ? "No CV yet: make it in the CV tab"
+    : data.status === "pending"
+    ? "The CV is being written"
+    : data.status === "stale"
+    ? "The CV is out of date: regenerate it first"
+    : data.status === "failed"
+    ? "The CV failed: regenerate it first"
+    : data.pending > 0
+    ? `${data.pending} CV stretch${data.pending > 1 ? "es" : ""} to approve`
+    : null
+  return message ? (
+    <span className="text-xs text-amber-700 dark:text-amber-300">
+      {message}
+    </span>
+  ) : null
 }
 
 function InterviewPrepEditor({
   prep,
+  leading,
+  info,
 }: {
   prep: ReturnType<typeof useJobPrep>
+  leading?: React.ReactNode
+  info?: React.ReactNode
 }) {
   const { data, generate, save } = prep
   const { draft, dirty, update, reset } = useDraft<JobPrep>(
@@ -182,13 +187,15 @@ function InterviewPrepEditor({
           })
         }
         saving={save.isPending}
+        leading={leading}
+        info={info}
       />
 
       {draft && (
         <>
           <Section
-            title="Angle"
-            description="Why you fit this role — the coach leans on it for motivation questions."
+            title="Angle & intro"
+            description="Why you fit this role and how you introduce yourself — the coach leans on them for motivation questions."
           >
             <TextField
               label="Angle"
