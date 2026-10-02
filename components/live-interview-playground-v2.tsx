@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Clock, FileText } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
+import { useGetJob } from "@/hooks/api/job/useJobs"
 import { useCopilotHotkeys } from "@/hooks/use-copilot-hotkeys"
 import { useDesktop } from "@/hooks/use-desktop"
 import { useInterviewSessionLifecycle } from "@/hooks/use-interview-session-lifecycle"
@@ -29,17 +29,17 @@ import RecorderTranscriber from "@/components/recorder-transcriber"
 import { TranscriptionDisplay } from "@/components/transcription-display"
 
 interface LiveInterviewPlaygroundV2Props {
-  interviewId: string
+  jobId: string
   defaultLayout?: number[]
 }
 
 export function LiveInterviewPlaygroundV2({
-  interviewId,
+  jobId,
   defaultLayout = [30, 40, 30],
 }: LiveInterviewPlaygroundV2Props) {
   const router = useRouter()
-  const { data: interview } = useGetInterview(interviewId)
-  const { startedAt, finish } = useInterviewSessionLifecycle(interviewId)
+  const { data: job } = useGetJob(jobId)
+  const { startedAt, finish } = useInterviewSessionLifecycle(jobId)
   useCopilotHotkeys()
 
   // Desktop: ⌘⇧O (or the button) shrinks the window to a compact overlay
@@ -53,22 +53,20 @@ export function LiveInterviewPlaygroundV2({
     const saved = await finish()
     router.push(
       saved
-        ? `/dashboard/interviews/${interviewId}/sessions`
-        : "/dashboard/interviews"
+        ? `/dashboard/jobs/${jobId}?tab=sessions`
+        : `/dashboard/jobs/${jobId}`
     )
-  }, [finish, router, interviewId])
+  }, [finish, router, jobId])
 
-  const subtitle = [interview?.companyName, interview?.jobTitle]
-    .filter(Boolean)
-    .join(" · ")
+  const subtitle = job?.title ?? ""
 
   // Help speech-to-text with names it can't know (company, role)
   const contextTerms = useMemo(
     () =>
-      [interview?.companyName, interview?.jobTitle].filter(
-        (term): term is string => Boolean(term)
+      [job?.company, job?.title].filter((term): term is string =>
+        Boolean(term)
       ),
-    [interview?.companyName, interview?.jobTitle]
+    [job?.company, job?.title]
   )
 
   return (
@@ -81,7 +79,7 @@ export function LiveInterviewPlaygroundV2({
           <div className="flex items-center gap-3">
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold tracking-tight">
-                {interview?.name ?? "Interview"}
+                {job?.company || "Interview"}
               </h1>
               {subtitle && (
                 <p className="truncate text-xs text-muted-foreground">
@@ -169,10 +167,10 @@ export function LiveInterviewPlaygroundV2({
               >
                 <div className="flex h-10 shrink-0 items-center justify-between border-b px-4">
                   <CopilotStatus />
-                  {interview && (
+                  {job && (
                     <div className="flex items-center gap-1">
                       <Link
-                        href={`/dashboard/interviews/${interview.id}/cv`}
+                        href={`/dashboard/jobs/${job.id}?tab=cv`}
                         title="The CV you send for this job"
                         className={cn(
                           buttonVariants({ variant: "ghost", size: "sm" }),
@@ -182,7 +180,7 @@ export function LiveInterviewPlaygroundV2({
                         <FileText className="size-3" />
                         CV
                       </Link>
-                      <InterviewPrepSheet interview={interview} />
+                      <InterviewPrepSheet jobId={job.id} />
                     </div>
                   )}
                 </div>
@@ -202,7 +200,7 @@ export function LiveInterviewPlaygroundV2({
             className="flex min-h-0 flex-col"
           >
             <div className="flex h-full min-h-0 flex-col overflow-hidden">
-              <InterviewChat interviewId={interviewId} />
+              <InterviewChat jobId={jobId} />
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>

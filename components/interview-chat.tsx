@@ -31,11 +31,11 @@ const textOf = (message: UIMessage) =>
  * same prep/brief as the coach plus the live transcript; history is saved
  * per interview.
  */
-export function InterviewChat({ interviewId }: { interviewId: string }) {
+export function InterviewChat({ jobId }: { jobId: string }) {
   const saved = useQuery({
-    queryKey: ["interview-chat", interviewId],
+    queryKey: ["job-chat", jobId],
     queryFn: async () => {
-      const response = await fetch(`/api/interviews/${interviewId}/chat`)
+      const response = await fetch(`/api/jobs/${jobId}/chat`)
       if (!response.ok) throw new Error("Failed to load chat")
       return (await response.json()) as { messages: UIMessage[] }
     },
@@ -51,26 +51,26 @@ export function InterviewChat({ interviewId }: { interviewId: string }) {
   }
   return (
     <ChatPanel
-      key={interviewId}
-      interviewId={interviewId}
+      key={jobId}
+      jobId={jobId}
       initialMessages={saved.data?.messages ?? []}
     />
   )
 }
 
 function ChatPanel({
-  interviewId,
+  jobId,
   initialMessages,
 }: {
-  interviewId: string
+  jobId: string
   initialMessages: UIMessage[]
 }) {
   const [input, setInput] = React.useState("")
   const { messages, sendMessage, status, stop, error } = useChat({
-    id: `interview-${interviewId}`,
+    id: `job-${jobId}`,
     messages: initialMessages,
     transport: new DefaultChatTransport({
-      api: `/api/interviews/${interviewId}/chat`,
+      api: `/api/jobs/${jobId}/chat`,
     }),
   })
   const busy = status === "submitted" || status === "streaming"

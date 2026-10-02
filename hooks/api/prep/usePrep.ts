@@ -1,44 +1,41 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import type { TailoredCv } from "@/lib/cv/schema"
-import type { InterviewPrep, PrepStatus, ProfilePrep } from "@/lib/prep/schema"
+import type { JobPrep, PrepStatus } from "@/lib/prep/schema"
 
 export interface PrepState<T> {
   status: PrepStatus
   content: T | null
   error: string | null
   updatedAt: string | null
-  /** Why it can't be prepared yet (no documents), else null */
+  /** Why it can't be prepared yet (no CV), else null */
   blocked: string | null
 }
 
-export interface CvState extends PrepState<TailoredCv> {
-  /** Stretches you haven't approved yet (the PDF waits for them) */
-  pending: number
-}
-
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
+export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
     headers: { "Content-Type": "application/json" },
   })
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    throw new Error(body?.blocked ?? `Request failed (${response.status})`)
+    const message =
+      (typeof body?.error === "string" && body.error) ||
+      body?.blocked ||
+      `Request failed (${response.status})`
+    throw new Error(message)
   }
-  return response.json()
+  return response.status === 204 ? (undefined as T) : response.json()
 }
 
-/** Prep state at `url`, polled while generation is running. */
-function usePrepResource<T, S extends PrepState<T> = PrepState<T>>(
-  key: string[],
-  url: string
-) {
+/** The job's prep, polled while it is being prepared. */
+export function useJobPrep(jobId: string) {
   const queryClient = useQueryClient()
+  const key = ["prep", "job", jobId]
+  const url = `/api/jobs/${jobId}/prep`
   const query = useQuery({
     queryKey: key,
-    queryFn: () => request<S>(url),
-    enabled: !url.includes("/interviews//"),
+    queryFn: () => request<PrepState<JobPrep>>(url),
+    enabled: !!jobId,
     refetchInterval: (q) => (q.state.data?.status === "pending" ? 3000 : false),
   })
   const generate = useMutation({
@@ -46,30 +43,12 @@ function usePrepResource<T, S extends PrepState<T> = PrepState<T>>(
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
   })
   const save = useMutation({
-    mutationFn: (content: T) =>
-      request<S>(url, {
+    mutationFn: (content: JobPrep) =>
+      request<PrepState<JobPrep>>(url, {
         method: "PUT",
         body: JSON.stringify(content),
       }),
     onSuccess: (state) => queryClient.setQueryData(key, state),
   })
   return { ...query, generate, save }
-}
-
-export function useProfilePrep() {
-  return usePrepResource<ProfilePrep>(["prep", "profile"], "/api/prep/profile")
-}
-
-export function useInterviewPrep(interviewId: string) {
-  return usePrepResource<InterviewPrep>(
-    ["prep", "interview", interviewId],
-    `/api/interviews/${interviewId}/prep`
-  )
-}
-
-export function useTailoredCv(interviewId: string) {
-  return usePrepResource<TailoredCv, CvState>(
-    ["cv", interviewId],
-    `/api/interviews/${interviewId}/cv`
-  )
 }

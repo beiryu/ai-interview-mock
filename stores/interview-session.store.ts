@@ -46,7 +46,7 @@ interface InterviewSessionStore {
 
   // Session states
   /** Interview on screen; the server builds the coach's brief from it */
-  interviewId: string | null
+  jobId: string | null
   currentSessionId: string | null
 
   setMicrophoneStatus: (status: MicrophoneStatus) => void
@@ -54,7 +54,7 @@ interface InterviewSessionStore {
   /** Attach a freshly created DB session. */
   startSession: (sessionId: string) => void
   /** Clear everything from the previous session and switch interview. */
-  resetSession: (interviewId?: string | null) => void
+  resetSession: (jobId?: string | null) => void
 
   // Manual controls (buttons + hotkeys)
   /** Answer what the interviewer has said so far, or redo the last answer */
@@ -77,7 +77,7 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
     status: "idle",
     skipReason: null,
     messages: [],
-    interviewId: null,
+    jobId: null,
     currentSessionId: null,
 
     setMicrophoneStatus: (status) => set({ microphoneStatus: status }),
@@ -85,14 +85,14 @@ export const useInterviewSessionStore = create<InterviewSessionStore>()(
 
     startSession: (sessionId) => set({ currentSessionId: sessionId }),
 
-    resetSession: (interviewId = null) => {
+    resetSession: (jobId = null) => {
       abortPause()
       for (const answer of answers.values()) answer.controller.abort()
       answers.clear()
       lastAnsweredQuestion = null
       turnEngine.reset()
       set({
-        interviewId,
+        jobId,
         currentSessionId: null,
         messages: [],
         live: EMPTY_LIVE,
@@ -232,7 +232,7 @@ const answers = new Map<string, AnswerRun>()
 let lastAnsweredQuestion: string | null = null
 
 function startAnswer(question: string, language: string | null): AnswerRun {
-  const { interviewId, currentSessionId } = store.getState()
+  const { jobId, currentSessionId } = store.getState()
   const run: AnswerRun = {
     question,
     controller: new AbortController(),
@@ -246,7 +246,7 @@ function startAnswer(question: string, language: string | null): AnswerRun {
 
   streamAnswer(
     {
-      interviewId: interviewId ?? "",
+      jobId: jobId ?? "",
       sessionId: currentSessionId,
       text: question,
       language,

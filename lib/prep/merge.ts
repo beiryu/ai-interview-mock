@@ -1,9 +1,8 @@
-import type { Fact, InterviewPrep, ProfilePrep, Story } from "./schema"
+import type { JobPrep, Story } from "./schema"
 
 /**
- * Regeneration keeps what the candidate edited: locked items survive with
- * their ids, fresh items fill in around them with new ids. Personal answers
- * are the candidate's — a generated value only fills an empty field.
+ * Regeneration keeps what you edited: locked items survive with their ids,
+ * fresh items fill in around them with new ids.
  */
 
 function nextIds(prefix: string, kept: { id: string }[]) {
@@ -38,12 +37,6 @@ export function mergeItems<T extends { id: string; locked?: boolean }>(
   return [...kept, ...fresh]
 }
 
-export function mergeFacts(previous: Fact[], generated: Omit<Fact, "id">[]) {
-  return mergeItems("P", previous, generated, (a, b) =>
-    similarTitle(a.title, b.title)
-  )
-}
-
 export function mergeStories(
   previous: Story[],
   generated: Omit<Story, "id">[]
@@ -51,23 +44,6 @@ export function mergeStories(
   return mergeItems("S", previous, generated, (a, b) =>
     similarTitle(a.title, b.title)
   )
-}
-
-export function mergePersonal(
-  previous: ProfilePrep["personal"] | undefined,
-  generated: ProfilePrep["personal"]
-): ProfilePrep["personal"] {
-  if (!previous) return generated
-  const edited = new Set(previous.edited ?? [])
-  const merged = { ...previous }
-  for (const key of Object.keys(generated) as (keyof typeof generated)[]) {
-    if (key === "edited" || edited.has(key)) continue
-    const value = generated[key]
-    // A fresh generated value replaces an old generated one; blanks never
-    // wipe what is there
-    if (typeof value === "string" && value.trim()) merged[key] = value
-  }
-  return merged
 }
 
 export function mergeDoNotClaim(previous: string[], generated: string[]) {
@@ -80,20 +56,23 @@ export function mergeDoNotClaim(previous: string[], generated: string[]) {
   })
 }
 
-export function mergeInterviewPrep(
-  previous: InterviewPrep | null,
-  generated: Omit<InterviewPrep, "requirements"> & {
-    requirements: Omit<InterviewPrep["requirements"][number], "id">[]
+export function mergeJobPrep(
+  previous: JobPrep | null,
+  generated: Omit<JobPrep, "requirements" | "stories"> & {
+    requirements: Omit<JobPrep["requirements"][number], "id">[]
+    stories: Omit<Story, "id">[]
   }
-): InterviewPrep {
+): JobPrep {
   return {
     angle: generated.angle,
+    intro: generated.intro,
     requirements: mergeItems(
       "R",
       previous?.requirements ?? [],
       generated.requirements,
       (a, b) => similarTitle(a.text, b.text)
     ),
+    stories: mergeStories(previous?.stories ?? [], generated.stories),
     likelyQuestions: [
       ...(previous?.likelyQuestions.filter((q) => q.locked) ?? []),
       ...generated.likelyQuestions.filter(
@@ -103,5 +82,6 @@ export function mergeInterviewPrep(
           )
       ),
     ],
+    doNotClaim: generated.doNotClaim,
   }
 }

@@ -26,7 +26,7 @@ function snapshotTranscript(): TranscriptEntry[] {
  *   via sendBeacon when the tab is closed
  * - clears the previous transcript/answers whenever the interview changes
  */
-export function useInterviewSessionLifecycle(interviewId: string) {
+export function useInterviewSessionLifecycle(jobId: string) {
   const { mutateAsync: createSession } = useCreateInterviewSession()
   const microphoneStatus = useInterviewSessionStore((s) => s.microphoneStatus)
   const messageCount = useInterviewSessionStore((s) => s.messages.length)
@@ -72,11 +72,11 @@ export function useInterviewSessionLifecycle(interviewId: string) {
 
   // Fresh state per interview; finish the session when leaving the page
   useEffect(() => {
-    resetSession(interviewId)
+    resetSession(jobId)
     return () => {
       void finish()
     }
-  }, [interviewId, resetSession, finish])
+  }, [jobId, resetSession, finish])
 
   // Create the DB session only once something is actually being captured
   useEffect(() => {
@@ -84,7 +84,7 @@ export function useInterviewSessionLifecycle(interviewId: string) {
     if (microphoneStatus !== "connected" && messageCount === 0) return
 
     creatingRef.current = true
-    createSession({ interviewId })
+    createSession({ jobId })
       .then((session) => {
         sessionIdRef.current = session.id
         startSession(session.id)
@@ -94,7 +94,7 @@ export function useInterviewSessionLifecycle(interviewId: string) {
       .finally(() => {
         creatingRef.current = false
       })
-  }, [microphoneStatus, messageCount, interviewId, createSession, startSession])
+  }, [microphoneStatus, messageCount, jobId, createSession, startSession])
 
   // Periodic autosave while the transcript grows
   useEffect(() => {

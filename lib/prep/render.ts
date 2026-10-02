@@ -1,80 +1,66 @@
 import { cvBlock } from "@/lib/cv/render"
-import type { TailoredCv } from "@/lib/cv/schema"
-import type { BriefInterview } from "@/lib/interview/brief"
+import type { CvContent } from "@/lib/cv/schema"
 
 import {
-  PERSONAL_LABELS,
-  type InterviewPrep,
-  type PersonalField,
-  type ProfilePrep,
+  ANSWER_LABELS,
+  EMPTY_ANSWERS,
+  type AnswerField,
+  type Answers,
+  type JobPrep,
 } from "./schema"
 
 // The brief is sent with every answer: input size drives cost and time to
 // first token (a full CV prep rendered to ~31k chars ≈ 8k tokens). The
 // stored prep stays complete; only what the coach reads is trimmed.
-const MAX_HIGHLIGHTS = 4
-const MAX_STACK = 10
 const MAX_QUESTIONS = 8
 const MAX_POINTS = 2
 
-/** Highlights with numbers first (the concrete ones), original order kept. */
-export function topHighlights(highlights: string[], max = MAX_HIGHLIGHTS) {
-  const scored = highlights.map((text, index) => ({
-    text,
-    index,
-    score: /\d/.test(text) ? 1 : 0,
-  }))
-  return scored
-    .sort((a, b) => b.score - a.score || a.index - b.index)
-    .slice(0, max)
-    .sort((a, b) => a.index - b.index)
-    .map((h) => h.text)
-}
-
 /**
- * Renders the prep pack as the coach's brief: compact text with the ids
- * answers cite. Deterministic (same prep → same text) so the prefix stays
- * prompt-cacheable for the whole interview.
+ * Renders a job's brief for the coach: the job, its CV (the only experience
+ * the candidate has — what the employer saw), the prep and your answers,
+ * as compact text with the ids answers cite. Deterministic (same input →
+ * same text) so the prefix stays prompt-cacheable for the whole interview.
  */
-export function renderPrepBrief({
-  interview,
-  profile,
-  interviewPrep,
-  cv = null,
-  documents,
+export function renderJobBrief({
+  job,
+  cv,
+  practice = false,
+  prep,
+  answers,
 }: {
-  interview: BriefInterview
-  profile: ProfilePrep
-  interviewPrep: InterviewPrep | null
-  /** The CV sent to this employer: answers must match it */
-  cv?: TailoredCv | null
-  /** Raw documents for details the prep didn't capture (may be "") */
-  documents: string
+  job: { company: string; title: string; notes: string | null; jdText: string }
+  cv: CvContent | null
+  /** The CV is a fictional practice persona */
+  practice?: boolean
+  prep: JobPrep | null
+  answers: Answers | null
 }) {
   const sections: string[] = []
 
   const header = [
-    interview.jobTitle && `Role: ${interview.jobTitle}`,
-    interview.companyName && `Company: ${interview.companyName}`,
-    interview.notes && `Notes from the candidate: ${interview.notes.trim()}`,
+    job.title && `Role: ${job.title}`,
+    job.company && `Company: ${job.company}`,
+    job.notes && `Notes from the candidate: ${job.notes.trim()}`,
   ].filter(Boolean)
   if (header.length) sections.push(`## Interview\n${header.join("\n")}`)
 
   if (cv) {
     sections.push(
-      "## CV sent to this employer (answers must match it; stretches have an honest answer ready)\n" +
+      (practice
+        ? "## Candidate CV (a practice persona: answer as this candidate; it is the only experience they have)\n"
+        : "## Candidate CV (sent to this employer: the only experience the candidate has; answers must match it; stretches have an honest answer ready)\n") +
         cvBlock(cv)
     )
   }
 
-  if (interviewPrep) {
-    if (interviewPrep.angle.trim()) {
-      sections.push(`## Why this role (angle)\n${interviewPrep.angle.trim()}`)
+  if (prep) {
+    if (prep.angle.trim()) {
+      sections.push(`## Why this role (angle)\n${prep.angle.trim()}`)
     }
-    if (interviewPrep.requirements.length) {
+    if (prep.requirements.length) {
       sections.push(
         "## Job requirements → evidence\n" +
-          interviewPrep.requirements
+          prep.requirements
             .map((r) => {
               const parts = [
                 `${r.id} ${r.text} → ${
@@ -88,65 +74,44 @@ export function renderPrepBrief({
             .join("\n")
       )
     }
+    if (prep.stories.length) {
+      sections.push(
+        "## Stories (STAR, approved by the candidate)\n" +
+          prep.stories
+            .map(
+              (s) =>
+                `${s.id} [${s.theme}] ${s.title}${
+                  s.sourceIds.length ? ` (${s.sourceIds.join(", ")})` : ""
+                }\n` +
+                `  S: ${s.situation}\n  T: ${s.task}\n  A: ${s.action}\n  R: ${s.result}`
+            )
+            .join("\n")
+      )
+    }
   }
 
-  if (profile.facts.length) {
-    sections.push(
-      "## Candidate facts (the only experience the candidate has)\n" +
-        profile.facts
-          .map((f) => {
-            const meta = [f.organization, f.period, f.role]
-              .filter(Boolean)
-              .join(", ")
-            const lines = [`${f.id} ${f.title}${meta ? ` — ${meta}` : ""}`]
-            if (f.stack.length) {
-              lines.push(`  stack: ${f.stack.slice(0, MAX_STACK).join(", ")}`)
-            }
-            for (const h of topHighlights(f.highlights)) lines.push(`  - ${h}`)
-            return lines.join("\n")
-          })
-          .join("\n")
-    )
-  }
-
-  if (profile.stories.length) {
-    sections.push(
-      "## Stories (STAR, approved by the candidate)\n" +
-        profile.stories
-          .map(
-            (s) =>
-              `${s.id} [${s.theme}] ${s.title}${
-                s.factIds.length ? ` (${s.factIds.join(", ")})` : ""
-              }\n` +
-              `  S: ${s.situation}\n  T: ${s.task}\n  A: ${s.action}\n  R: ${s.result}`
-          )
-          .join("\n")
-    )
-  }
-
+  const personal = { ...EMPTY_ANSWERS, ...answers }
   sections.push(
     "## Personal answers (blank = unknown: answer without stating a specific, never guess)\n" +
-      (Object.keys(PERSONAL_LABELS) as PersonalField[])
-        .map(
-          (key) =>
-            `${PERSONAL_LABELS[key]}: ${
-              profile.personal[key].trim() || "(blank)"
-            }`
-        )
-        .join("\n")
+      [
+        `30-second intro: ${prep?.intro.trim() || "(blank)"}`,
+        ...(Object.keys(ANSWER_LABELS) as AnswerField[]).map(
+          (key) => `${ANSWER_LABELS[key]}: ${personal[key].trim() || "(blank)"}`
+        ),
+      ].join("\n")
   )
 
-  if (profile.doNotClaim.length) {
+  if (prep?.doNotClaim.length) {
     sections.push(
       "## Never claim (not in the candidate's experience)\n" +
-        profile.doNotClaim.map((d) => `- ${d}`).join("\n")
+        prep.doNotClaim.map((d) => `- ${d}`).join("\n")
     )
   }
 
-  if (interviewPrep?.likelyQuestions.length) {
+  if (prep?.likelyQuestions.length) {
     sections.push(
       "## Prepared answers to likely questions\n" +
-        interviewPrep.likelyQuestions
+        prep.likelyQuestions
           .slice(0, MAX_QUESTIONS)
           .map(
             (q) =>
@@ -161,10 +126,9 @@ export function renderPrepBrief({
     )
   }
 
-  if (documents.trim()) {
-    sections.push(
-      `## Source documents (for details; facts above take precedence)\n\n${documents.trim()}`
-    )
+  // Without a prep yet, the JD itself tells the coach what the role wants
+  if (!prep && job.jdText.trim()) {
+    sections.push(`## Job description\n${job.jdText.trim()}`)
   }
 
   return sections.join("\n\n")

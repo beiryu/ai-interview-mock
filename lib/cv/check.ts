@@ -1,13 +1,11 @@
-import type { Fact } from "@/lib/prep/schema"
-
-import type { CvBullet, TailoredCv } from "./schema"
+import type { CvBullet, CvContent } from "./schema"
 
 /**
- * Code checks on a generated CV, so the rules don't rest on the prompt
- * alone: what the model added beyond your documents is either dropped
- * (unknown companies, unknown fact ids) or flagged as a stretch for you to
- * approve (unsourced numbers or technology words, bullets with no fact
- * behind them). Skills your documents never mention become gaps.
+ * Code checks on a refined CV, so the rules don't rest on the prompt alone:
+ * what the model added beyond the source CV is either dropped (unknown
+ * companies, unknown source bullets) or flagged as a stretch for you to
+ * approve (unsourced numbers or technology words, bullets with no source
+ * behind them). Skills the source never mentions become gaps.
  */
 
 function mentions(text: string, term: string) {
@@ -36,7 +34,8 @@ function unsourcedNumbers(text: string, source: string) {
 }
 
 // Technology-like words: capitalized or with ., #, + (Spring, Boot,
-// Next.js, C#). The first word of a line is its verb ("Built …"): skipped.
+// Next.js, C#). The first word of a sentence is capitalized anyway ("Built
+// …", "Passionate about …"): skipped.
 const TERM = /\b[A-Z][A-Za-z0-9.#+-]*|\b[a-z]+\.(?:js|ts)\b/g
 const ACRONYM = /^[A-Z]{2,5}s?$/
 // Role and CV words, not claims about a technology
@@ -72,12 +71,17 @@ const GENERIC = new Set(
 
 /** Technology words in `text` your documents never mention ("Boot"). */
 export function unsourcedTerms(text: string, docs: string) {
-  const first = text.trim().match(/^[^\s,.:;]+/)?.[0]
+  const firsts = new Set(
+    text
+      .split(/(?<=[.!?])\s+/)
+      .map((sentence) => sentence.trim().match(/^[^\s,.:;]+/)?.[0])
+      .filter(Boolean)
+  )
   return [
     ...new Set((text.match(TERM) ?? []).map((w) => w.replace(/[.,:;]+$/, ""))),
   ].filter(
     (term) =>
-      term !== first &&
+      !firsts.has(term) &&
       term.length > 1 &&
       // Generic acronyms (API, UIs, REST, MVP) aren't claims
       !ACRONYM.test(term) &&
@@ -124,25 +128,30 @@ function flag(bullet: CvBullet, note: string): CvBullet {
 }
 
 export function checkCv(
-  cv: TailoredCv,
-  facts: Fact[],
-  documents: string
-): TailoredCv {
+  cv: CvContent,
+  source: {
+    /** Bullet ids of the source CV */
+    ids: string[]
+    /** Everything the source says (the uploaded text) */
+    text: string
+  }
+): CvContent {
+  const documents = source.text
   const docs = documents.toLowerCase()
-  const factIds = new Set(facts.map((f) => f.id))
+  const known = new Set(source.ids)
 
   const experience = cv.experience
-    // A company that isn't in your documents is invented: drop it
+    // A company that isn't in the source is invented: drop it
     .filter((e) => mentions(docs, e.company))
     .map((e) => ({
       ...e,
       bullets: e.bullets.map((b) => {
         let bullet: CvBullet = {
           ...b,
-          factIds: b.factIds.filter((id) => factIds.has(id)),
+          sourceIds: b.sourceIds.filter((id) => known.has(id)),
         }
-        if (bullet.factIds.length === 0) {
-          bullet = flag(bullet, "No source fact behind this bullet")
+        if (bullet.sourceIds.length === 0) {
+          bullet = flag(bullet, "No line of your CV behind this one")
         }
         const numbers = unsourcedNumbers(bullet.text, documents)
         if (numbers.length) {
@@ -201,7 +210,7 @@ export function checkCv(
 }
 
 /** E1, E2… and B1, B2… across the whole CV (ids are what answers cite). */
-export function assignCvIds(cv: TailoredCv): TailoredCv {
+export function assignCvIds(cv: CvContent): CvContent {
   let bullet = 0
   return {
     ...cv,
@@ -219,9 +228,9 @@ export function assignCvIds(cv: TailoredCv): TailoredCv {
  * text comes back.
  */
 export function mergeCv(
-  previous: TailoredCv | null,
-  generated: TailoredCv
-): TailoredCv {
+  previous: CvContent | null,
+  generated: CvContent
+): CvContent {
   if (!previous) return assignCvIds(generated)
   const key = (company: string, role: string) =>
     `${company}|${role}`.toLowerCase()

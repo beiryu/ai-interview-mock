@@ -3,11 +3,10 @@
 import * as React from "react"
 import Link from "next/link"
 import { Row } from "@tanstack/react-table"
-import { FileText, History, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { History, MoreHorizontal, Trash2 } from "lucide-react"
 
-import type { Interview } from "@/lib/validations/interview"
+import type { Job } from "@/lib/validations/job"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import DeleteDialog from "@/components/modals/delete-modal"
-import EditDialog from "@/components/modals/edit-modal"
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>
@@ -25,10 +23,10 @@ interface DataTableRowActionsProps<TData> {
 export function DataTableRowActions<TData>({
   row,
 }: DataTableRowActionsProps<TData>) {
-  const [showEditDialog, setShowEditDialog] = React.useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
 
-  const interview = row.original as Interview
+  const job = row.original as Job
+  const base = `/dashboard/jobs/${job.id}`
 
   return (
     <>
@@ -44,20 +42,10 @@ export function DataTableRowActions<TData>({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[180px]">
           <DropdownMenuItem asChild>
-            <Link href={`/dashboard/interviews/${interview.id}/cv`}>
-              <FileText className="mr-2 size-4" />
-              Tailored CV
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`/dashboard/interviews/${interview.id}/sessions`}>
+            <Link href={`${base}?tab=sessions`}>
               <History className="mr-2 size-4" />
               Past sessions
             </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setShowEditDialog(true)}>
-            <Pencil className="mr-2 size-4" />
-            Edit
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -69,18 +57,8 @@ export function DataTableRowActions<TData>({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[520px]">
-          {showEditDialog && (
-            <EditDialog
-              interview={interview}
-              onDone={() => setShowEditDialog(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
       <DeleteDialog
-        interview={interview}
+        job={job}
         isOpen={showDeleteDialog}
         showActionToggle={setShowDeleteDialog}
       />

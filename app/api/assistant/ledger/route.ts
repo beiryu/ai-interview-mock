@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import { EMPTY_LEDGER, LedgerSchema, updateLedger } from "@/lib/ai/ledger"
 import { db } from "@/lib/db"
-import { ProfilePrepSchema } from "@/lib/prep/schema"
+import { JobPrepSchema } from "@/lib/prep/schema"
 import { getCurrentUser } from "@/lib/session"
 
 const RequestSchema = z.object({
@@ -32,23 +32,23 @@ export async function POST(req: Request) {
 
   const session = await db.interviewSession.findFirst({
     where: { id: sessionId, userId: user.id },
-    select: { ledger: true },
+    select: {
+      ledger: true,
+      job: { select: { prep: { select: { content: true } } } },
+    },
   })
   if (!session) return new NextResponse("Not found", { status: 404 })
 
-  const prep = await db.profilePrep.findUnique({
-    where: { userId: user.id },
-    select: { content: true },
-  })
-  const profile = ProfilePrepSchema.safeParse(prep?.content)
+  // The job's stories, so the ledger can note which ones were told
+  const prep = JobPrepSchema.safeParse(session.job.prep?.content)
   const current = LedgerSchema.safeParse(session.ledger)
 
   try {
     const ledger = await updateLedger({
       ...input,
       ledger: current.success ? current.data : EMPTY_LEDGER,
-      stories: profile.success
-        ? profile.data.stories.map((s) => `${s.id} ${s.title}`)
+      stories: prep.success
+        ? prep.data.stories.map((s) => `${s.id} ${s.title}`)
         : [],
     })
     await db.interviewSession.update({

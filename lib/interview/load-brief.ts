@@ -1,88 +1,63 @@
 import { BRIEF_MAX_CHARS } from "@/config/defaults/ai"
-import { TailoredCvSchema } from "@/lib/cv/schema"
+import { CvContentSchema, bulletIndex } from "@/lib/cv/schema"
 import { db } from "@/lib/db"
-import { renderPrepBrief } from "@/lib/prep/render"
-import { InterviewPrepSchema, ProfilePrepSchema } from "@/lib/prep/schema"
-
-import { buildInterviewBrief } from "./brief"
+import { renderJobBrief } from "@/lib/prep/render"
+import { AnswersSchema, JobPrepSchema } from "@/lib/prep/schema"
 
 /**
- * The coach's brief for one of the user's interviews ("" if none / not
- * theirs). With a profile prep it is the rendered prep pack; without one it
- * falls back to the raw documents, so a missing or failed prep never blocks
- * answering.
+ * The coach's brief for one of your jobs ("" if none / not yours): the job,
+ * its CV, its prep and your answers for it. A missing or failed prep never
+ * blocks answering: the brief is then the job and its CV alone.
  */
-export async function loadInterviewBrief(interviewId: string, userId: string) {
-  return (await loadCoachContext(interviewId, userId)).brief
+export async function loadInterviewBrief(jobId: string, userId: string) {
+  return (await loadCoachContext(jobId, userId)).brief
 }
 
 export interface CoachContext {
   brief: string
-  /** Prep ids answers may cite (empty without a prep) */
+  /** Ids answers may cite: CV bullets, stories, requirements */
   knownIds: Set<string>
   doNotClaim: string[]
 }
 
 /** The brief plus what the answer validator checks against. */
 export async function loadCoachContext(
-  interviewId: string,
+  jobId: string,
   userId: string
 ): Promise<CoachContext> {
-  const none: CoachContext = { brief: "", knownIds: new Set(), doNotClaim: [] }
-  const interview = await db.interview.findFirst({
-    where: { id: interviewId, userId },
+  const job = await db.job.findFirst({
+    where: { id: jobId, userId },
     select: {
-      companyName: true,
-      jobTitle: true,
+      company: true,
+      title: true,
       notes: true,
-      documentIds: true,
+      jdText: true,
+      answers: true,
       prep: { select: { content: true } },
-      cv: { select: { content: true } },
-      user: { select: { profilePrep: { select: { content: true } } } },
+      cv: { select: { content: true, origin: true } },
     },
   })
-  if (!interview) return none
+  if (!job) return { brief: "", knownIds: new Set(), doNotClaim: [] }
 
-  const documents = interview.documentIds.length
-    ? await db.document.findMany({
-        where: { id: { in: interview.documentIds }, userId },
-        select: { title: true, type: true, content: true },
-      })
-    : []
-
-  const profile = ProfilePrepSchema.safeParse(
-    interview.user.profilePrep?.content
-  )
-  if (!profile.success) {
-    return {
-      ...none,
-      brief: buildInterviewBrief(interview, documents, BRIEF_MAX_CHARS),
-    }
-  }
-
-  const interviewPrep = InterviewPrepSchema.safeParse(interview.prep?.content)
-  const cv = TailoredCvSchema.safeParse(interview.cv?.content)
-  const prepBrief = renderPrepBrief({
-    interview,
-    profile: profile.data,
-    interviewPrep: interviewPrep.success ? interviewPrep.data : null,
+  const cv = CvContentSchema.safeParse(job.cv?.content)
+  const prep = JobPrepSchema.safeParse(job.prep?.content)
+  const answers = AnswersSchema.safeParse(job.answers ?? {})
+  const brief = renderJobBrief({
+    job,
     cv: cv.success ? cv.data : null,
-    documents: "",
+    practice: job.cv?.origin === "GENERATED",
+    prep: prep.success ? prep.data : null,
+    answers: answers.success ? answers.data : null,
   })
-  // The prep pack alone: raw documents would roughly double every answer's
-  // input (cost, time to first token) for details the prep already holds
+
   return {
-    brief: prepBrief.slice(0, BRIEF_MAX_CHARS),
+    brief: brief.slice(0, BRIEF_MAX_CHARS),
     knownIds: new Set([
-      ...profile.data.facts.map((f) => f.id),
-      ...profile.data.stories.map((s) => s.id),
-      ...(interviewPrep.success
-        ? interviewPrep.data.requirements.map((r) => r.id)
-        : []),
-      ...(cv.success
-        ? cv.data.experience.flatMap((e) => e.bullets.map((b) => b.id))
-        : []),
+      ...(cv.success ? bulletIndex(cv.data).keys() : []),
+      ...(cv.success ? cv.data.experience.map((e) => e.id) : []),
+      ...(prep.success ? prep.data.stories.map((s) => s.id) : []),
+      ...(prep.success ? prep.data.requirements.map((r) => r.id) : []),
     ]),
-    doNotClaim: profile.data.doNotClaim,
+    doNotClaim: prep.success ? prep.data.doNotClaim : [],
   }
 }

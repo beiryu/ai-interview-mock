@@ -1,24 +1,21 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { Check, Download, Eraser, Trash2 } from "lucide-react"
 
 import {
+  EMPTY_CONTACT,
   pendingStretches,
+  type Contact,
   type CvBullet,
+  type CvContent,
   type CvExperience,
   type Stretch,
-  type TailoredCv,
 } from "@/lib/cv/schema"
-import type { Contact, Fact } from "@/lib/prep/schema"
 import { cn } from "@/lib/utils"
-import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
-import { useProfilePrep, useTailoredCv } from "@/hooks/api/prep/usePrep"
+import type { CvState } from "@/hooks/api/cv/useCvs"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { toast } from "@/components/ui/use-toast"
-import { DashboardHeader } from "@/components/header"
 import {
   AddButton,
   ItemCard,
@@ -32,42 +29,43 @@ import {
 } from "@/components/prep/fields"
 
 /**
- * The CV for one interview: edit on the left, a PDF-like preview on the
- * right. Wording that goes beyond your documents (a stretch) has an amber
- * frame until you approve it, fix the wording, or remove the line — the PDF
- * download waits for that.
+ * A CV: edit on the left, a PDF-like preview on the right. Wording that goes
+ * beyond the source CV (a stretch) has an amber frame until you approve it,
+ * fix the wording, or remove the line — the PDF download waits for that. A
+ * practice persona downloads marked as fictional.
  */
-export function CvEditor({ interviewId }: { interviewId: string }) {
-  const cv = useTailoredCv(interviewId)
-  const profile = useProfilePrep()
-  const { data: interview } = useGetInterview(interviewId)
-  const { draft, dirty, update, reset } = useDraft<TailoredCv>(
-    cv.data?.content ?? null
+export function CvEditor({
+  state,
+  onSave,
+  saving,
+  onRebuild,
+  rebuilding,
+  rebuildLabel = "Regenerate",
+  emptyText,
+  toolbarStart,
+  renderRebuild,
+}: {
+  state: CvState | undefined
+  onSave: (content: CvContent, done: () => void) => void
+  saving: boolean
+  onRebuild: () => void
+  rebuilding: boolean
+  rebuildLabel?: string
+  /** What to say while there is no content yet */
+  emptyText: string
+  /** Toolbar: where the CV comes from (left) */
+  toolbarStart?: React.ReactNode
+  /** Replaces the plain rebuild button (e.g. a dialog to choose the source) */
+  renderRebuild?: (options: { disabled: boolean }) => React.ReactNode
+}) {
+  const { draft, dirty, update, reset } = useDraft<CvContent>(
+    state?.content ?? null
   )
-
-  // First visit: generate without waiting for a click
-  const autoStarted = React.useRef(false)
-  React.useEffect(() => {
-    if (
-      cv.data?.status === "missing" &&
-      !cv.data.blocked &&
-      !autoStarted.current
-    ) {
-      autoStarted.current = true
-      cv.generate.mutate()
-    }
-  }, [cv.data?.status, cv.data?.blocked, cv.generate])
-
-  const facts = profile.data?.content?.facts ?? []
-  const contact = profile.data?.content?.contact
+  const practice = state?.cv?.origin === "GENERATED"
+  const sourceLabels = state?.sourceLabels ?? {}
   const pending = draft ? pendingStretches(draft).length : 0
 
-  const onSave = () =>
-    draft &&
-    cv.save.mutate(draft, {
-      onSuccess: () => reset(),
-      onError: () => toast({ title: "Could not save", variant: "destructive" }),
-    })
+  const save = () => draft && onSave(draft, reset)
 
   const setExperience = (
     index: number,
@@ -78,53 +76,61 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
       experience: d.experience.map((e, i) => (i === index ? fn(e) : e)),
     }))
 
-  const subtitle = [interview?.companyName, interview?.jobTitle]
-    .filter(Boolean)
-    .join(" · ")
-
   return (
     <div className="grid gap-6">
-      <DashboardHeader
-        heading="Tailored CV"
-        text={subtitle || interview?.name || "CV for this job"}
-      >
-        <DownloadButton
-          interviewId={interviewId}
-          disabled={!draft || dirty || pending > 0}
-          reason={
-            dirty
-              ? "Save your edits first"
-              : pending > 0
-              ? `Approve, fix or remove ${pending} stretch${
-                  pending > 1 ? "es" : ""
-                } first`
-              : null
-          }
-        />
-      </DashboardHeader>
-
       <PrepStatusBar
-        status={cv.data?.status ?? "missing"}
-        updatedAt={cv.data?.updatedAt ?? null}
-        error={cv.data?.error ?? null}
-        blocked={cv.data?.blocked ?? null}
-        onGenerate={() => cv.generate.mutate()}
-        generating={cv.generate.isPending}
+        status={state?.status ?? "missing"}
+        updatedAt={state?.updatedAt ?? null}
+        error={state?.error ?? null}
+        blocked={state?.blocked ?? null}
+        onGenerate={onRebuild}
+        generating={rebuilding}
+        generateLabel={rebuildLabel}
         dirty={dirty}
-        onSave={onSave}
-        saving={cv.save.isPending}
+        onSave={save}
+        saving={saving}
+        leading={toolbarStart}
+        info={
+          pending > 0 && (
+            <span className="text-xs text-amber-700 dark:text-amber-300">
+              {pending} stretch{pending > 1 ? "es" : ""} to approve before
+              download
+            </span>
+          )
+        }
+        hideGenerate={!!renderRebuild}
+        actionsBefore={renderRebuild?.({
+          disabled: dirty || state?.status === "pending" || rebuilding,
+        })}
+        actionsAfter={
+          state?.cv && (
+            <DownloadButton
+              cvId={state.cv.id}
+              disabled={!draft || dirty || pending > 0}
+              reason={
+                dirty
+                  ? "Save your edits first"
+                  : pending > 0
+                  ? "Approve, fix or remove the stretches first"
+                  : practice
+                  ? "Every page is marked as a fictional practice persona"
+                  : "Download the CV as a PDF"
+              }
+            />
+          )
+        }
       />
 
       {!draft ? (
-        <p className="text-sm text-muted-foreground">
-          The CV is built from your profile prep and this interview&apos;s job
-          description: your real experience, chosen and reworded for the job.
-          Pick the job description in the interview&apos;s prep (Documents) for
-          the best fit.
-        </p>
+        <p className="text-sm text-muted-foreground">{emptyText}</p>
       ) : (
         <div className="grid items-start gap-6 xl:grid-cols-2">
           <div className="space-y-8">
+            <ContactSection
+              contact={draft.contact}
+              onChange={(contact) => update((d) => ({ ...d, contact }))}
+            />
+
             <Section
               title="Headline & summary"
               description="Aimed at this role. Keep it to what you can talk about for two minutes."
@@ -152,7 +158,11 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
 
             <Section
               title="Skills"
-              description="Only skills your documents show. The rest are listed under Gaps."
+              description={
+                state?.cv?.origin === "REFINED"
+                  ? "Only skills your CV shows. What the job wants beyond them is listed under Gaps."
+                  : undefined
+              }
             >
               <div className="space-y-2">
                 {draft.skills.map((group, i) => (
@@ -213,7 +223,11 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
 
             <Section
               title="Experience"
-              description="Every line points to your facts (P*). Edited lines (🔒) are kept when you regenerate."
+              description={
+                state?.cv?.origin === "REFINED"
+                  ? "Each line shows the lines of your CV it comes from."
+                  : undefined
+              }
             >
               <div className="space-y-4">
                 {draft.experience.map((exp, i) => (
@@ -256,7 +270,11 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
                         <BulletEditor
                           key={bullet.id}
                           bullet={bullet}
-                          facts={facts}
+                          sourceLabels={
+                            state?.cv?.origin === "REFINED"
+                              ? sourceLabels
+                              : null
+                          }
                           onChange={(patch) =>
                             setExperience(i, (e) => ({
                               ...e,
@@ -292,7 +310,7 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
                                       {
                                         id,
                                         text: "",
-                                        factIds: [],
+                                        sourceIds: [],
                                         stretch: null,
                                         locked: true,
                                       },
@@ -360,7 +378,7 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
             {draft.learning.length > 0 && (
               <Section
                 title="Gaps for this job"
-                description="What the job asks for that your documents don't show. Never printed; the coach answers these honestly."
+                description="What the job asks for that your CV doesn't show. Never printed; the coach answers these honestly."
               >
                 <div className="flex flex-wrap gap-1.5">
                   {draft.learning.map((item) => (
@@ -374,16 +392,7 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
           </div>
 
           <div className="xl:sticky xl:top-4">
-            <CvPreview cv={draft} contact={contact} />
-            {!contact?.name && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Add your name, phone and links once under{" "}
-                <Link href="/dashboard/profile" className="underline">
-                  Profile prep → CV header
-                </Link>
-                ; every CV uses them.
-              </p>
-            )}
+            <CvPreview cv={draft} contact={draft.contact} />
           </div>
         </div>
       )}
@@ -391,46 +400,74 @@ export function CvEditor({ interviewId }: { interviewId: string }) {
   )
 }
 
+/** Name and contact printed at the top of the CV. */
+function ContactSection({
+  contact,
+  onChange,
+}: {
+  contact: Contact
+  onChange: (contact: Contact) => void
+}) {
+  const value = contact ?? EMPTY_CONTACT
+  return (
+    <Section
+      title="Name & contact"
+      description="Printed at the top. Blank name or email falls back to your account."
+    >
+      <div className="grid gap-2 md:grid-cols-2">
+        {(["name", "email", "phone", "location"] as const).map((key) => (
+          <TextField
+            key={key}
+            label={key[0].toUpperCase() + key.slice(1)}
+            value={value[key]}
+            onChange={(v) => onChange({ ...value, [key]: v })}
+          />
+        ))}
+      </div>
+      <ListField
+        label="Links (GitHub, LinkedIn, portfolio)"
+        value={value.links}
+        onChange={(links) => onChange({ ...value, links })}
+      />
+    </Section>
+  )
+}
+
 function DownloadButton({
-  interviewId,
+  cvId,
   disabled,
   reason,
 }: {
-  interviewId: string
+  cvId: string
   disabled: boolean
-  reason: string | null
+  reason: string
 }) {
-  return (
-    <div className="flex flex-col items-end gap-1">
-      {disabled ? (
-        <Button disabled>
-          <Download className="mr-2 size-4" />
-          Download PDF
-        </Button>
-      ) : (
-        <a
-          href={`/api/interviews/${interviewId}/cv/pdf`}
-          className={buttonVariants()}
-        >
-          <Download className="mr-2 size-4" />
-          Download PDF
-        </a>
-      )}
-      {reason && (
-        <span className="text-xs text-muted-foreground">{reason}</span>
-      )}
-    </div>
+  return disabled ? (
+    <Button size="sm" disabled title={reason}>
+      <Download className="mr-1 size-3.5" />
+      Download PDF
+    </Button>
+  ) : (
+    <a
+      href={`/api/cvs/${cvId}/pdf`}
+      title={reason}
+      className={buttonVariants({ size: "sm" })}
+    >
+      <Download className="mr-1 size-3.5" />
+      Download PDF
+    </a>
   )
 }
 
 function BulletEditor({
   bullet,
-  facts,
+  sourceLabels,
   onChange,
   onRemove,
 }: {
   bullet: CvBullet
-  facts: Fact[]
+  /** Source bullet texts (a refined CV), or null: no "from" chips */
+  sourceLabels: Record<string, string> | null
   onChange: (patch: Partial<CvBullet>) => void
   onRemove: () => void
 }) {
@@ -446,7 +483,7 @@ function BulletEditor({
       <div className="flex items-start gap-2">
         <div className="flex-1">
           <TextField
-            label={`${bullet.id}${bullet.locked ? " 🔒" : ""}`}
+            label={bullet.id}
             multiline
             value={bullet.text}
             onChange={(text) => onChange({ text })}
@@ -462,33 +499,26 @@ function BulletEditor({
           <Trash2 className="size-3.5" />
         </Button>
       </div>
-      <div className="flex flex-wrap items-center gap-1">
-        <span className="text-xs text-muted-foreground">From:</span>
-        {bullet.factIds.length === 0 && (
-          <span className="text-xs text-amber-700 dark:text-amber-300">
-            no fact
-          </span>
-        )}
-        {bullet.factIds.map((id) => {
-          const fact = facts.find((f) => f.id === id)
-          return (
+      {sourceLabels && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-xs text-muted-foreground">From your CV:</span>
+          {bullet.sourceIds.length === 0 && (
+            <span className="text-xs text-amber-700 dark:text-amber-300">
+              no line
+            </span>
+          )}
+          {bullet.sourceIds.map((id) => (
             <Badge
               key={id}
               variant="secondary"
               className="font-mono text-[10px]"
-              title={
-                fact
-                  ? `${fact.title}${
-                      fact.organization ? ` — ${fact.organization}` : ""
-                    }`
-                  : "Not in your profile prep"
-              }
+              title={sourceLabels[id] ?? "No longer in your CV"}
             >
               {id}
             </Badge>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      )}
       {bullet.stretch && (
         <StretchBox
           stretch={bullet.stretch}
@@ -499,7 +529,7 @@ function BulletEditor({
   )
 }
 
-/** A stretch: what goes beyond your documents and what to say if asked. */
+/** A stretch: what goes beyond your CV and what to say if asked. */
 function StretchBox({
   stretch,
   onChange,
@@ -555,7 +585,7 @@ function StretchBox({
           size="sm"
           variant="ghost"
           className="h-7"
-          title="You rewrote the line so it only says what your documents say"
+          title="You rewrote the line so it only says what your CV says"
           onClick={() => onChange(null)}
         >
           <Eraser className="mr-1 size-3.5" />
@@ -571,7 +601,7 @@ function CvPreview({
   cv,
   contact,
 }: {
-  cv: TailoredCv
+  cv: CvContent
   contact: Contact | undefined
 }) {
   const line = [contact?.email, contact?.phone, contact?.location]

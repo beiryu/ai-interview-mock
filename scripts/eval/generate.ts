@@ -17,7 +17,7 @@ import {
  */
 export async function generate(
   presetName: string,
-  opts: { interviewId?: string; only?: string }
+  opts: { jobId?: string; only?: string }
 ) {
   const preset = PRESETS[presetName]
   if (!preset) {
@@ -28,9 +28,9 @@ export async function generate(
     )
   }
 
-  const groundTruth = await rawBrief(opts.interviewId)
+  const groundTruth = await rawBrief(opts.jobId)
   const brief =
-    preset.brief === "prep" ? await prepBrief(opts.interviewId) : groundTruth
+    preset.brief === "prep" ? await prepBrief(opts.jobId) : groundTruth
   const questions = loadQuestions().filter(
     (q) => !opts.only || q.kind === opts.only || q.id === opts.only
   )

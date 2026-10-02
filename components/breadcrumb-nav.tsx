@@ -13,9 +13,8 @@ import {
 } from "@/components/ui/breadcrumb"
 
 const SECTIONS: { path: string; title: string }[] = [
-  { path: "/dashboard/interviews", title: "Interviews" },
-  { path: "/dashboard/documents", title: "Documents" },
-  { path: "/dashboard/profile", title: "Profile prep" },
+  { path: "/dashboard/jobs", title: "Jobs" },
+  { path: "/dashboard/cvs", title: "CVs" },
   { path: "/dashboard/settings", title: "Settings" },
 ]
 
@@ -35,14 +34,16 @@ export function BreadcrumbNav() {
     )
   }
 
-  // Deeper interview pages: /dashboard/interviews/[id], /[id]/sessions, /[id]/cv
+  // Deeper pages: /dashboard/jobs/[id], /[id]/live and /dashboard/cvs/[id]
   const sub =
-    section.path === "/dashboard/interviews" && pathname !== section.path
-      ? pathname.endsWith("/sessions")
-        ? "Past sessions"
-        : pathname.endsWith("/cv")
-        ? "Tailored CV"
-        : "Live session"
+    pathname === section.path
+      ? null
+      : section.path === "/dashboard/jobs"
+      ? pathname.endsWith("/live")
+        ? "Live interview"
+        : "Job"
+      : section.path === "/dashboard/cvs"
+      ? "CV"
       : null
 
   return (

@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { Lock, Plus, RefreshCw, Trash2 } from "lucide-react"
 
 import type { PrepStatus } from "@/lib/prep/schema"
@@ -45,9 +44,15 @@ export function PrepStatusBar({
   blocked,
   onGenerate,
   generating,
+  generateLabel,
   dirty,
   onSave,
   saving,
+  leading,
+  info,
+  actionsBefore,
+  actionsAfter,
+  hideGenerate = false,
 }: {
   status: PrepStatus
   updatedAt: string | null
@@ -55,13 +60,25 @@ export function PrepStatusBar({
   blocked?: string | null
   onGenerate: () => void
   generating: boolean
+  /** The rebuild button's label once there is content (default Regenerate) */
+  generateLabel?: string
   dirty: boolean
   onSave: () => void
   saving: boolean
+  /** Before the status badge (e.g. where a CV comes from) */
+  leading?: React.ReactNode
+  /** After "updated …" (e.g. stretches to approve) */
+  info?: React.ReactNode
+  /** Buttons before Regenerate / after Save */
+  actionsBefore?: React.ReactNode
+  actionsAfter?: React.ReactNode
+  /** The caller renders its own regenerate control (in actionsBefore) */
+  hideGenerate?: boolean
 }) {
   const busy = status === "pending" || generating
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {leading}
       <Badge
         variant="outline"
         className={cn("border-0", STATUS[status].className)}
@@ -71,35 +88,41 @@ export function PrepStatusBar({
       </Badge>
       {updatedAt && status !== "pending" && (
         <span className="text-xs text-muted-foreground">
-          updated {new Date(updatedAt).toLocaleString()}
+          updated{" "}
+          {new Date(updatedAt).toLocaleString([], {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
         </span>
       )}
       {status === "failed" && error && (
         <span className="text-xs text-destructive">{error}</span>
       )}
       {blocked && (
-        <span className="text-xs text-muted-foreground">
-          {blocked}{" "}
-          <Link href="/dashboard/documents" className="underline">
-            Documents
-          </Link>
-        </span>
+        <span className="text-xs text-muted-foreground">{blocked}</span>
       )}
-      <div className="ml-auto flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={busy || dirty || !!blocked}
-          title={dirty ? "Save your edits first" : "Edited items (🔒) are kept"}
-          onClick={onGenerate}
-        >
-          <RefreshCw className="mr-1 size-3.5" />
-          {status === "missing" ? "Prepare" : "Regenerate"}
-        </Button>
+      {info}
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        {actionsBefore}
+        {!hideGenerate && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy || dirty || !!blocked}
+            title={
+              dirty ? "Save your edits first" : "Edited items (🔒) are kept"
+            }
+            onClick={onGenerate}
+          >
+            <RefreshCw className="mr-1 size-3.5" />
+            {status === "missing" ? "Prepare" : generateLabel ?? "Regenerate"}
+          </Button>
+        )}
         <Button size="sm" disabled={!dirty || saving} onClick={onSave}>
           {saving && <Icons.spinner className="mr-1 size-3.5 animate-spin" />}
           Save
         </Button>
+        {actionsAfter}
       </div>
     </div>
   )

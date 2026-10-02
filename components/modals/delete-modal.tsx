@@ -1,7 +1,7 @@
 "use client"
 
-import { Interview } from "@/lib/validations/interview"
-import { useDeleteInterview } from "@/hooks/api/interview/useDeleteInterview"
+import { jobName, type Job } from "@/lib/validations/job"
+import { useDeleteJob } from "@/hooks/api/job/useJobs"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -14,25 +14,25 @@ import {
 import { Button } from "@/components/ui/button"
 
 type DeleteProps = {
-  interview: Interview
+  job: Job
   isOpen: boolean
   showActionToggle: (open: boolean) => void
 }
 
 export default function DeleteDialog({
-  interview,
+  job,
   isOpen,
   showActionToggle,
 }: DeleteProps) {
-  const { mutate: deleteInterview } = useDeleteInterview()
+  const { mutate: deleteJob } = useDeleteJob()
 
   return (
     <AlertDialog open={isOpen} onOpenChange={showActionToggle}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete this interview?</AlertDialogTitle>
+          <AlertDialogTitle>Delete this job?</AlertDialogTitle>
           <AlertDialogDescription>
-            <b>{interview.name}</b> and all of its saved sessions will be
+            <b>{jobName(job)}</b> with its CV, prep and saved sessions will be
             permanently deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -42,7 +42,7 @@ export default function DeleteDialog({
             variant="destructive"
             onClick={() => {
               showActionToggle(false)
-              deleteInterview(interview.id)
+              deleteJob(job.id)
             }}
           >
             Delete

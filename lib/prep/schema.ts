@@ -1,14 +1,11 @@
 import { z } from "zod"
 
 /**
- * The prep pack: what the coach knows, digested before the interview by a
- * strong model and reviewed by the candidate. Two layers:
- *  - ProfilePrep (per user, from CV/portfolio/notes): reused by every
- *    interview — facts, STAR stories, things not to claim, personal answers
- *  - InterviewPrep (per interview, from the JD): requirements mapped to
- *    evidence, likely questions, the angle for this role
- * Items carry ids (P1, S2, R3) that live answers cite, and `locked` once the
- * candidate edits them so regeneration keeps their version.
+ * A job's prep: what the coach knows for that interview, built from the
+ * job's CV and description by a strong model before the interview, and
+ * reviewed by you. Items carry ids (S2, R3) that live answers cite next to
+ * the CV's (B4), and `locked` once you edit them so regeneration keeps your
+ * version.
  */
 
 const locked = z.boolean().optional()
@@ -23,19 +20,6 @@ export const STORY_THEMES = [
   "ownership",
 ] as const
 
-export const FactSchema = z.object({
-  id: z.string(),
-  title: z.string().describe("Project or role name"),
-  organization: z.string().nullable(),
-  period: z.string().nullable(),
-  role: z.string().nullable(),
-  stack: z.array(z.string()),
-  highlights: z
-    .array(z.string())
-    .describe("Concrete things done/achieved, numbers copied verbatim"),
-  locked,
-})
-
 export const StorySchema = z.object({
   id: z.string(),
   theme: z.enum(STORY_THEMES),
@@ -44,52 +28,15 @@ export const StorySchema = z.object({
   task: z.string(),
   action: z.string(),
   result: z.string(),
-  factIds: z.array(z.string()),
+  /** CV bullets (B*) the story comes from */
+  sourceIds: z.array(z.string()),
   locked,
-})
-
-export const PersonalSchema = z.object({
-  intro: z.string(),
-  reasonForLeaving: z.string(),
-  salaryExpectation: z.string(),
-  noticePeriod: z.string(),
-  location: z.string(),
-  hobbies: z.string(),
-  strengths: z.string(),
-  weaknesses: z.string(),
-  /** Fields the candidate edited; regeneration never overwrites them */
-  edited: z.array(z.string()).optional(),
-})
-
-/** CV header, entered once and reused by every tailored CV. */
-export const ContactSchema = z.object({
-  name: z.string(),
-  email: z.string(),
-  phone: z.string(),
-  location: z.string(),
-  links: z.array(z.string()),
-})
-
-export const EMPTY_CONTACT = {
-  name: "",
-  email: "",
-  phone: "",
-  location: "",
-  links: [],
-} satisfies z.infer<typeof ContactSchema>
-
-export const ProfilePrepSchema = z.object({
-  facts: z.array(FactSchema),
-  stories: z.array(StorySchema),
-  doNotClaim: z.array(z.string()),
-  personal: PersonalSchema,
-  contact: ContactSchema.optional(),
 })
 
 export const RequirementSchema = z.object({
   id: z.string(),
   text: z.string(),
-  evidence: z.array(z.string()).describe("Fact/story ids (P*, S*)"),
+  evidence: z.array(z.string()).describe("CV bullet ids (B*)"),
   gap: z.string().nullable(),
   bridge: z.string().nullable(),
   locked,
@@ -102,43 +49,53 @@ export const LikelyQuestionSchema = z.object({
   locked,
 })
 
-export const InterviewPrepSchema = z.object({
+export const JobPrepSchema = z.object({
+  /** Why you fit this role, from real evidence */
   angle: z.string(),
+  /** A spoken 30-second self-introduction for this job */
+  intro: z.string(),
   requirements: z.array(RequirementSchema),
+  stories: z.array(StorySchema),
   likelyQuestions: z.array(LikelyQuestionSchema),
+  /** Technologies interviewers may ask about that the CV doesn't show */
+  doNotClaim: z.array(z.string()),
 })
 
-export type Fact = z.infer<typeof FactSchema>
 export type Story = z.infer<typeof StorySchema>
-export type Personal = z.infer<typeof PersonalSchema>
-export type ProfilePrep = z.infer<typeof ProfilePrepSchema>
-export type Contact = z.infer<typeof ContactSchema>
 export type Requirement = z.infer<typeof RequirementSchema>
 export type LikelyQuestion = z.infer<typeof LikelyQuestionSchema>
-export type InterviewPrep = z.infer<typeof InterviewPrepSchema>
+export type JobPrep = z.infer<typeof JobPrepSchema>
 
-export const EMPTY_PERSONAL: Personal = {
-  intro: "",
-  reasonForLeaving: "",
-  salaryExpectation: "",
-  noticePeriod: "",
-  location: "",
-  hobbies: "",
-  strengths: "",
-  weaknesses: "",
-}
+/**
+ * Personal answers for a job (only you know them). A new job starts with
+ * the answers of your latest job; blank ones make the coach answer without
+ * stating a specific.
+ */
+export const AnswersSchema = z.object({
+  whyThisCompany: z.string().default(""),
+  reasonForLeaving: z.string().default(""),
+  salaryExpectation: z.string().default(""),
+  noticePeriod: z.string().default(""),
+  location: z.string().default(""),
+  strengths: z.string().default(""),
+  weaknesses: z.string().default(""),
+  hobbies: z.string().default(""),
+})
 
-export type PersonalField = Exclude<keyof Personal, "edited">
+export type Answers = z.infer<typeof AnswersSchema>
+export type AnswerField = keyof Answers
 
-export const PERSONAL_LABELS: Record<PersonalField, string> = {
-  intro: "30-second intro",
-  reasonForLeaving: "Why leaving",
+export const EMPTY_ANSWERS: Answers = AnswersSchema.parse({})
+
+export const ANSWER_LABELS: Record<AnswerField, string> = {
+  whyThisCompany: "Why this company",
+  reasonForLeaving: "Why leaving your current job",
   salaryExpectation: "Salary expectation",
   noticePeriod: "Notice period / start date",
   location: "Location / commute",
-  hobbies: "Outside work",
   strengths: "Strengths",
   weaknesses: "Weaknesses",
+  hobbies: "Outside work",
 }
 
 export type PrepStatus = "missing" | "pending" | "ready" | "failed" | "stale"

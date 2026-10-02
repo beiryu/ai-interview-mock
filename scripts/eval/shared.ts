@@ -1,13 +1,10 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
-import { BRIEF_MAX_CHARS } from "../../config/defaults/ai"
 import type { Turn } from "../../lib/ai/judge"
+import { CvContentSchema, cvText } from "../../lib/cv/schema"
 import { db } from "../../lib/db"
-import { buildInterviewBrief } from "../../lib/interview/brief"
 import { loadInterviewBrief } from "../../lib/interview/load-brief"
-import { renderPrepBrief } from "../../lib/prep/render"
-import { ProfilePrepSchema } from "../../lib/prep/schema"
 
 export const EVAL_DIR = path.join(process.cwd(), "eval")
 export const RESULTS_DIR = path.join(EVAL_DIR, "results")
@@ -91,55 +88,57 @@ export function writeRun(run: RunFile, file?: string) {
   return target
 }
 
-/** The raw document brief (documents + role), also the grader's truth. */
-export async function rawBrief(interviewId?: string) {
-  const user = await db.user.findFirst({ select: { id: true } })
-  if (!user) throw new Error("No user in the database")
-  if (interviewId) return loadInterviewBrief(interviewId, user.id)
-
-  const documents = await db.document.findMany({
-    where: { userId: user.id },
-    select: { title: true, type: true, content: true },
-  })
-  return buildInterviewBrief(
-    { companyName: "Acme", jobTitle: "Senior Backend Engineer", notes: null },
-    documents,
-    BRIEF_MAX_CHARS
-  )
-}
-
-export async function evalUserId() {
-  const user = await db.user.findFirst({ select: { id: true } })
-  if (!user) throw new Error("No user in the database")
-  return user.id
-}
-
-/** The coach brief from the prep pack, as the app builds it. */
-export async function prepBrief(interviewId?: string) {
-  const userId = await evalUserId()
-  if (interviewId) {
-    const brief = await loadInterviewBrief(interviewId, userId)
-    const prep = await db.profilePrep.findUnique({ where: { userId } })
-    if (!prep?.content)
-      throw new Error("No profile prep: run `pnpm ai:eval prep` first")
-    return brief
-  }
-  const row = await db.profilePrep.findUnique({ where: { userId } })
-  const profile = ProfilePrepSchema.safeParse(row?.content)
-  if (!profile.success) {
-    throw new Error("No profile prep: run `pnpm ai:eval prep` first")
-  }
-  const documents = await rawBrief()
-  return renderPrepBrief({
-    interview: {
-      companyName: "Acme",
-      jobTitle: "Senior Backend Engineer",
-      notes: null,
+/** The job to evaluate: --job, else your latest job with a CV. */
+export async function evalJob(jobId?: string) {
+  const job = await db.job.findFirst({
+    where: jobId ? { id: jobId } : { cv: { isNot: null } },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      userId: true,
+      company: true,
+      title: true,
+      jdText: true,
+      cv: {
+        select: {
+          origin: true,
+          content: true,
+          basedOn: { select: { rawText: true, origin: true } },
+        },
+      },
     },
-    profile: profile.data,
-    interviewPrep: null,
-    documents: documents.slice(documents.indexOf("## Candidate documents")),
   })
+  if (!job) throw new Error("No job to evaluate: create one in the app")
+  return job
+}
+
+/**
+ * The grader's truth: what the candidate really wrote (the uploaded CV
+ * behind the job's CV), the job's CV and its description.
+ */
+export async function rawBrief(jobId?: string) {
+  const job = await evalJob(jobId)
+  const content = CvContentSchema.safeParse(job.cv?.content)
+  const uploaded =
+    job.cv?.basedOn?.origin === "UPLOADED" ? job.cv.basedOn.rawText : null
+  return [
+    `## Interview\nRole: ${job.title}\nCompany: ${job.company}`,
+    content.success ? `## Candidate CV\n${cvText(content.data)}` : "",
+    uploaded ? `## Candidate's own CV text\n${uploaded}` : "",
+    job.jdText ? `## Job description\n${job.jdText}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n")
+}
+
+export async function evalUserId(jobId?: string) {
+  return (await evalJob(jobId)).userId
+}
+
+/** The coach brief, exactly as the app builds it for the job. */
+export async function prepBrief(jobId?: string) {
+  const job = await evalJob(jobId)
+  return loadInterviewBrief(job.id, job.userId)
 }
 
 export function percentile(values: number[], p: number) {

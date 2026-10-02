@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { DashboardHeader } from "@/components/header"
-import { CreateInterviewDialog } from "@/components/modals/create-interview-dialog"
+import { NewJobDialog } from "@/components/jobs/new-job-dialog"
 import { DashboardShell } from "@/components/shell"
 
 export const metadata = {
@@ -35,33 +35,29 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const [upcoming, recentSessions, documentCount, profilePrep] =
-    await Promise.all([
-      db.interview.findMany({
-        where: { userId: user.id, scheduledAt: { gte: new Date() } },
-        orderBy: { scheduledAt: "asc" },
-        take: 5,
-      }),
-      db.interviewSession.findMany({
-        where: { userId: user.id },
-        orderBy: { startedAt: "desc" },
-        take: 5,
-        include: { interview: { select: { id: true, name: true } } },
-      }),
-      db.document.count({ where: { userId: user.id } }),
-      db.profilePrep.findUnique({
-        where: { userId: user.id },
-        select: { status: true },
-      }),
-    ])
+  const [upcoming, recentSessions, cvCount, jobCount] = await Promise.all([
+    db.job.findMany({
+      where: { userId: user.id, scheduledAt: { gte: new Date() } },
+      orderBy: { scheduledAt: "asc" },
+      take: 5,
+    }),
+    db.interviewSession.findMany({
+      where: { userId: user.id },
+      orderBy: { startedAt: "desc" },
+      take: 5,
+      include: { job: { select: { id: true, company: true, title: true } } },
+    }),
+    db.cv.count({ where: { userId: user.id } }),
+    db.job.count({ where: { userId: user.id } }),
+  ])
 
   return (
     <DashboardShell>
       <DashboardHeader
         heading={user.name ? `Hi, ${user.name}` : "Home"}
-        text="Your upcoming interviews and recent sessions."
+        text="Paste a job you like to get a CV for it; your upcoming interviews and recent sessions are here."
       >
-        <CreateInterviewDialog />
+        <NewJobDialog />
       </DashboardHeader>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -77,25 +73,28 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="divide-y">
             {upcoming.length === 0 ? (
-              <EmptyLine>Nothing scheduled.</EmptyLine>
+              <EmptyLine>
+                Nothing scheduled. Invited? Open the job and click Schedule
+                interview.
+              </EmptyLine>
             ) : (
-              upcoming.map((interview) => (
+              upcoming.map((job) => (
                 <Link
-                  key={interview.id}
-                  href={`/dashboard/interviews/${interview.id}`}
+                  key={job.id}
+                  href={`/dashboard/jobs/${job.id}`}
                   className="flex items-center justify-between gap-4 py-3 text-sm hover:underline"
                 >
                   <span className="truncate font-medium">
-                    {interview.name}
-                    {interview.companyName && (
+                    {job.company || "Unknown company"}
+                    {job.title && (
                       <span className="font-normal text-muted-foreground">
                         {" "}
-                        · {interview.companyName}
+                        · {job.title}
                       </span>
                     )}
                   </span>
                   <span className="shrink-0 text-muted-foreground">
-                    {dateTime(interview.scheduledAt!)}
+                    {dateTime(job.scheduledAt!)}
                   </span>
                 </Link>
               ))
@@ -114,18 +113,20 @@ export default async function DashboardPage() {
           <CardContent className="divide-y">
             {recentSessions.length === 0 ? (
               <EmptyLine>
-                No sessions yet. Launch an interview and share the meeting tab
-                to record one.
+                No sessions yet. Launch a job&apos;s interview and share the
+                meeting tab to record one.
               </EmptyLine>
             ) : (
               recentSessions.map((session) => (
                 <Link
                   key={session.id}
-                  href={`/dashboard/interviews/${session.interview.id}/sessions`}
+                  href={`/dashboard/jobs/${session.job.id}?tab=sessions`}
                   className="flex items-center justify-between gap-4 py-3 text-sm hover:underline"
                 >
                   <span className="truncate font-medium">
-                    {session.interview.name}
+                    {[session.job.company, session.job.title]
+                      .filter(Boolean)
+                      .join(" — ") || "Untitled job"}
                   </span>
                   <span className="shrink-0 text-muted-foreground">
                     {session.status === "completed"
@@ -142,27 +143,23 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
-            <CardTitle className="text-lg">Documents</CardTitle>
+            <CardTitle className="text-lg">CVs</CardTitle>
             <CardDescription>
-              {documentCount === 0
-                ? "Upload your resume and job descriptions so the answer coach can use them."
-                : `${documentCount} document${
-                    documentCount === 1 ? "" : "s"
-                  } · profile prep ${
-                    profilePrep?.status === "ready"
-                      ? "ready"
-                      : profilePrep?.status === "pending"
-                      ? "in progress"
-                      : "not prepared yet (Profile prep page)"
-                  }.`}
+              {cvCount === 0
+                ? "No CVs yet. Create a job: upload your CV there, or generate a practice persona from the JD."
+                : `${cvCount} CV${
+                    cvCount === 1 ? "" : "s"
+                  } for ${jobCount} job${
+                    jobCount === 1 ? "" : "s"
+                  }: your uploads and the versions made for each job.`}
             </CardDescription>
           </div>
           <Link
-            href="/dashboard/documents"
+            href="/dashboard/cvs"
             className={cn(buttonVariants({ variant: "outline" }), "gap-2")}
           >
             <FileText className="size-4" />
-            Manage
+            Open
           </Link>
         </CardHeader>
       </Card>

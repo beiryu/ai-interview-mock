@@ -4,17 +4,19 @@ import * as React from "react"
 import Link from "next/link"
 import { ClipboardList } from "lucide-react"
 
-import type { InterviewPrep, PrepStatus } from "@/lib/prep/schema"
+import { STORY_THEMES, type JobPrep, type PrepStatus } from "@/lib/prep/schema"
 import { cn } from "@/lib/utils"
-import type { InterviewWithSessions } from "@/hooks/api/interview/useGetInterview"
-import {
-  useInterviewPrep,
-  useProfilePrep,
-  useTailoredCv,
-} from "@/hooks/api/prep/usePrep"
-import { Button, buttonVariants } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { useJobCv } from "@/hooks/api/cv/useCvs"
+import { useJobPrep } from "@/hooks/api/prep/usePrep"
+import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Sheet,
   SheetContent,
@@ -23,7 +25,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { toast } from "@/components/ui/use-toast"
-import EditDialog from "@/components/modals/edit-modal"
 
 import {
   AddButton,
@@ -46,21 +47,8 @@ const BUTTON_LABEL: Record<PrepStatus, string> = {
   failed: "Prep failed",
 }
 
-/**
- * The interview's prep: which documents it uses, the JD ↔ evidence map and
- * likely questions (from the profile prep + this job description).
- * Prepares itself the first time the interview is opened.
- */
-export function InterviewPrepSheet({
-  interview,
-}: {
-  interview: InterviewWithSessions
-}) {
-  const prep = useInterviewPrep(interview.id)
-  const profile = useProfilePrep()
-  const status = prep.data?.status ?? "missing"
-
-  // First visit: prepare without waiting for a click
+/** Prepares the job prep the first time it is shown, without a click. */
+function useAutoPrep(prep: ReturnType<typeof useJobPrep>) {
   const autoStarted = React.useRef(false)
   React.useEffect(() => {
     if (
@@ -72,6 +60,13 @@ export function InterviewPrepSheet({
       prep.generate.mutate()
     }
   }, [prep.data?.status, prep.data?.blocked, prep.generate])
+}
+
+/** The prep as a side sheet, for a quick look during the live interview. */
+export function InterviewPrepSheet({ jobId }: { jobId: string }) {
+  const prep = useJobPrep(jobId)
+  const status = prep.data?.status ?? "missing"
+  useAutoPrep(prep)
 
   return (
     <Sheet>
@@ -95,13 +90,8 @@ export function InterviewPrepSheet({
           <SheetTitle className="text-sm">Interview prep</SheetTitle>
         </SheetHeader>
         <ScrollArea className="h-[calc(100vh-3.5rem)]">
-          <div className="space-y-6 p-5">
-            <SourcesRow
-              interview={interview}
-              profileStatus={profile.data?.status}
-            />
-            <CvRow interviewId={interview.id} />
-            <InterviewPrepEditor prep={prep} />
+          <div className="p-5">
+            <JobPrepPanel jobId={jobId} />
           </div>
         </ScrollArea>
       </SheetContent>
@@ -109,88 +99,72 @@ export function InterviewPrepSheet({
   )
 }
 
-function SourcesRow({
-  interview,
-  profileStatus,
-}: {
-  interview: InterviewWithSessions
-  profileStatus?: PrepStatus
-}) {
-  const [open, setOpen] = React.useState(false)
-  const count = interview.documentIds.length
+/**
+ * The job's prep: the JD ↔ evidence map, stories, likely questions and
+ * what not to claim, built from this job's CV and description.
+ */
+export function JobPrepPanel({ jobId }: { jobId: string }) {
+  const prep = useJobPrep(jobId)
+  useAutoPrep(prep)
+
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs">
-      <span>
-        Profile prep:{" "}
-        <Link href="/dashboard/profile" className="font-medium underline">
-          {profileStatus
-            ? BUTTON_LABEL[profileStatus].replace("Prep ", "")
-            : "…"}
-        </Link>
-      </span>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <button className="underline">
-            {count === 0
-              ? "No documents picked"
-              : `${count} document${count > 1 ? "s" : ""}`}{" "}
-            · role & notes
-          </button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[520px]">
-          <EditDialog interview={interview} onDone={() => setOpen(false)} />
-        </DialogContent>
-      </Dialog>
-      <span className="text-muted-foreground">
-        Pick this job&apos;s description so requirements map to your evidence.
-      </span>
-    </div>
+    <InterviewPrepEditor
+      prep={prep}
+      leading={<CvSource jobId={jobId} />}
+      info={<CvWarning jobId={jobId} />}
+    />
   )
 }
 
-const CV_LABEL: Record<PrepStatus, string> = {
-  missing: "not made yet",
-  pending: "writing…",
-  ready: "ready",
-  stale: "out of date",
-  failed: "failed",
-}
-
-/** The CV sent for this job: the prep and the coach build on it. */
-function CvRow({ interviewId }: { interviewId: string }) {
-  const { data } = useTailoredCv(interviewId)
-  const pending = data?.pending ?? 0
+/** Where the prep comes from: this job's CV (a link to its tab). */
+function CvSource({ jobId }: { jobId: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs">
-      <span>Tailored CV: {data ? CV_LABEL[data.status] : "…"}</span>
+    <span className="text-xs text-muted-foreground">
+      Built from{" "}
       <Link
-        href={`/dashboard/interviews/${interviewId}/cv`}
-        className={cn(
-          buttonVariants({ variant: "outline", size: "sm" }),
-          "h-6 px-2 text-xs"
-        )}
+        href={`/dashboard/jobs/${jobId}?tab=cv`}
+        className="font-medium text-foreground underline-offset-4 hover:underline"
       >
-        Open CV
-      </Link>
-      {pending > 0 && (
-        <span className="text-amber-700 dark:text-amber-300">
-          {pending} stretch{pending > 1 ? "es" : ""} to approve
-        </span>
-      )}
-      <span className="text-muted-foreground">
-        The coach stays consistent with what this CV says.
-      </span>
-    </div>
+        this job&apos;s CV
+      </Link>{" "}
+      ·
+    </span>
   )
+}
+
+/** What about the CV needs you first (the prep follows the CV). */
+function CvWarning({ jobId }: { jobId: string }) {
+  const { data } = useJobCv(jobId)
+  if (!data) return null
+  const message = !data.cv
+    ? "No CV yet: make it in the CV tab"
+    : data.status === "pending"
+    ? "The CV is being written"
+    : data.status === "stale"
+    ? "The CV is out of date: regenerate it first"
+    : data.status === "failed"
+    ? "The CV failed: regenerate it first"
+    : data.pending > 0
+    ? `${data.pending} CV stretch${data.pending > 1 ? "es" : ""} to approve`
+    : null
+  return message ? (
+    <span className="text-xs text-amber-700 dark:text-amber-300">
+      {message}
+    </span>
+  ) : null
 }
 
 function InterviewPrepEditor({
   prep,
+  leading,
+  info,
 }: {
-  prep: ReturnType<typeof useInterviewPrep>
+  prep: ReturnType<typeof useJobPrep>
+  leading?: React.ReactNode
+  info?: React.ReactNode
 }) {
   const { data, generate, save } = prep
-  const { draft, dirty, update, reset } = useDraft<InterviewPrep>(
+  const { draft, dirty, update, reset } = useDraft<JobPrep>(
     data?.content ?? null
   )
 
@@ -213,13 +187,15 @@ function InterviewPrepEditor({
           })
         }
         saving={save.isPending}
+        leading={leading}
+        info={info}
       />
 
       {draft && (
         <>
           <Section
-            title="Angle"
-            description="Why you fit this role — the coach leans on it for motivation questions."
+            title="Angle & intro"
+            description="Why you fit this role and how you introduce yourself — the coach leans on them for motivation questions."
           >
             <TextField
               label="Angle"
@@ -227,11 +203,17 @@ function InterviewPrepEditor({
               value={draft.angle}
               onChange={(angle) => update((d) => ({ ...d, angle }))}
             />
+            <TextField
+              label="30-second intro"
+              multiline
+              value={draft.intro}
+              onChange={(intro) => update((d) => ({ ...d, intro }))}
+            />
           </Section>
 
           <Section
             title="Requirements → your evidence"
-            description="Evidence cites your facts/stories (P*, S*). Gaps get an honest bridge."
+            description="Evidence cites lines of this job's CV (B*). Gaps get an honest bridge."
           >
             <div className="space-y-3">
               {draft.requirements.map((req, i) => {
@@ -358,6 +340,115 @@ function InterviewPrepEditor({
                   ],
                 }))
               }
+            />
+          </Section>
+
+          <Section
+            title="Stories (STAR)"
+            description="For behavioral questions, from lines of the CV (B*). Edited stories (🔒) are kept when you regenerate."
+          >
+            <div className="space-y-3">
+              {draft.stories.map((story, i) => {
+                const set = (patch: Partial<typeof story>) =>
+                  update((d) => ({
+                    ...d,
+                    stories: patchAt(d.stories, i, patch),
+                  }))
+                return (
+                  <ItemCard
+                    key={story.id}
+                    id={story.id}
+                    locked={story.locked}
+                    title={`${story.title} · ${story.theme}`}
+                    onRemove={() =>
+                      update((d) => ({
+                        ...d,
+                        stories: d.stories.filter((_, j) => j !== i),
+                      }))
+                    }
+                  >
+                    <div className="grid gap-2 md:grid-cols-[1fr_160px]">
+                      <TextField
+                        label="Title"
+                        value={story.title}
+                        onChange={(title) => set({ title })}
+                      />
+                      <div className="grid gap-1">
+                        <span className="text-xs text-muted-foreground">
+                          Theme
+                        </span>
+                        <Select
+                          value={story.theme}
+                          onValueChange={(theme) =>
+                            set({ theme: theme as typeof story.theme })
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STORY_THEMES.map((t) => (
+                              <SelectItem key={t} value={t}>
+                                {t}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {(["situation", "task", "action", "result"] as const).map(
+                      (key) => (
+                        <TextField
+                          key={key}
+                          label={key[0].toUpperCase() + key.slice(1)}
+                          multiline
+                          value={story[key]}
+                          onChange={(value) => set({ [key]: value })}
+                        />
+                      )
+                    )}
+                    <ListField
+                      label="From CV lines"
+                      value={story.sourceIds}
+                      onChange={(sourceIds) => set({ sourceIds })}
+                      placeholder="B3, B7"
+                    />
+                  </ItemCard>
+                )
+              })}
+            </div>
+            <AddButton
+              label="Add story"
+              onClick={() =>
+                update((d) => ({
+                  ...d,
+                  stories: [
+                    ...d.stories,
+                    {
+                      id: nextId("S", d.stories),
+                      theme: "impact",
+                      title: "",
+                      situation: "",
+                      task: "",
+                      action: "",
+                      result: "",
+                      sourceIds: [],
+                      locked: true,
+                    },
+                  ],
+                }))
+              }
+            />
+          </Section>
+
+          <Section
+            title="Never claim"
+            description="Technologies this job may ask about that the CV doesn't show. The coach answers honestly and bridges to what you did use."
+          >
+            <LinesField
+              label="One per line"
+              value={draft.doNotClaim}
+              onChange={(doNotClaim) => update((d) => ({ ...d, doNotClaim }))}
             />
           </Section>
         </>
