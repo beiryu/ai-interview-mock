@@ -6,6 +6,7 @@ import { Clock } from "lucide-react"
 
 import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
 import { useCopilotHotkeys } from "@/hooks/use-copilot-hotkeys"
+import { useDesktop } from "@/hooks/use-desktop"
 import { useInterviewSessionLifecycle } from "@/hooks/use-interview-session-lifecycle"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/resizable"
 import { Separator } from "@/components/ui/separator"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { CompactOverlay } from "@/components/compact-overlay"
 import { CopilotStatus } from "@/components/copilot-status"
 import { InterviewChat } from "@/components/interview-chat"
 import { LiveInterviewResponses } from "@/components/live-interview-responses"
@@ -37,6 +39,11 @@ export function LiveInterviewPlaygroundV2({
   const { data: interview } = useGetInterview(interviewId)
   const { startedAt, finish } = useInterviewSessionLifecycle(interviewId)
   useCopilotHotkeys()
+
+  // Desktop: ⌘⇧O (or the button) shrinks the window to a compact overlay
+  const desktop = useDesktop()
+  const [compact, setCompact] = useState(false)
+  useEffect(() => desktop?.onCompact(setCompact), [desktop])
 
   const [isEnding, setIsEnding] = useState(false)
   const handleEnd = useCallback(async () => {
@@ -64,7 +71,9 @@ export function LiveInterviewPlaygroundV2({
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="flex flex-col">
+      {compact && <CompactOverlay />}
+      {/* Hidden, not unmounted, in compact mode: capture keeps running */}
+      <div className={compact ? "hidden" : "flex flex-col"}>
         {/* Unified top header */}
         <div className="flex h-14 shrink-0 items-center justify-between rounded-t-lg border border-b-0 bg-background px-5">
           <div className="flex items-center gap-3">
@@ -82,6 +91,16 @@ export function LiveInterviewPlaygroundV2({
             <SessionTimer startedAt={startedAt} />
           </div>
           <div className="flex items-center gap-2">
+            {desktop && (
+              <Button
+                variant="outline"
+                size="sm"
+                title="Small always-on-top overlay (⌘⇧O)"
+                onClick={() => void desktop.setCompact(true)}
+              >
+                Overlay
+              </Button>
+            )}
             <MicOnlyRecorder contextTerms={contextTerms} />
             <Button
               variant="destructive"

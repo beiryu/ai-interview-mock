@@ -34,3 +34,6 @@ next-env.d.ts
 
 # eval runs (contain your answers / documents)
 /eval/results/
+
+# desktop shell build output
+/desktop/dist/

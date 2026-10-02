@@ -230,3 +230,21 @@ export function LiveInterviewResponses() {
     </ScrollArea>
   )
 }
+
+/** The newest answer card alone (desktop compact overlay). */
+export function LatestAnswer() {
+  const messages = useInterviewSessionStore((s) => s.messages)
+  const evidence = useEvidenceLabels()
+  const latest = messages
+    .map((m) => m.questionAnalysis)
+    .filter((analysis) => analysis !== null)
+    .at(-1)
+  if (!latest) {
+    return (
+      <p className="p-4 text-sm text-muted-foreground">
+        Waiting for the interviewer&apos;s first question…
+      </p>
+    )
+  }
+  return <AnswerCard response={latest} evidence={evidence} />
+}

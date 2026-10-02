@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-export type CaptureSource = "tab" | "mic"
+import { pcm16Rms, toPcm16 } from "@/lib/audio/rms"
+import { getDesktop } from "@/lib/desktop"
+
+/**
+ * "tab": the meeting tab via screen share with tab audio (web)
+ * "system": everything the computer plays, via the desktop shell (any app)
+ * "mic": the candidate's microphone
+ */
+export type CaptureSource = "tab" | "system" | "mic"
 
 export interface AudioFrame {
   /** 120 ms of 16 kHz mono pcm_s16le */
@@ -16,10 +24,12 @@ interface UseAudioCaptureOptions {
 }
 
 /**
- * Captures the meeting tab ("tab", via screen share with tab audio) or the
- * microphone ("mic") and turns it into 16 kHz PCM frames with an AudioWorklet.
- * Only audio goes to speech-to-text; for the tab source the full stream
- * (with video) is exposed for the preview.
+ * Captures the meeting tab ("tab", via screen share with tab audio), system
+ * audio ("system", desktop app only) or the microphone ("mic") as 16 kHz PCM
+ * frames. Tab and mic go through an AudioWorklet; system audio arrives from
+ * the desktop shell already in that format. Only audio goes to
+ * speech-to-text; for the tab source the full stream (with video) is exposed
+ * for the preview.
  */
 export function useAudioCapture(
   source: CaptureSource,
@@ -45,9 +55,36 @@ export function useAudioCapture(
     setStream(null)
   }, [])
 
+  const startSystem = useCallback(async (desktop: DesktopBridge) => {
+    const offChunk = desktop.systemAudio.onChunk((bytes) => {
+      const pcm = toPcm16(bytes)
+      onFrameRef.current({ pcm: pcm.buffer as ArrayBuffer, rms: pcm16Rms(pcm) })
+    })
+    const offError = desktop.systemAudio.onError((message) =>
+      setError(`System audio: ${message}`)
+    )
+    cleanupRef.current = () => {
+      offChunk()
+      offError()
+      void desktop.systemAudio.stop()
+    }
+    await desktop.systemAudio.start()
+    setActive(true)
+    return true
+  }, [])
+
   const start = useCallback(async () => {
     if (cleanupRef.current) return
     setError(null)
+
+    if (source === "system") {
+      const desktop = getDesktop()
+      if (!desktop) {
+        setError("System audio needs the desktop app.")
+        return false
+      }
+      return startSystem(desktop)
+    }
 
     let media: MediaStream
     try {
@@ -113,7 +150,7 @@ export function useAudioCapture(
     setStream(media)
     setActive(true)
     return true
-  }, [source, stop])
+  }, [source, stop, startSystem])
 
   // Release devices if the component unmounts mid-capture
   useEffect(() => stop, [stop])

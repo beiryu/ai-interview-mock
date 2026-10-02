@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "stt:smoke": "tsx --env-file=.env scripts/stt-smoke.mts",
-    "ai:eval": "tsx --env-file=.env scripts/ai-eval.mts"
+    "ai:eval": "tsx --env-file=.env scripts/ai-eval.mts",
+    "desktop": "node desktop/build.mjs && electron desktop/dist/main.js"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.129",
@@ -65,8 +66,11 @@
     "@types/node": "^22.20.4",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "audiotee": "^0.0.7",
     "autoprefixer": "^10.4.14",
     "dotenv": "^18.0.4",
+    "electron": "^44",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.6",
     "eslint-config-prettier": "^10.1.8",

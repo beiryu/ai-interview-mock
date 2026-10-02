@@ -13,6 +13,7 @@ pnpm typecheck        # tsc --noEmit
 pnpm test             # vitest (lib/**/*.test.ts)
 pnpm ai:eval          # judge + answer coach against real models (needs keys + DB)
 pnpm start            # Start production server
+pnpm desktop          # Electron shell onto the running app (desktop/README.md)
 ```
 
 Database setup (requires Docker):
@@ -42,6 +43,8 @@ Environment: copy `.env.example` to `.env` and fill in values (the Prisma CLI re
 **Auth**: Better Auth (`lib/auth.ts`) with email magic link (Resend) as the only sign-in method; a `databaseHooks.user.create.before` allowlist blocks sign-ups outside `ALLOWED_EMAILS`. Handler at `app/api/auth/[...all]`; client helpers in `lib/auth-client.ts`; server code uses `getCurrentUser()` from `lib/session.ts` or `auth.api.getSession({ headers })`.
 
 **Live interview flow**: two streams, each `hooks/use-live-transcriber.ts` → `hooks/use-audio-capture.ts` (tab via getDisplayMedia / mic; an AudioWorklet in `public/worklets/pcm-capture.js` emits 16 kHz PCM + RMS) → `lib/stt/soniox-stream.ts` (Soniox `stt-rt-v5`, `language_hints` vi+en, semantic `<end>` endpoints; short-lived keys from `/api/stt/token`). Transcripts and audio levels feed `lib/turn/turn-engine.ts`, which decides when the interviewer finished (pause + text completeness in `lib/turn/completeness.ts` + Soniox `<end>` + candidate starting to talk), speculates an answer at the first pause and promotes it on commit. Wiring and answer streaming live in `stores/interview-session.store.ts`. `hooks/use-interview-session-lifecycle.ts` persists the transcript. Turn logic is unit-tested (`pnpm test`); `pnpm stt:smoke` exercises Soniox end-to-end with synthesized speech.
+
+**Desktop** (`desktop/`, Electron): a thin window onto the Next app (`pnpm dev` + `pnpm desktop`) adding system audio from any meeting app (`audiotee`, Core Audio taps), global shortcuts, a compact always-on-top overlay and content protection. The page reaches it only through `window.desktop` (`desktop/preload.ts`, `types/desktop.d.ts`, `useDesktop()`); every desktop branch is skipped on the web. See `desktop/README.md` for macOS permissions and caveats.
 
 **AI**: every LLM call goes through the **Vercel AI Gateway** (`AI_GATEWAY_API_KEY`; no provider SDK or key in the app) with the AI SDK. `config/defaults/ai.ts` has one entry per task in `AI_TASKS` (gateway id like `deepseek/deepseek-v4.1-flash`, gateway fallbacks, limits); DeepSeek is the default and another model needs eval evidence. `lib/ai/models.ts` (gateway + per-task options: fallbacks, caching, `store: false`) and `lib/ai/run.ts` (`runStream` / `runObject`) are shared; tasks only own prompts:
 

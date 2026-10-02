@@ -6,6 +6,7 @@ import {
 } from "@/stores/interview-session.store"
 
 import { STT_DEFAULTS } from "@/config/defaults/stt"
+import { getDesktop } from "@/lib/desktop"
 import { SonioxStream, type SttStatus } from "@/lib/stt/soniox-stream"
 import { SPEECH_RMS, type Role } from "@/lib/turn/turn-engine"
 import { useAudioCapture, type AudioFrame } from "@/hooks/use-audio-capture"
@@ -44,7 +45,9 @@ export function useLiveTranscriber(
   const [status, setStatus] = useState<SttStatus>("idle")
 
   const streamRef = useRef<SonioxStream | null>(null)
-  const source = role === "interviewer" ? "tab" : "mic"
+  // The desktop app hears every meeting app; the web needs the meeting tab
+  const source =
+    role === "interviewer" ? (getDesktop() ? "system" : "tab") : "mic"
 
   const onFrame = useCallback(
     ({ pcm, rms }: AudioFrame) => {

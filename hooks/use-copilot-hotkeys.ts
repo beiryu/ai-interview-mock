@@ -1,6 +1,14 @@
 import { useEffect } from "react"
 import { useInterviewSessionStore } from "@/stores/interview-session.store"
 
+import { getDesktop } from "@/lib/desktop"
+
+function regenerateLatest() {
+  const { regenerate, messages } = useInterviewSessionStore.getState()
+  const last = [...messages].reverse().find((m) => m.questionAnalysis !== null)
+  if (last) regenerate(last.id)
+}
+
 function isTyping(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false
   return (
@@ -17,6 +25,9 @@ function isTyping(target: EventTarget | null) {
  *   Alt+S      skip the current answer
  *   Alt+R      regenerate the latest answer
  * Uses `event.code` because Alt changes `event.key` on macOS (Alt+S = "ß").
+ *
+ * In the desktop app the same actions also come from global shortcuts
+ * (desktop/main.ts), which work while the meeting app has focus.
  */
 export function useCopilotHotkeys() {
   useEffect(() => {
@@ -24,19 +35,14 @@ export function useCopilotHotkeys() {
       if (!event.altKey || event.metaKey || event.ctrlKey) return
       if (isTyping(event.target)) return
 
-      const { answerNow, skipCurrent, regenerate, messages } =
-        useInterviewSessionStore.getState()
+      const { answerNow, skipCurrent } = useInterviewSessionStore.getState()
 
       if (event.code === "Enter") {
         answerNow()
       } else if (event.code === "KeyS") {
         skipCurrent()
       } else if (event.code === "KeyR") {
-        const last = [...messages]
-          .reverse()
-          .find((m) => m.questionAnalysis !== null)
-        if (!last) return
-        regenerate(last.id)
+        regenerateLatest()
       } else {
         return
       }
@@ -44,6 +50,17 @@ export function useCopilotHotkeys() {
     }
 
     window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
+
+    const offShortcut = getDesktop()?.onShortcut((action) => {
+      const { answerNow, skipCurrent } = useInterviewSessionStore.getState()
+      if (action === "answer-now") answerNow()
+      else if (action === "skip") skipCurrent()
+      else if (action === "regenerate") regenerateLatest()
+    })
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      offShortcut?.()
+    }
   }, [])
 }

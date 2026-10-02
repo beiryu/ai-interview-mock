@@ -1,4 +1,6 @@
-import { Cable } from "lucide-react"
+import { AudioLines, Cable } from "lucide-react"
+
+import { useDesktop } from "@/hooks/use-desktop"
 
 import { Icons } from "./icons"
 import { Button } from "./ui/button"
@@ -14,6 +16,8 @@ export function RecordButton({
   onClick,
   disabled,
 }: RecordButtonProps) {
+  // The desktop app listens to system audio instead of a shared tab
+  const desktop = useDesktop()
   return (
     <Button
       variant="outline"
@@ -25,6 +29,11 @@ export function RecordButton({
         <>
           <Icons.micOff />
           Stop listening
+        </>
+      ) : desktop ? (
+        <>
+          <AudioLines />
+          Listen to system audio
         </>
       ) : (
         <>

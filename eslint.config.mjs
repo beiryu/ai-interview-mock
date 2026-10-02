@@ -29,6 +29,8 @@ const eslintConfig = [
       // AudioWorklet scripts run in the worklet global scope
       "public/worklets/**",
       "next-env.d.ts",
+      "desktop/dist/**",
+      "desktop/spike/**",
     ],
   },
 ]
