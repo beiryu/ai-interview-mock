@@ -5,7 +5,9 @@ import { CvContentSchema, pendingStretches } from "@/lib/cv/schema"
 import { startJobCv } from "@/lib/cv/service"
 import { db } from "@/lib/db"
 import { Prisma } from "@/lib/generated/prisma/client"
+import { effectiveStatus } from "@/lib/generation"
 import { extractJobInfo } from "@/lib/jobs/extract"
+import { jobPrepHash } from "@/lib/prep/source"
 import { getCurrentUser } from "@/lib/session"
 import { CreateJobRequestSchema } from "@/lib/validations/job"
 
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
   }
 }
 
-/** GET: your jobs, newest first, with sessions count and CV status. */
+/** GET: your jobs, newest first, with sessions count, CV and prep status. */
 export async function GET() {
   try {
     const user = await getCurrentUser()
@@ -70,16 +72,27 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { sessions: true } },
-        cv: { select: { id: true, origin: true, status: true, content: true } },
+        cv: {
+          select: {
+            id: true,
+            origin: true,
+            status: true,
+            content: true,
+            updatedAt: true,
+          },
+        },
+        prep: { select: { status: true, sourceHash: true, startedAt: true } },
       },
     })
 
-    // The list only needs the CV's status and how many stretches wait for you
+    // The list only needs statuses: the CV's (and stretches waiting for
+    // you), and the prep's — "stale" once the JD or the CV changed
     return NextResponse.json(
-      jobs.map(({ cv, ...job }) => {
+      jobs.map(({ cv, prep, ...job }) => {
         const content = cv && CvContentSchema.safeParse(cv.content)
         return {
           ...job,
+          prep: prep ? effectiveStatus(prep, jobPrepHash(job, cv)) : "missing",
           cv: cv && {
             id: cv.id,
             origin: cv.origin,

@@ -2,11 +2,14 @@
 
 import Link from "next/link"
 import { ColumnDef } from "@tanstack/react-table"
-import { CalendarClock, FileText, Play } from "lucide-react"
+import { CalendarClock, FileText, Play, RefreshCw } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { jobName, type Job } from "@/lib/validations/job"
+import { useStartJobPrep } from "@/hooks/api/job/useJobs"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { toast } from "@/components/ui/use-toast"
+import { Icons } from "@/components/icons"
 import {
   ScheduleDialog,
   formatInterviewTime,
@@ -79,6 +82,12 @@ export const columns: ColumnDef<Job>[] = [
         </Link>
       )
     },
+    enableSorting: false,
+  },
+  {
+    id: "prep",
+    header: "Prep",
+    cell: ({ row }) => <PrepCell job={row.original} />,
     enableSorting: false,
   },
   {
@@ -157,3 +166,69 @@ export const columns: ColumnDef<Job>[] = [
     enableHiding: false,
   },
 ]
+
+/**
+ * The job's prep at a glance: Ready opens it; Out of date (the JD or the CV
+ * changed) and Failed rerun it in place; Prepare starts it.
+ */
+function PrepCell({ job }: { job: Job }) {
+  const start = useStartJobPrep()
+  const status = start.isPending ? "pending" : job.prep ?? "missing"
+
+  if (!job.cv) return muted
+  if (status === "pending") {
+    return (
+      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Icons.spinner className="size-3.5 animate-spin" />
+        Preparing…
+      </span>
+    )
+  }
+  if (status === "ready") {
+    return (
+      <Link
+        href={`/dashboard/jobs/${job.id}?tab=prep`}
+        className="text-sm text-green-700 underline-offset-4 hover:underline dark:text-green-300"
+      >
+        Ready
+      </Link>
+    )
+  }
+  const label =
+    status === "stale"
+      ? "Out of date"
+      : status === "failed"
+      ? "Failed"
+      : "Prepare"
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      title={
+        status === "stale"
+          ? "The job description or the CV changed: regenerate the prep"
+          : status === "failed"
+          ? "Try again"
+          : "Prepare for this interview"
+      }
+      className={cn(
+        "gap-1.5 text-xs",
+        status === "stale" && "text-amber-700 dark:text-amber-300",
+        status === "failed" && "text-red-700 dark:text-red-300"
+      )}
+      onClick={() =>
+        start.mutate(job.id, {
+          onError: (error: Error) =>
+            toast({
+              title: "Couldn't start the prep",
+              description: error.message,
+              variant: "destructive",
+            }),
+        })
+      }
+    >
+      <RefreshCw className="size-3.5" />
+      {label}
+    </Button>
+  )
+}

@@ -35,7 +35,9 @@ export const JobSchema = z.object({
   updatedAt: z.string(),
   answers: z.unknown().optional(),
   _count: z.object({ sessions: z.number() }).optional(),
-  /** Tailored CV summary (list endpoint only) */
+  /** Job prep status (list endpoint only) */
+  prep: z.enum(["missing", "pending", "ready", "stale", "failed"]).optional(),
+  /** CV summary (list endpoint only) */
   cv: z
     .object({
       id: z.string(),

@@ -27,6 +27,26 @@ export function useGetJobs() {
   return useQuery({
     queryKey: ["jobs"],
     queryFn: () => request<Job[]>("/api/jobs"),
+    // Poll while a CV or a prep is being made
+    refetchInterval: (q) =>
+      q.state.data?.some(
+        (job) => job.prep === "pending" || job.cv?.status === "pending"
+      )
+        ? 3000
+        : false,
+  })
+}
+
+/** Starts (or reruns) a job's prep from the jobs list. */
+export function useStartJobPrep() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (jobId: string) =>
+      request(`/api/jobs/${jobId}/prep`, { method: "POST" }),
+    onSuccess: (_result, jobId) => {
+      queryClient.invalidateQueries({ queryKey: ["jobs"] })
+      queryClient.invalidateQueries({ queryKey: ["prep", "job", jobId] })
+    },
   })
 }
 
