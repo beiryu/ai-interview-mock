@@ -3,13 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { Row } from "@tanstack/react-table"
-import {
-  FileText,
-  History,
-  MoreHorizontal,
-  ScrollText,
-  Trash2,
-} from "lucide-react"
+import { History, MoreHorizontal, Trash2 } from "lucide-react"
 
 import type { Job } from "@/lib/validations/job"
 import { Button } from "@/components/ui/button"
@@ -47,18 +41,6 @@ export function DataTableRowActions<TData>({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[180px]">
-          <DropdownMenuItem asChild>
-            <Link href={`${base}?tab=cv`}>
-              <FileText className="mr-2 size-4" />
-              Tailored CV
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`${base}?tab=jd`}>
-              <ScrollText className="mr-2 size-4" />
-              Job description
-            </Link>
-          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href={`${base}?tab=sessions`}>
               <History className="mr-2 size-4" />
