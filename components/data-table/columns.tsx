@@ -2,7 +2,13 @@
 
 import Link from "next/link"
 import { ColumnDef } from "@tanstack/react-table"
-import { CalendarClock, FileText, Play, RefreshCw } from "lucide-react"
+import {
+  CalendarClock,
+  ClipboardList,
+  FileText,
+  Play,
+  RefreshCw,
+} from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { jobName, type Job } from "@/lib/validations/job"
@@ -168,41 +174,43 @@ export const columns: ColumnDef<Job>[] = [
 ]
 
 /**
- * The job's prep at a glance: Ready opens it; Out of date (the JD or the CV
- * changed) and Failed rerun it in place; Prepare starts it.
+ * The job's prep at a glance, styled like the CV column: Prep ready opens
+ * it; Out of date (the JD or the CV changed) and Failed rerun it in place;
+ * Prepare starts it.
  */
 function PrepCell({ job }: { job: Job }) {
   const start = useStartJobPrep()
   const status = start.isPending ? "pending" : job.prep ?? "missing"
+  const outline = cn(
+    buttonVariants({ variant: "outline", size: "sm" }),
+    "gap-2"
+  )
+  const attention = "border-amber-500/60 text-amber-700 dark:text-amber-300"
 
   if (!job.cv) return muted
-  if (status === "pending") {
-    return (
-      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Icons.spinner className="size-3.5 animate-spin" />
-        Preparing…
-      </span>
-    )
-  }
   if (status === "ready") {
     return (
       <Link
         href={`/dashboard/jobs/${job.id}?tab=prep`}
-        className="text-sm text-green-700 underline-offset-4 hover:underline dark:text-green-300"
+        title="Open the prep for this interview"
+        className={outline}
       >
-        Ready
+        <ClipboardList className="size-4" />
+        Prep ready
       </Link>
     )
   }
-  const label =
-    status === "stale"
-      ? "Out of date"
-      : status === "failed"
-      ? "Failed"
-      : "Prepare"
+  if (status === "pending") {
+    return (
+      <Button variant="outline" size="sm" className="gap-2" disabled>
+        <Icons.spinner className="size-4 animate-spin" />
+        Preparing…
+      </Button>
+    )
+  }
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="sm"
       title={
         status === "stale"
@@ -211,11 +219,7 @@ function PrepCell({ job }: { job: Job }) {
           ? "Try again"
           : "Prepare for this interview"
       }
-      className={cn(
-        "gap-1.5 text-xs",
-        status === "stale" && "text-amber-700 dark:text-amber-300",
-        status === "failed" && "text-red-700 dark:text-red-300"
-      )}
+      className={cn("gap-2", status !== "missing" && attention)}
       onClick={() =>
         start.mutate(job.id, {
           onError: (error: Error) =>
@@ -227,8 +231,16 @@ function PrepCell({ job }: { job: Job }) {
         })
       }
     >
-      <RefreshCw className="size-3.5" />
-      {label}
+      {status === "missing" ? (
+        <ClipboardList className="size-4" />
+      ) : (
+        <RefreshCw className="size-4" />
+      )}
+      {status === "stale"
+        ? "Out of date"
+        : status === "failed"
+        ? "Prep failed"
+        : "Prepare"}
     </Button>
   )
 }

@@ -251,19 +251,24 @@ function JobDetailsForm({ job }: { job: JobWithSessions }) {
         </div>
       </div>
 
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Section
-          title="Job description"
-          description="As posted. Requirements, stack and benefits all help the CV and the prep."
-        >
+      {/* Both columns stretch to the taller one; the JD box fills its column */}
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <section className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Job description</h2>
+            <p className="text-xs text-muted-foreground">
+              As posted. Requirements, stack and benefits all help the CV and
+              the prep.
+            </p>
+          </div>
           <TextField
             label="Description"
             multiline
-            className="[&_textarea]:min-h-[560px]"
+            className="flex-1 grid-rows-[auto_1fr] [&_textarea]:h-full [&_textarea]:min-h-[320px]"
             value={draft.jdText}
             onChange={(jdText) => set({ jdText })}
           />
-        </Section>
+        </section>
 
         <div className="space-y-8">
           <Section title="Details">
