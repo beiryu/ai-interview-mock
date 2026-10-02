@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useWatch } from "react-hook-form"
 
-import { FileUploadResult, handleFileUpload } from "@/lib/file-upload"
+import { DocumentType } from "@/lib/generated/prisma/enums"
 import {
   CreateDocumentRequest,
   CreateDocumentRequestSchema,
   DOCUMENT_TYPE_OPTIONS,
+  MAX_DOCUMENT_CHARS,
 } from "@/lib/validations/document"
-import useUploadDocument from "@/hooks/api/document/useUploadDocument"
+import useUploadDocument, {
+  useExtractDocument,
+} from "@/hooks/api/document/useUploadDocument"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -44,6 +47,21 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { Icons } from "@/components/icons"
 
+const ACCEPT = ".pdf,.docx,.txt,.md"
+
+// A PDF that yields almost no text is probably a scan without a text layer
+const MIN_EXTRACTED_CHARS = 200
+
+/** Pre-select a type from the file name; the user can still change it. */
+function guessType(fileName: string): DocumentType | undefined {
+  const name = fileName.toLowerCase()
+  if (/(^|[^a-z])(cv|resume)([^a-z]|$)/.test(name)) return DocumentType.RESUME
+  if (/(^|[^a-z])(jd|job)([^a-z]|$)/.test(name)) {
+    return DocumentType.JOB_DESCRIPTION
+  }
+  return undefined
+}
+
 export function DocumentUploadDialog() {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
@@ -65,9 +83,14 @@ export function DocumentUploadDialog() {
       content: "",
     })
     setUploadMethod("text")
+    setFileName(null)
+    extract.reset()
   }
 
   const { mutate: uploadDocument, isPending } = useUploadDocument()
+  const extract = useExtractDocument()
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [dragging, setDragging] = useState(false)
 
   const content = useWatch({ control: form.control, name: "content" })
 
@@ -77,16 +100,17 @@ export function DocumentUploadDialog() {
         setIsOpen(false)
         resetForm()
         toast({
-          title: "Document uploaded",
-          description: `Your ${DOCUMENT_TYPE_OPTIONS.find(
-            (t) => t.value === data.type
-          )?.label.toLowerCase()} is indexed and available to the answer coach.`,
+          title: "Document saved",
+          description:
+            data.type === DocumentType.JOB_DESCRIPTION
+              ? "Pick it on an interview to use it in that interview's prep."
+              : "Re-run Profile prep so the coach uses it.",
         })
         router.refresh()
       },
       onError: (error: Error) => {
         toast({
-          title: "Upload failed",
+          title: "Couldn't save the document",
           description:
             error.message || "Something went wrong. Please try again.",
           variant: "destructive",
@@ -95,30 +119,30 @@ export function DocumentUploadDialog() {
     })
   }
 
-  const handleFileUploadEvent = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    await handleFileUpload(
-      file,
-      (result: FileUploadResult) => {
-        if (result.content && result.title) {
-          form.setValue("content", result.content)
-          form.setValue("title", result.title)
-        } else if (result.title) {
-          form.setValue("title", result.title)
-        }
+  const readFile = (file: File) => {
+    setFileName(file.name)
+    extract.mutate(file, {
+      onSuccess: ({ title, content }) => {
+        form.setValue("content", content, { shouldValidate: true })
+        if (!form.getValues("title")) form.setValue("title", title)
+        const type = guessType(file.name)
+        if (type && !form.getValues("type")) form.setValue("type", type)
       },
-      (error: string) => {
-        // Error handling is done in the utility function
-        console.error("File upload error:", error)
-      }
-    )
-
-    event.target.value = ""
+      onError: (error: Error) => {
+        toast({
+          title: "Couldn't read the file",
+          description: error.message,
+          variant: "destructive",
+        })
+      },
+    })
   }
+
+  const busy = isPending || extract.isPending
+  const tooLittleText =
+    fileName?.toLowerCase().endsWith(".pdf") &&
+    extract.isSuccess &&
+    (content?.length ?? 0) < MIN_EXTRACTED_CHARS
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -147,8 +171,8 @@ export function DocumentUploadDialog() {
                   <FormLabel>Document Type</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    disabled={isPending}
+                    value={field.value ?? ""}
+                    disabled={busy}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -183,7 +207,7 @@ export function DocumentUploadDialog() {
                     <Input
                       placeholder="Enter document title"
                       {...field}
-                      disabled={isPending}
+                      disabled={busy}
                     />
                   </FormControl>
                   <FormDescription>
@@ -204,10 +228,10 @@ export function DocumentUploadDialog() {
                 }
               >
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="text" disabled={isPending}>
+                  <TabsTrigger value="text" disabled={busy}>
                     Paste Text
                   </TabsTrigger>
-                  <TabsTrigger value="file" disabled={isPending}>
+                  <TabsTrigger value="file" disabled={busy}>
                     Upload File
                   </TabsTrigger>
                 </TabsList>
@@ -223,7 +247,7 @@ export function DocumentUploadDialog() {
                             placeholder="Paste your document content here..."
                             className="min-h-[200px]"
                             {...field}
-                            disabled={isPending}
+                            disabled={busy}
                           />
                         </FormControl>
                         <FormDescription>
@@ -236,45 +260,78 @@ export function DocumentUploadDialog() {
                 </TabsContent>
 
                 <TabsContent value="file" className="space-y-4">
-                  <div className="rounded-lg border-2 border-dashed border-input p-6 text-center">
-                    <Icons.post className="mx-auto size-12 text-muted-foreground" />
-                    <div className="mt-4">
-                      <label
-                        htmlFor="file-upload"
-                        className={`cursor-pointer ${
-                          isPending ? "pointer-events-none opacity-50" : ""
-                        }`}
-                      >
-                        <span className="mt-2 block text-sm font-medium">
-                          Click to upload a file
-                        </span>
-                        <span className="mt-1 block text-sm text-muted-foreground">
-                          Plain text (TXT) files up to 10MB
-                        </span>
-                      </label>
-                      <input
-                        id="file-upload"
-                        name="file-upload"
-                        type="file"
-                        className="sr-only"
-                        accept=".txt"
-                        onChange={handleFileUploadEvent}
-                        disabled={isPending}
-                      />
-                    </div>
-                  </div>
+                  <label
+                    htmlFor="file-upload"
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setDragging(true)
+                    }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setDragging(false)
+                      const file = e.dataTransfer.files?.[0]
+                      if (file && !busy) readFile(file)
+                    }}
+                    className={`block cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+                      dragging ? "border-primary bg-primary/5" : "border-input"
+                    } ${busy ? "pointer-events-none opacity-60" : ""}`}
+                  >
+                    {extract.isPending ? (
+                      <Icons.spinner className="mx-auto size-10 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Icons.post className="mx-auto size-10 text-muted-foreground" />
+                    )}
+                    <span className="mt-3 block text-sm font-medium">
+                      {extract.isPending
+                        ? `Reading ${fileName}…`
+                        : fileName ?? "Click or drop a file"}
+                    </span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      PDF, DOCX, TXT or MD up to 10 MB
+                    </span>
+                    <input
+                      id="file-upload"
+                      name="file-upload"
+                      type="file"
+                      className="sr-only"
+                      accept={ACCEPT}
+                      disabled={busy}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) readFile(file)
+                        e.target.value = ""
+                      }}
+                    />
+                  </label>
+                  {tooLittleText && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      This PDF has almost no text (probably a scan) — paste the
+                      text instead.
+                    </p>
+                  )}
                   {content && (
-                    <div className="mt-4">
-                      <FormLabel>Extracted Content Preview</FormLabel>
+                    <div>
+                      <div className="flex items-baseline justify-between">
+                        <FormLabel>Text to save (you can edit it)</FormLabel>
+                        <span className="text-xs text-muted-foreground">
+                          {content.length.toLocaleString()} /{" "}
+                          {MAX_DOCUMENT_CHARS.toLocaleString()} chars
+                        </span>
+                      </div>
                       <Textarea
                         value={content}
                         onChange={(e) =>
-                          form.setValue("content", e.target.value)
+                          form.setValue("content", e.target.value, {
+                            shouldValidate: true,
+                          })
                         }
-                        className="mt-2 min-h-[100px]"
-                        placeholder="File content will appear here..."
-                        disabled={isPending}
+                        className="mt-2 min-h-[160px]"
+                        disabled={busy}
                       />
+                      <FormMessage>
+                        {form.formState.errors.content?.message}
+                      </FormMessage>
                     </div>
                   )}
                 </TabsContent>
@@ -286,15 +343,15 @@ export function DocumentUploadDialog() {
                 type="button"
                 variant="outline"
                 onClick={() => setIsOpen(false)}
-                disabled={isPending}
+                disabled={busy}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={busy}>
                 {isPending && (
                   <Icons.spinner className="mr-2 size-4 animate-spin" />
                 )}
-                {isPending ? "Uploading & indexing…" : "Upload Document"}
+                {isPending ? "Saving…" : "Save document"}
               </Button>
             </DialogFooter>
           </form>

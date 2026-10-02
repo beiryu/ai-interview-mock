@@ -2,33 +2,21 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { CreateDocumentRequest } from "@/lib/validations/document"
 
+async function errorMessage(response: Response, fallback: string) {
+  const body = await response.json().catch(() => null)
+  return (body && typeof body.error === "string" && body.error) || fallback
+}
+
 const uploadDocument = async (document: CreateDocumentRequest) => {
-  const formData = new FormData()
-
-  // Add text data
-  formData.append("title", document.title)
-  formData.append("type", document.type)
-
-  // Create a plain text file from the content
-  const textBlob = new Blob([document.content], { type: "text/plain" })
-  formData.append(
-    "file",
-    textBlob,
-    `${document.title.replace(/\s+/g, "_")}.txt`
-  )
-
-  // Send as multipart/form-data (no Content-Type header needed)
   const response = await fetch("/api/documents", {
     method: "POST",
-    body: formData,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(document),
   })
-
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || "Failed to upload document")
+    throw new Error(await errorMessage(response, "Failed to save the document"))
   }
-
-  return await response.json()
+  return response.json()
 }
 
 export default function useUploadDocument() {
@@ -38,6 +26,26 @@ export default function useUploadDocument() {
     mutationFn: uploadDocument,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] })
+      // Documents feed the prep pack; its "out of date" state is recomputed
+      queryClient.invalidateQueries({ queryKey: ["prep"] })
+    },
+  })
+}
+
+/** Turns a PDF/DOCX/TXT/MD file into text on the server (nothing saved). */
+export function useExtractDocument() {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData()
+      form.append("file", file)
+      const response = await fetch("/api/documents/extract", {
+        method: "POST",
+        body: form,
+      })
+      if (!response.ok) {
+        throw new Error(await errorMessage(response, "Couldn't read this file"))
+      }
+      return (await response.json()) as { title: string; content: string }
     },
   })
 }

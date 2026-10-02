@@ -15,7 +15,8 @@ const updateDocument = async (
   })
 
   if (!response.ok) {
-    throw new Error("Failed to update document")
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.error ?? "Failed to update the document")
   }
 
   return response.json()
@@ -29,6 +30,7 @@ export function useUpdateDocument() {
       updateDocument(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] })
+      queryClient.invalidateQueries({ queryKey: ["prep"] })
     },
   })
 }

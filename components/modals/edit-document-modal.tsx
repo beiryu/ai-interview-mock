@@ -43,10 +43,7 @@ type EditDocumentProps = {
   onClose?: () => void
 }
 
-// `type` is shown in the form but is not part of the update payload
-const EditDocumentFormSchema = UpdateDocumentRequestSchema.extend({
-  type: z.string().optional(),
-})
+const EditDocumentFormSchema = UpdateDocumentRequestSchema
 
 export default function EditDocumentDialog({
   document,
@@ -64,11 +61,10 @@ export default function EditDocumentDialog({
   })
 
   function onSubmit(values: z.infer<typeof EditDocumentFormSchema>) {
-    // Remove type from the values as it's not part of UpdateDocumentRequest
-    const { type, ...updateData } = values
-
+    // Type matters: job descriptions feed the interview prep, the rest the
+    // profile prep
     updateDocument(
-      { id: document.id, data: updateData },
+      { id: document.id, data: values },
       {
         onSuccess: () => {
           toast({
@@ -77,10 +73,10 @@ export default function EditDocumentDialog({
           })
           onClose?.()
         },
-        onError: () => {
+        onError: (error: Error) => {
           return toast({
-            title: "Error",
-            description: "Failed to update document. Please try again.",
+            title: "Couldn't update the document",
+            description: error.message,
             variant: "destructive",
           })
         },

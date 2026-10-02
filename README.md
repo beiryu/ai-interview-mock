@@ -41,7 +41,8 @@ pnpm dev                     # http://localhost:3000
 ## Using it
 
 1. Upload your resume, portfolio, notes and job descriptions under
-   **Documents**.
+   **Documents** (PDF, DOCX, TXT or MD — or paste the text; you review the
+   extracted text before saving).
 2. Open **Profile prep**, click Prepare, then review it: fix the STAR
    stories, fill in your personal answers (salary, why leaving, …), check
    the never-claim list. The coach only says what's here.
