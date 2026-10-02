@@ -1,0 +1,56 @@
+import { NextResponse } from "next/server"
+
+import { db } from "@/lib/db"
+import { getCurrentUser } from "@/lib/session"
+import { UpdateInterviewSessionRequestSchema } from "@/lib/validations/interview-session"
+
+interface Params {
+  params: Promise<{ id: string }>
+}
+
+// PUT is used by the client; POST accepts the same body so the page can save
+// via navigator.sendBeacon (which only sends POST) when the tab is closed.
+async function update(req: Request, props: Params) {
+  const { id } = await props.params
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const parsed = UpdateInterviewSessionRequestSchema.safeParse(
+      await req.json()
+    )
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.flatten() },
+        { status: 400 }
+      )
+    }
+
+    const existing = await db.interviewSession.findFirst({
+      where: { id, userId: user.id },
+      select: { id: true },
+    })
+    if (!existing) {
+      return new NextResponse("Not found", { status: 404 })
+    }
+
+    const { status, transcript, endedAt } = parsed.data
+    const updatedSession = await db.interviewSession.update({
+      where: { id },
+      data: {
+        status,
+        transcript,
+        endedAt: endedAt ? new Date(endedAt) : undefined,
+      },
+      select: { id: true, status: true, startedAt: true, endedAt: true },
+    })
+
+    return NextResponse.json(updatedSession)
+  } catch (error) {
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}
+
+export { update as PUT, update as POST }

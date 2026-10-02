@@ -8,30 +8,19 @@
       "command": "pnpm dev"
     },
     {
-      "name": "Next.js: debug client-side (Arc)",
-      "type": "msedge",
+      "name": "Next.js: debug client-side",
+      "type": "chrome",
       "request": "launch",
-      "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}",
-      "runtimeExecutable": "/Applications/Arc.app/Contents/MacOS/Arc",
-      "userDataDir": false
-    },
-    {
-      "name": "Next.js: debug full stack (Arc)",
-      "type": "node-terminal",
-      "request": "launch",
-      "command": "pnpm dev",
-      "serverReadyAction": {
-        "pattern": "started server on .+, url: (https?://.+)",
-        "action": "startDebugging",
-        "name": "Next.js: debug client-side (Arc)"
-      }
+      "url": "http://localhost:3000"
     }
   ],
   "compounds": [
     {
-      "name": "Debug All (Arc)",
-      "configurations": ["Next.js: debug full stack (Arc)"]
+      "name": "Debug All",
+      "configurations": [
+        "Next.js: debug server-side",
+        "Next.js: debug client-side"
+      ]
     }
   ]
 }

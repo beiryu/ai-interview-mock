@@ -1,0 +1,80 @@
+// Every LLM call goes through the Vercel AI Gateway (one key, one bill).
+// Models are gateway ids "provider/model"; switching a task's model is a
+// change here. DeepSeek by default; another model only when `pnpm ai:eval`
+// shows DeepSeek failing a task (latency, JSON, quality).
+
+export interface AiTask {
+  model: string
+  /** Gateway tries these, in order, when the primary model errors */
+  fallback?: string[]
+  maxTokens: number
+  temperature?: number
+  /** Whole-call deadline (non-streaming tasks) */
+  timeoutMs?: number
+  /** Prompt-cache routing key for a stable prefix (OpenAI-style providers) */
+  cacheKey?: string
+}
+
+export const AI_TASKS = {
+  // Live: is the interviewer done, and what exactly did they ask? On any
+  // failure the turn engine falls back to its own heuristics.
+  judge: {
+    model: "deepseek/deepseek-v4.1-flash",
+    maxTokens: 160,
+    temperature: 0,
+    timeoutMs: 2500,
+  },
+  // Live: 3 key points + 1–3 spoken sentences; the cap bounds tail latency
+  coach: {
+    model: "deepseek/deepseek-v4.1-flash",
+    fallback: ["openai/gpt-4.1-mini"],
+    maxTokens: 260,
+    cacheKey: "answer-coach",
+  },
+  // Live: the chat panel in the interview (you type; latency-tolerant)
+  chat: {
+    model: "deepseek/deepseek-v4.1-flash",
+    fallback: ["openai/gpt-4.1-mini"],
+    maxTokens: 1200,
+    temperature: 0.3,
+    cacheKey: "interview-chat",
+  },
+  // Background, after each answered question: updates the session ledger
+  ledger: {
+    model: "deepseek/deepseek-v4.1-flash",
+    maxTokens: 400,
+    temperature: 0,
+    timeoutMs: 15_000,
+  },
+  // Before the interview: digests documents into the prep pack (facts,
+  // STAR stories, JD mapping). Quality over speed; runs in the background.
+  prep: {
+    model: "deepseek/deepseek-v4-pro",
+    maxTokens: 8000,
+    temperature: 0.2,
+    timeoutMs: 180_000,
+  },
+  // Scores answers in `pnpm ai:eval`; must be another model family than
+  // the ones it grades (self-preference bias)
+  grader: {
+    model: "openai/gpt-5.5",
+    maxTokens: 800,
+    temperature: 0,
+    timeoutMs: 60_000,
+  },
+} as const satisfies Record<string, AiTask>
+
+export type AiTaskName = keyof typeof AI_TASKS
+
+// Rolling transcript sent to the judge (smaller input = faster)
+export const JUDGE_CONTEXT_CHARS = 1500
+
+// Transcript and chat history sent with each chat message
+export const CHAT_TRANSCRIPT_CHARS = 6000
+export const CHAT_HISTORY_MESSAGES = 20
+
+// Interview brief (CV, JD, notes) in the coach's instructions; ~8k tokens
+export const BRIEF_MAX_CHARS = 32_000
+
+// Documents given to the prep model (it can read much more than the coach)
+export const PREP_MAX_DOC_CHARS = 60_000

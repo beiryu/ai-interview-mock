@@ -1,105 +1,76 @@
-import { PrismaAdapter } from "@next-auth/prisma-adapter"
-import { NextAuthOptions } from "next-auth"
-import EmailProvider from "next-auth/providers/email"
-import GitHubProvider from "next-auth/providers/github"
-import { Client } from "postmark"
+import { betterAuth } from "better-auth"
+import { prismaAdapter } from "better-auth/adapters/prisma"
+import { nextCookies } from "better-auth/next-js"
+import { magicLink } from "better-auth/plugins"
+import { Resend } from "resend"
 
 import { env } from "@/env.mjs"
-import { siteConfig } from "@/config/site"
+import { siteConfig } from "@/config/defaults/site"
 import { db } from "@/lib/db"
+import { EmailTemplate } from "@/components/email-template"
 
-const postmarkClient = new Client(env.POSTMARK_API_TOKEN)
+const resend = new Resend(env.RESEND_API_KEY)
 
-export const authOptions: NextAuthOptions = {
-  // huh any! I know.
-  // This is a temporary fix for prisma client.
-  // @see https://github.com/prisma/prisma/issues/16117
-  adapter: PrismaAdapter(db as any),
+const allowedEmails = new Set(
+  env.ALLOWED_EMAILS.split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+)
+
+function isAllowedEmail(email: string) {
+  return allowedEmails.has(email.toLowerCase())
+}
+
+export const auth = betterAuth({
+  baseURL: env.BETTER_AUTH_URL,
+  secret: env.BETTER_AUTH_SECRET,
+  database: prismaAdapter(db, { provider: "postgresql" }),
+  advanced: {
+    // Let Prisma's @default(cuid()) generate ids, matching existing rows
+    database: { generateId: false },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // Personal-use app: only allowlisted emails may get an account,
+        // (sign-in is by email magic link only).
+        before: async (user) => {
+          if (!isAllowedEmail(user.email)) return false
+        },
+      },
+    },
+  },
   session: {
-    strategy: "jwt",
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
-  pages: {
-    signIn: "/login",
-  },
-  providers: [
-    GitHubProvider({
-      clientId: env.GITHUB_CLIENT_ID,
-      clientSecret: env.GITHUB_CLIENT_SECRET,
-    }),
-    EmailProvider({
-      from: env.SMTP_FROM,
-      sendVerificationRequest: async ({ identifier, url, provider }) => {
-        const user = await db.user.findUnique({
-          where: {
-            email: identifier,
-          },
-          select: {
-            emailVerified: true,
+  plugins: [
+    magicLink({
+      sendMagicLink: async ({ email, url }) => {
+        // Don't send mail to addresses that could never sign in
+        if (!isAllowedEmail(email)) return
+
+        const { error } = await resend.emails.send({
+          from: env.SMTP_FROM,
+          to: email,
+          subject: `Sign in to ${siteConfig.name}`,
+          react: EmailTemplate({
+            url,
+            productName: siteConfig.name,
+          }),
+          headers: {
+            // Set this to prevent Gmail from threading emails
+            "X-Entity-Ref-ID": new Date().getTime() + "",
           },
         })
 
-        const templateId = user?.emailVerified
-          ? env.POSTMARK_SIGN_IN_TEMPLATE
-          : env.POSTMARK_ACTIVATION_TEMPLATE
-        if (!templateId) {
-          throw new Error("Missing template id")
-        }
-
-        const result = await postmarkClient.sendEmailWithTemplate({
-          TemplateId: parseInt(templateId),
-          To: identifier,
-          From: provider.from as string,
-          TemplateModel: {
-            action_url: url,
-            product_name: siteConfig.name,
-          },
-          Headers: [
-            {
-              // Set this to prevent Gmail from threading emails.
-              // See https://stackoverflow.com/questions/23434110/force-emails-not-to-be-grouped-into-conversations/25435722.
-              Name: "X-Entity-Ref-ID",
-              Value: new Date().getTime() + "",
-            },
-          ],
-        })
-
-        if (result.ErrorCode) {
-          throw new Error(result.Message)
+        if (error) {
+          throw new Error(error.message)
         }
       },
     }),
+    // Must be last: lets server actions set auth cookies
+    nextCookies(),
   ],
-  callbacks: {
-    async session({ token, session }) {
-      if (token) {
-        session.user.id = token.id
-        session.user.name = token.name
-        session.user.email = token.email
-        session.user.image = token.picture
-      }
+})
 
-      return session
-    },
-    async jwt({ token, user }) {
-      const dbUser = await db.user.findFirst({
-        where: {
-          email: token.email,
-        },
-      })
-
-      if (!dbUser) {
-        if (user) {
-          token.id = user?.id
-        }
-        return token
-      }
-
-      return {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        picture: dbUser.image,
-      }
-    },
-  },
-}
+export type SessionUser = typeof auth.$Infer.Session.user
