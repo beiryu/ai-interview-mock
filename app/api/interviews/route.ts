@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import * as z from "zod"
 
+import { TailoredCvSchema, pendingStretches } from "@/lib/cv/schema"
 import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
 import {
@@ -45,10 +46,27 @@ export async function GET() {
     const interviews = await db.interview.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
-      include: { _count: { select: { sessions: true } } },
+      include: {
+        _count: { select: { sessions: true } },
+        cv: { select: { status: true, content: true } },
+      },
     })
 
-    return NextResponse.json(interviews)
+    // The list only needs the CV's status and how many stretches wait for you
+    return NextResponse.json(
+      interviews.map(({ cv, ...interview }) => {
+        const content = cv && TailoredCvSchema.safeParse(cv.content)
+        return {
+          ...interview,
+          cv: cv && {
+            status: cv.status,
+            pending: content?.success
+              ? pendingStretches(content.data).length
+              : 0,
+          },
+        }
+      })
+    )
   } catch (error) {
     return new NextResponse(null, { status: 500 })
   }

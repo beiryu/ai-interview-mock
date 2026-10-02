@@ -61,11 +61,29 @@ export const PersonalSchema = z.object({
   edited: z.array(z.string()).optional(),
 })
 
+/** CV header, entered once and reused by every tailored CV. */
+export const ContactSchema = z.object({
+  name: z.string(),
+  email: z.string(),
+  phone: z.string(),
+  location: z.string(),
+  links: z.array(z.string()),
+})
+
+export const EMPTY_CONTACT = {
+  name: "",
+  email: "",
+  phone: "",
+  location: "",
+  links: [],
+} satisfies z.infer<typeof ContactSchema>
+
 export const ProfilePrepSchema = z.object({
   facts: z.array(FactSchema),
   stories: z.array(StorySchema),
   doNotClaim: z.array(z.string()),
   personal: PersonalSchema,
+  contact: ContactSchema.optional(),
 })
 
 export const RequirementSchema = z.object({
@@ -94,6 +112,7 @@ export type Fact = z.infer<typeof FactSchema>
 export type Story = z.infer<typeof StorySchema>
 export type Personal = z.infer<typeof PersonalSchema>
 export type ProfilePrep = z.infer<typeof ProfilePrepSchema>
+export type Contact = z.infer<typeof ContactSchema>
 export type Requirement = z.infer<typeof RequirementSchema>
 export type LikelyQuestion = z.infer<typeof LikelyQuestionSchema>
 export type InterviewPrep = z.infer<typeof InterviewPrepSchema>

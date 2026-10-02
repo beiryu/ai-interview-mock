@@ -7,7 +7,11 @@ import { ClipboardList } from "lucide-react"
 import type { InterviewPrep, PrepStatus } from "@/lib/prep/schema"
 import { cn } from "@/lib/utils"
 import type { InterviewWithSessions } from "@/hooks/api/interview/useGetInterview"
-import { useInterviewPrep, useProfilePrep } from "@/hooks/api/prep/usePrep"
+import {
+  useInterviewPrep,
+  useProfilePrep,
+  useTailoredCv,
+} from "@/hooks/api/prep/usePrep"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -96,6 +100,7 @@ export function InterviewPrepSheet({
               interview={interview}
               profileStatus={profile.data?.status}
             />
+            <CvRow interviewId={interview.id} />
             <InterviewPrepEditor prep={prep} />
           </div>
         </ScrollArea>
@@ -138,6 +143,41 @@ function SourcesRow({
       </Dialog>
       <span className="text-muted-foreground">
         Pick this job&apos;s description so requirements map to your evidence.
+      </span>
+    </div>
+  )
+}
+
+const CV_LABEL: Record<PrepStatus, string> = {
+  missing: "not made yet",
+  pending: "writing…",
+  ready: "ready",
+  stale: "out of date",
+  failed: "failed",
+}
+
+/** The CV sent for this job: the prep and the coach build on it. */
+function CvRow({ interviewId }: { interviewId: string }) {
+  const { data } = useTailoredCv(interviewId)
+  const pending = data?.pending ?? 0
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs">
+      <span>
+        Tailored CV:{" "}
+        <Link
+          href={`/dashboard/interviews/${interviewId}/cv`}
+          className="font-medium underline"
+        >
+          {data ? CV_LABEL[data.status] : "…"}
+        </Link>
+      </span>
+      {pending > 0 && (
+        <span className="text-amber-700 dark:text-amber-300">
+          {pending} stretch{pending > 1 ? "es" : ""} to approve
+        </span>
+      )}
+      <span className="text-muted-foreground">
+        The coach stays consistent with what this CV says.
       </span>
     </div>
   )

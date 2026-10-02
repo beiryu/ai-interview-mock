@@ -75,6 +75,37 @@ export const columns: ColumnDef<Interview>[] = [
     },
   },
   {
+    id: "cv",
+    header: "CV",
+    cell: ({ row }) => {
+      const cv = row.original.cv
+      const label = !cv
+        ? "Make CV"
+        : cv.status === "pending"
+        ? "Writing…"
+        : cv.status === "failed"
+        ? "Failed"
+        : cv.pending > 0
+        ? `${cv.pending} to approve`
+        : "Ready"
+      return (
+        <Link
+          href={`/dashboard/interviews/${row.original.id}/cv`}
+          className={cn(
+            "text-sm underline-offset-4 hover:underline",
+            !cv && "text-muted-foreground",
+            cv &&
+              (cv.status === "failed" || cv.pending > 0) &&
+              "text-amber-700 dark:text-amber-300"
+          )}
+        >
+          {label}
+        </Link>
+      )
+    },
+    enableSorting: false,
+  },
+  {
     id: "launch",
     cell: ({ row }) => (
       <Link

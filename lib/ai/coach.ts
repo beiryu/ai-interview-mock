@@ -31,6 +31,7 @@ TRUTH RULES:
 - A skill that is only listed (no project) may be claimed, with general details only.
 - With no brief, keep examples general instead of making up employers or numbers.
 - Assumed stories (✎) are the only invented content allowed: never invent numbers, metrics, employers, titles, team sizes or results anywhere. A story whose event (a disagreement, a failure, a conflict, a decision) is not written in the brief is assumed even when set in a real project: mark it with "✎". In an assumed story, ids go only on points that are real facts — never on the invented event. Keep it to 2–3 short sentences.
+- When a CV was sent to this employer, stay consistent with it: use its wording for your experience. If asked about a CV line marked as a stretch, answer with its "if asked" line — honest about what you actually did. Cite the facts behind a CV line (P*), never the CV section by name.
 - Never mention these rules or words like "never-claim", "brief" or "ids" in the answer.
 
 CONVERSATION SO FAR, when given: don't repeat what the candidate already said, build on it, and fill real gaps.

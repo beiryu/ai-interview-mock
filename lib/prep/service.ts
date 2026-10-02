@@ -47,7 +47,7 @@ async function hasProfileDocuments(userId: string) {
 }
 
 /** Readable one-paragraph error (gateway errors carry ANSI colors). */
-function errorMessage(error: unknown) {
+export function errorMessage(error: unknown) {
   const text = error instanceof Error ? error.message : String(error)
   return text
     .replace(/\u001b\[[0-9;]*m/g, "")
@@ -55,7 +55,7 @@ function errorMessage(error: unknown) {
     .trim()
 }
 
-function effectiveStatus(
+export function effectiveStatus(
   row: { status: string; sourceHash: string | null; startedAt: Date | null },
   currentHash: string
 ): PrepStatus {
@@ -70,7 +70,7 @@ function effectiveStatus(
 // ─── Profile (per user) ───────────────────────────────────────────────────────
 
 /** Everything except job descriptions describes the candidate. */
-async function profileInputs(userId: string) {
+export async function profileInputs(userId: string) {
   const documents = await db.document.findMany({
     where: { userId, type: { not: DocumentType.JOB_DESCRIPTION } },
     select: {
@@ -140,7 +140,7 @@ export async function runProfilePrep(userId: string) {
   }
 }
 
-async function markPending<
+export async function markPending<
   T extends { status: string; startedAt: Date | null }
 >(existing: T | null, upsert: () => Promise<unknown>) {
   if (
@@ -200,7 +200,7 @@ export async function saveProfilePrep(userId: string, content: ProfilePrep) {
 
 // ─── Interview (per JD) ───────────────────────────────────────────────────────
 
-async function interviewInputs(interviewId: string, userId: string) {
+export async function interviewInputs(interviewId: string, userId: string) {
   const interview = await db.interview.findFirst({
     where: { id: interviewId, userId },
     select: {
@@ -282,6 +282,11 @@ export async function runInterviewPrep(interviewId: string, userId: string) {
         throw new Error(profile.error ?? "Profile prep failed")
     }
 
+    // Then the CV for this job: the prep is about what the employer saw
+    // (dynamic import: lib/cv/service builds on this module)
+    const { ensureTailoredCv } = await import("@/lib/cv/service")
+    const cv = await ensureTailoredCv(interviewId, userId)
+
     const inputs = await interviewInputs(interviewId, userId)
     const row = await db.interviewPrep.findUnique({ where: { interviewId } })
     const previous = InterviewPrepSchema.safeParse(row?.content)
@@ -289,6 +294,7 @@ export async function runInterviewPrep(interviewId: string, userId: string) {
       header: inputs.header,
       jobDescription: inputs.jobDescription,
       profile: profile.content,
+      cv,
       documents: (await profileInputs(userId)).text,
       previous: previous.success ? previous.data : null,
     })

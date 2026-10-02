@@ -11,6 +11,11 @@ export const InterviewSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   _count: z.object({ sessions: z.number() }).optional(),
+  /** Tailored CV summary (list endpoint only) */
+  cv: z
+    .object({ status: z.string(), pending: z.number() })
+    .nullable()
+    .optional(),
 })
 
 // Shared by the create and edit forms; empty strings mean "not set".

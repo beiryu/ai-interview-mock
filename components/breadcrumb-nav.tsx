@@ -35,11 +35,13 @@ export function BreadcrumbNav() {
     )
   }
 
-  // Deeper interview pages: /dashboard/interviews/[id] and /[id]/sessions
+  // Deeper interview pages: /dashboard/interviews/[id], /[id]/sessions, /[id]/cv
   const sub =
     section.path === "/dashboard/interviews" && pathname !== section.path
       ? pathname.endsWith("/sessions")
         ? "Past sessions"
+        : pathname.endsWith("/cv")
+        ? "Tailored CV"
         : "Live session"
       : null
 

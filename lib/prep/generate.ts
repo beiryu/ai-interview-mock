@@ -1,6 +1,8 @@
 import { z } from "zod"
 
 import { runObject } from "@/lib/ai/run"
+import { cvBlock } from "@/lib/cv/render"
+import type { TailoredCv } from "@/lib/cv/schema"
 
 import { notInDocuments } from "./claims"
 import {
@@ -123,6 +125,8 @@ export async function generateProfilePrep(
       ...EMPTY_PERSONAL,
       intro: claimsOut.output.intro,
     }),
+    // The CV header is only ever yours
+    contact: previous?.contact,
   }
 }
 
@@ -130,12 +134,15 @@ export async function generateInterviewPrep({
   header,
   jobDescription,
   profile,
+  cv,
   documents,
   previous,
 }: {
   header: string
   jobDescription: string
   profile: ProfilePrep
+  /** The CV tailored to this job, if any: evidence should match it */
+  cv?: TailoredCv | null
   /** The candidate's documents: skills lists live here, not in the facts */
   documents: string
   previous: InterviewPrep | null
@@ -146,9 +153,13 @@ export async function generateInterviewPrep({
     prompt: `${header}\n\nJOB DESCRIPTION:\n${
       jobDescription ||
       "(none — infer typical requirements from the role title only, and mark every requirement's evidence honestly)"
-    }\n\n${factsBlock(
-      profile
-    )}\n\nCANDIDATE DOCUMENTS (a technology in a skills list counts as known):\n${documents}`,
+    }\n\n${factsBlock(profile)}${
+      cv
+        ? `\n\nCV SENT TO THIS EMPLOYER (bullets B* with their facts; prefer them as evidence and ask likely questions about them):\n${cvBlock(
+            cv
+          )}`
+        : ""
+    }\n\nCANDIDATE DOCUMENTS (a technology in a skills list counts as known):\n${documents}`,
   })
   const ids = new Set([...profile.facts, ...profile.stories].map((x) => x.id))
   return mergeInterviewPrep(previous, {

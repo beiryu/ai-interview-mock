@@ -1,3 +1,5 @@
+import { cvBlock } from "@/lib/cv/render"
+import type { TailoredCv } from "@/lib/cv/schema"
 import type { BriefInterview } from "@/lib/interview/brief"
 
 import {
@@ -38,11 +40,14 @@ export function renderPrepBrief({
   interview,
   profile,
   interviewPrep,
+  cv = null,
   documents,
 }: {
   interview: BriefInterview
   profile: ProfilePrep
   interviewPrep: InterviewPrep | null
+  /** The CV sent to this employer: answers must match it */
+  cv?: TailoredCv | null
   /** Raw documents for details the prep didn't capture (may be "") */
   documents: string
 }) {
@@ -54,6 +59,13 @@ export function renderPrepBrief({
     interview.notes && `Notes from the candidate: ${interview.notes.trim()}`,
   ].filter(Boolean)
   if (header.length) sections.push(`## Interview\n${header.join("\n")}`)
+
+  if (cv) {
+    sections.push(
+      "## CV sent to this employer (answers must match it; stretches have an honest answer ready)\n" +
+        cvBlock(cv)
+    )
+  }
 
   if (interviewPrep) {
     if (interviewPrep.angle.trim()) {

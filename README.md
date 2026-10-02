@@ -41,16 +41,23 @@ pnpm dev                     # http://localhost:3000
 ## Using it
 
 1. Upload your resume, portfolio, notes and job descriptions under
-   **Documents**.
+   **Documents** (PDF, DOCX, TXT or MD — or paste the text; you review the
+   extracted text before saving).
 2. Open **Profile prep**, click Prepare, then review it: fix the STAR
    stories, fill in your personal answers (salary, why leaving, …), check
    the never-claim list. The coach only says what's here.
 3. Create an **Interview** with the company, role and notes, and pick this
    job's description. Its **Prep** sheet maps the JD to your evidence.
-4. Launch it, click **Share the meeting tab** and pick the tab running the
+4. Open its **CV** (Interviews list → CV): a version of your CV tailored to
+   the job, built only from your documents. Wording that goes a little
+   beyond them is framed in amber with what to say if asked; approve it, fix
+   it or remove the line, then **Download PDF**. Fill in the CV header
+   (name, phone, links) once under Profile prep. The coach stays consistent
+   with the CV you sent.
+5. Launch it, click **Share the meeting tab** and pick the tab running the
    call (with "share tab audio" enabled). Turn on your mic to transcribe your
    own answers too.
-5. Suggested answers appear as the interviewer asks questions. **End session**
+6. Suggested answers appear as the interviewer asks questions. **End session**
    saves the transcript, viewable under **Past sessions**.
 
 ## Scripts
