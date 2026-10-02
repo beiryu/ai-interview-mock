@@ -47,7 +47,7 @@ pnpm dev                     # http://localhost:3000
      framed in amber with what to say if asked; approve it, fix it or remove
      the line, then **Download PDF**.
    - **Generate from the JD** → a fictional practice persona, to rehearse
-     with. It can't be downloaded or sent to an employer.
+     with; its PDF says "fictional, for practice" on every page.
    Company and role are read from the JD. Every CV is under **CVs**.
 2. Fill in **your answers for this job** (salary, why this company, notice…)
    in its Job description tab; the next job starts with them.

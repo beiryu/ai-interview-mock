@@ -69,14 +69,29 @@ const styles = StyleSheet.create({
   dot: { width: 8 },
   bulletText: { flex: 1 },
   entry: { marginBottom: 7 },
+  practice: {
+    position: "absolute",
+    bottom: 18,
+    left: 40,
+    right: 40,
+    textAlign: "center",
+    fontSize: 8,
+    color: "#b45309",
+  },
 })
+
+const PRACTICE_NOTE =
+  "Practice persona — a fictional CV made for interview practice. Not a real candidate."
 
 export function CvDocument({
   cv,
   contact,
+  practice = false,
 }: {
   cv: CvContent
   contact: Contact
+  /** A generated persona: every page says it is fictional */
+  practice?: boolean
 }) {
   const contactItems = [
     contact.email,
@@ -87,6 +102,11 @@ export function CvDocument({
   return (
     <Document title={`${contact.name} — CV`} author={contact.name}>
       <Page size="A4" style={styles.page}>
+        {practice && (
+          <Text style={styles.practice} fixed>
+            {PRACTICE_NOTE}
+          </Text>
+        )}
         <Text style={styles.name}>{contact.name}</Text>
         <Text style={styles.headline}>{cv.headline}</Text>
         <View style={styles.contact}>
@@ -161,6 +181,12 @@ export function CvDocument({
   )
 }
 
-export function renderCvPdf(cv: CvContent, contact: Contact) {
-  return renderToBuffer(<CvDocument cv={cv} contact={contact} />)
+export function renderCvPdf(
+  cv: CvContent,
+  contact: Contact,
+  { practice = false }: { practice?: boolean } = {}
+) {
+  return renderToBuffer(
+    <CvDocument cv={cv} contact={contact} practice={practice} />
+  )
 }

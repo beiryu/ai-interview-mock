@@ -7,7 +7,7 @@ import { z } from "zod"
  *    bullets they come from (sourceIds); wording beyond the source is a
  *    "stretch" with what to say if asked, approved by you before export
  *  - GENERATED: written from a job description alone, a fictional practice
- *    persona (never exported)
+ *    persona (its PDF is marked fictional on every page)
  * Ids (E1, B3) are what live answers cite.
  */
 

@@ -211,8 +211,8 @@ export function CvSourcePicker({
       {mode === "generate" && (
         <p className="rounded-md border border-amber-500/50 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-200">
           A fictional candidate who fits this job, to practise the interview
-          with. Its companies and projects are made up, so it can&apos;t be
-          downloaded or sent to an employer.
+          with. Its companies and projects are made up; its PDF says so on every
+          page.
         </p>
       )}
     </div>

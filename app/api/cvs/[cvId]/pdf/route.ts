@@ -10,9 +10,9 @@ interface Params {
 }
 
 /**
- * GET: the CV as a PDF. Refused for a practice persona (fictional, never
- * sent to an employer) and while stretches are unapproved — nothing goes to
- * an employer that you haven't signed off.
+ * GET: the CV as a PDF. Refused while stretches are unapproved — nothing
+ * goes out that you haven't signed off. A practice persona downloads with a
+ * "fictional, for practice" line on every page.
  */
 export async function GET(_req: Request, props: Params) {
   const user = await getCurrentUser()
@@ -28,12 +28,6 @@ export async function GET(_req: Request, props: Params) {
   if (!state.content || !state.cv) {
     return NextResponse.json({ error: "No CV yet" }, { status: 404 })
   }
-  if (state.cv.origin === "GENERATED") {
-    return NextResponse.json(
-      { error: "A practice persona is fictional and can't be exported" },
-      { status: 409 }
-    )
-  }
   const pending = pendingStretches(state.content).length
   if (pending > 0) {
     return NextResponse.json(
@@ -46,18 +40,23 @@ export async function GET(_req: Request, props: Params) {
     )
   }
 
-  // Fields left blank on the CV fall back to your account
-  const contact = {
-    ...EMPTY_CONTACT,
-    name: user.name || user.email,
-    email: user.email,
-    ...stripEmpty(state.content.contact),
-  }
+  // A practice persona keeps its fictional contact (never your name or
+  // email) and says on every page that it is fictional
+  const practice = state.cv.origin === "GENERATED"
+  // Fields left blank on your CV fall back to your account
+  const contact = practice
+    ? { ...EMPTY_CONTACT, ...state.content.contact }
+    : {
+        ...EMPTY_CONTACT,
+        name: user.name || user.email,
+        email: user.email,
+        ...stripEmpty(state.content.contact),
+      }
 
-  const pdf = await renderCvPdf(state.content, contact)
-  const fileName = `${contact.name} - ${
+  const pdf = await renderCvPdf(state.content, contact, { practice })
+  const fileName = `${contact.name || "Practice persona"} - ${
     state.cv.job?.company || state.cv.title
-  } CV.pdf`.replace(/[^\p{L}\p{N} ._-]/gu, "")
+  } ${practice ? "practice CV" : "CV"}.pdf`.replace(/[^\p{L}\p{N} ._-]/gu, "")
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

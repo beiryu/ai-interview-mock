@@ -87,27 +87,22 @@ export function CvEditor({
             saving={saving}
           />
         </div>
-        {practice ? (
-          <span className="max-w-xs text-right text-xs text-amber-700 dark:text-amber-300">
-            Practice persona: fictional, so it can&apos;t be downloaded or sent
-            to an employer.
-          </span>
-        ) : (
-          state?.cv && (
-            <DownloadButton
-              cvId={state.cv.id}
-              disabled={!draft || dirty || pending > 0}
-              reason={
-                dirty
-                  ? "Save your edits first"
-                  : pending > 0
-                  ? `Approve, fix or remove ${pending} stretch${
-                      pending > 1 ? "es" : ""
-                    } first`
-                  : null
-              }
-            />
-          )
+        {state?.cv && (
+          <DownloadButton
+            cvId={state.cv.id}
+            disabled={!draft || dirty || pending > 0}
+            reason={
+              dirty
+                ? "Save your edits first"
+                : pending > 0
+                ? `Approve, fix or remove ${pending} stretch${
+                    pending > 1 ? "es" : ""
+                  } first`
+                : practice
+                ? "Every page is marked as a fictional practice persona"
+                : null
+            }
+          />
         )}
       </div>
 
