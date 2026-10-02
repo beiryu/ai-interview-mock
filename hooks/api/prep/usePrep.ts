@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
+import type { TailoredCv } from "@/lib/cv/schema"
 import type { InterviewPrep, PrepStatus, ProfilePrep } from "@/lib/prep/schema"
 
 export interface PrepState<T> {
@@ -11,21 +12,32 @@ export interface PrepState<T> {
   blocked: string | null
 }
 
+export interface CvState extends PrepState<TailoredCv> {
+  /** Stretches you haven't approved yet (the PDF waits for them) */
+  pending: number
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
     headers: { "Content-Type": "application/json" },
   })
-  if (!response.ok) throw new Error(`Request failed (${response.status})`)
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.blocked ?? `Request failed (${response.status})`)
+  }
   return response.json()
 }
 
 /** Prep state at `url`, polled while generation is running. */
-function usePrepResource<T>(key: string[], url: string) {
+function usePrepResource<T, S extends PrepState<T> = PrepState<T>>(
+  key: string[],
+  url: string
+) {
   const queryClient = useQueryClient()
   const query = useQuery({
     queryKey: key,
-    queryFn: () => request<PrepState<T>>(url),
+    queryFn: () => request<S>(url),
     enabled: !url.includes("/interviews//"),
     refetchInterval: (q) => (q.state.data?.status === "pending" ? 3000 : false),
   })
@@ -35,7 +47,7 @@ function usePrepResource<T>(key: string[], url: string) {
   })
   const save = useMutation({
     mutationFn: (content: T) =>
-      request<PrepState<T>>(url, {
+      request<S>(url, {
         method: "PUT",
         body: JSON.stringify(content),
       }),
@@ -52,5 +64,12 @@ export function useInterviewPrep(interviewId: string) {
   return usePrepResource<InterviewPrep>(
     ["prep", "interview", interviewId],
     `/api/interviews/${interviewId}/prep`
+  )
+}
+
+export function useTailoredCv(interviewId: string) {
+  return usePrepResource<TailoredCv, CvState>(
+    ["cv", interviewId],
+    `/api/interviews/${interviewId}/cv`
   )
 }

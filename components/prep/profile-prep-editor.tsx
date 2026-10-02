@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  EMPTY_CONTACT,
   EMPTY_PERSONAL,
   PERSONAL_LABELS,
   STORY_THEMES,
@@ -29,6 +30,13 @@ import {
   patchAt,
   useDraft,
 } from "./fields"
+
+const CONTACT_LABELS = {
+  name: "Full name",
+  email: "Email",
+  phone: "Phone",
+  location: "Location",
+} as const
 
 /**
  * Review and edit the profile prep (from all non-JD documents): what the
@@ -285,6 +293,40 @@ export function ProfilePrepEditor() {
               label="One per line"
               value={draft.doNotClaim}
               onChange={(doNotClaim) => update((d) => ({ ...d, doNotClaim }))}
+            />
+          </Section>
+
+          <Section
+            title="CV header"
+            description="Printed at the top of every tailored CV. Blank name or email falls back to your account."
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              {(["name", "email", "phone", "location"] as const).map((key) => (
+                <TextField
+                  key={key}
+                  label={CONTACT_LABELS[key]}
+                  value={(draft.contact ?? EMPTY_CONTACT)[key]}
+                  onChange={(value) =>
+                    update((d) => ({
+                      ...d,
+                      contact: {
+                        ...(d.contact ?? EMPTY_CONTACT),
+                        [key]: value,
+                      },
+                    }))
+                  }
+                />
+              ))}
+            </div>
+            <LinesField
+              label="Links (one per line: GitHub, LinkedIn, portfolio)"
+              value={(draft.contact ?? EMPTY_CONTACT).links}
+              onChange={(links) =>
+                update((d) => ({
+                  ...d,
+                  contact: { ...(d.contact ?? EMPTY_CONTACT), links },
+                }))
+              }
             />
           </Section>
         </>

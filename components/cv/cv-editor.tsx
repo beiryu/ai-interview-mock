@@ -1,0 +1,657 @@
+"use client"
+
+import * as React from "react"
+import Link from "next/link"
+import { Check, Download, Eraser, Trash2 } from "lucide-react"
+
+import {
+  pendingStretches,
+  type CvBullet,
+  type CvExperience,
+  type Stretch,
+  type TailoredCv,
+} from "@/lib/cv/schema"
+import type { Contact, Fact } from "@/lib/prep/schema"
+import { cn } from "@/lib/utils"
+import { useGetInterview } from "@/hooks/api/interview/useGetInterview"
+import { useProfilePrep, useTailoredCv } from "@/hooks/api/prep/usePrep"
+import { Badge } from "@/components/ui/badge"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { toast } from "@/components/ui/use-toast"
+import { DashboardHeader } from "@/components/header"
+import {
+  AddButton,
+  ItemCard,
+  ListField,
+  PrepStatusBar,
+  Section,
+  TextField,
+  nextId,
+  patchAt,
+  useDraft,
+} from "@/components/prep/fields"
+
+/**
+ * The CV for one interview: edit on the left, a PDF-like preview on the
+ * right. Wording that goes beyond your documents (a stretch) has an amber
+ * frame until you approve it, fix the wording, or remove the line — the PDF
+ * download waits for that.
+ */
+export function CvEditor({ interviewId }: { interviewId: string }) {
+  const cv = useTailoredCv(interviewId)
+  const profile = useProfilePrep()
+  const { data: interview } = useGetInterview(interviewId)
+  const { draft, dirty, update, reset } = useDraft<TailoredCv>(
+    cv.data?.content ?? null
+  )
+
+  // First visit: generate without waiting for a click
+  const autoStarted = React.useRef(false)
+  React.useEffect(() => {
+    if (
+      cv.data?.status === "missing" &&
+      !cv.data.blocked &&
+      !autoStarted.current
+    ) {
+      autoStarted.current = true
+      cv.generate.mutate()
+    }
+  }, [cv.data?.status, cv.data?.blocked, cv.generate])
+
+  const facts = profile.data?.content?.facts ?? []
+  const contact = profile.data?.content?.contact
+  const pending = draft ? pendingStretches(draft).length : 0
+
+  const onSave = () =>
+    draft &&
+    cv.save.mutate(draft, {
+      onSuccess: () => reset(),
+      onError: () => toast({ title: "Could not save", variant: "destructive" }),
+    })
+
+  const setExperience = (
+    index: number,
+    fn: (experience: CvExperience) => CvExperience
+  ) =>
+    update((d) => ({
+      ...d,
+      experience: d.experience.map((e, i) => (i === index ? fn(e) : e)),
+    }))
+
+  const subtitle = [interview?.companyName, interview?.jobTitle]
+    .filter(Boolean)
+    .join(" · ")
+
+  return (
+    <div className="grid gap-6">
+      <DashboardHeader
+        heading="Tailored CV"
+        text={subtitle || interview?.name || "CV for this job"}
+      >
+        <DownloadButton
+          interviewId={interviewId}
+          disabled={!draft || dirty || pending > 0}
+          reason={
+            dirty
+              ? "Save your edits first"
+              : pending > 0
+              ? `Approve, fix or remove ${pending} stretch${
+                  pending > 1 ? "es" : ""
+                } first`
+              : null
+          }
+        />
+      </DashboardHeader>
+
+      <PrepStatusBar
+        status={cv.data?.status ?? "missing"}
+        updatedAt={cv.data?.updatedAt ?? null}
+        error={cv.data?.error ?? null}
+        blocked={cv.data?.blocked ?? null}
+        onGenerate={() => cv.generate.mutate()}
+        generating={cv.generate.isPending}
+        dirty={dirty}
+        onSave={onSave}
+        saving={cv.save.isPending}
+      />
+
+      {!draft ? (
+        <p className="text-sm text-muted-foreground">
+          The CV is built from your profile prep and this interview&apos;s job
+          description: your real experience, chosen and reworded for the job.
+          Pick the job description in the interview&apos;s prep (Documents) for
+          the best fit.
+        </p>
+      ) : (
+        <div className="grid items-start gap-6 xl:grid-cols-2">
+          <div className="space-y-8">
+            <Section
+              title="Headline & summary"
+              description="Aimed at this role. Keep it to what you can talk about for two minutes."
+            >
+              <TextField
+                label="Headline"
+                value={draft.headline}
+                onChange={(headline) => update((d) => ({ ...d, headline }))}
+              />
+              <TextField
+                label="Summary"
+                multiline
+                value={draft.summary}
+                onChange={(summary) => update((d) => ({ ...d, summary }))}
+              />
+              {draft.summaryStretch && (
+                <StretchBox
+                  stretch={draft.summaryStretch}
+                  onChange={(summaryStretch) =>
+                    update((d) => ({ ...d, summaryStretch }))
+                  }
+                />
+              )}
+            </Section>
+
+            <Section
+              title="Skills"
+              description="Only skills your documents show. The rest are listed under Gaps."
+            >
+              <div className="space-y-2">
+                {draft.skills.map((group, i) => (
+                  <div key={i} className="flex items-end gap-2">
+                    <TextField
+                      label="Group"
+                      className="w-40 shrink-0"
+                      value={group.group}
+                      onChange={(value) =>
+                        update((d) => ({
+                          ...d,
+                          skills: d.skills.map((g, j) =>
+                            j === i ? { ...g, group: value } : g
+                          ),
+                        }))
+                      }
+                    />
+                    <div className="flex-1">
+                      <ListField
+                        label="Items"
+                        value={group.items}
+                        onChange={(items) =>
+                          update((d) => ({
+                            ...d,
+                            skills: d.skills.map((g, j) =>
+                              j === i ? { ...g, items } : g
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      onClick={() =>
+                        update((d) => ({
+                          ...d,
+                          skills: d.skills.filter((_, j) => j !== i),
+                        }))
+                      }
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <AddButton
+                label="Add group"
+                onClick={() =>
+                  update((d) => ({
+                    ...d,
+                    skills: [...d.skills, { group: "", items: [] }],
+                  }))
+                }
+              />
+            </Section>
+
+            <Section
+              title="Experience"
+              description="Every line points to your facts (P*). Edited lines (🔒) are kept when you regenerate."
+            >
+              <div className="space-y-4">
+                {draft.experience.map((exp, i) => (
+                  <ItemCard
+                    key={exp.id}
+                    id={exp.id}
+                    title={`${exp.role} · ${exp.company}`}
+                    onRemove={() =>
+                      update((d) => ({
+                        ...d,
+                        experience: d.experience.filter((_, j) => j !== i),
+                      }))
+                    }
+                  >
+                    <div className="grid gap-2 md:grid-cols-3">
+                      <TextField
+                        label="Company"
+                        value={exp.company}
+                        onChange={(company) =>
+                          setExperience(i, (e) => ({ ...e, company }))
+                        }
+                      />
+                      <TextField
+                        label="Role"
+                        value={exp.role}
+                        onChange={(role) =>
+                          setExperience(i, (e) => ({ ...e, role }))
+                        }
+                      />
+                      <TextField
+                        label="Period"
+                        value={exp.period}
+                        onChange={(period) =>
+                          setExperience(i, (e) => ({ ...e, period }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      {exp.bullets.map((bullet, b) => (
+                        <BulletEditor
+                          key={bullet.id}
+                          bullet={bullet}
+                          facts={facts}
+                          onChange={(patch) =>
+                            setExperience(i, (e) => ({
+                              ...e,
+                              bullets: patchAt(e.bullets, b, patch),
+                            }))
+                          }
+                          onRemove={() =>
+                            setExperience(i, (e) => ({
+                              ...e,
+                              bullets: e.bullets.filter((_, j) => j !== b),
+                            }))
+                          }
+                        />
+                      ))}
+                    </div>
+                    <AddButton
+                      label="Add line"
+                      onClick={() =>
+                        update((d) => {
+                          const id = nextId(
+                            "B",
+                            d.experience.flatMap((e) => e.bullets)
+                          )
+                          return {
+                            ...d,
+                            experience: d.experience.map((e, j) =>
+                              j !== i
+                                ? e
+                                : {
+                                    ...e,
+                                    bullets: [
+                                      ...e.bullets,
+                                      {
+                                        id,
+                                        text: "",
+                                        factIds: [],
+                                        stretch: null,
+                                        locked: true,
+                                      },
+                                    ],
+                                  }
+                            ),
+                          }
+                        })
+                      }
+                    />
+                  </ItemCard>
+                ))}
+              </div>
+            </Section>
+
+            <Section title="Education">
+              <div className="space-y-3">
+                {draft.education.map((edu, i) => {
+                  const set = (patch: Partial<typeof edu>) =>
+                    update((d) => ({
+                      ...d,
+                      education: d.education.map((e, j) =>
+                        j === i ? { ...e, ...patch } : e
+                      ),
+                    }))
+                  return (
+                    <ItemCard
+                      key={i}
+                      title={edu.school}
+                      onRemove={() =>
+                        update((d) => ({
+                          ...d,
+                          education: d.education.filter((_, j) => j !== i),
+                        }))
+                      }
+                    >
+                      <div className="grid gap-2 md:grid-cols-3">
+                        <TextField
+                          label="School"
+                          value={edu.school}
+                          onChange={(school) => set({ school })}
+                        />
+                        <TextField
+                          label="Degree"
+                          value={edu.degree}
+                          onChange={(degree) => set({ degree })}
+                        />
+                        <TextField
+                          label="Period"
+                          value={edu.period}
+                          onChange={(period) => set({ period })}
+                        />
+                      </div>
+                      <TextField
+                        label="Note"
+                        value={edu.note ?? ""}
+                        onChange={(note) => set({ note: note || null })}
+                      />
+                    </ItemCard>
+                  )
+                })}
+              </div>
+            </Section>
+
+            {draft.learning.length > 0 && (
+              <Section
+                title="Gaps for this job"
+                description="What the job asks for that your documents don't show. Never printed; the coach answers these honestly."
+              >
+                <div className="flex flex-wrap gap-1.5">
+                  {draft.learning.map((item) => (
+                    <Badge key={item} variant="outline">
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
+              </Section>
+            )}
+          </div>
+
+          <div className="xl:sticky xl:top-4">
+            <CvPreview cv={draft} contact={contact} />
+            {!contact?.name && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Add your name, phone and links once under{" "}
+                <Link href="/dashboard/profile" className="underline">
+                  Profile prep → CV header
+                </Link>
+                ; every CV uses them.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DownloadButton({
+  interviewId,
+  disabled,
+  reason,
+}: {
+  interviewId: string
+  disabled: boolean
+  reason: string | null
+}) {
+  return (
+    <div className="flex flex-col items-end gap-1">
+      {disabled ? (
+        <Button disabled>
+          <Download className="mr-2 size-4" />
+          Download PDF
+        </Button>
+      ) : (
+        <a
+          href={`/api/interviews/${interviewId}/cv/pdf`}
+          className={buttonVariants()}
+        >
+          <Download className="mr-2 size-4" />
+          Download PDF
+        </a>
+      )}
+      {reason && (
+        <span className="text-xs text-muted-foreground">{reason}</span>
+      )}
+    </div>
+  )
+}
+
+function BulletEditor({
+  bullet,
+  facts,
+  onChange,
+  onRemove,
+}: {
+  bullet: CvBullet
+  facts: Fact[]
+  onChange: (patch: Partial<CvBullet>) => void
+  onRemove: () => void
+}) {
+  return (
+    <div
+      className={cn(
+        "space-y-2 rounded-md border p-2",
+        bullet.stretch &&
+          !bullet.stretch.approved &&
+          "border-amber-500/70 bg-amber-500/5"
+      )}
+    >
+      <div className="flex items-start gap-2">
+        <div className="flex-1">
+          <TextField
+            label={`${bullet.id}${bullet.locked ? " 🔒" : ""}`}
+            multiline
+            value={bullet.text}
+            onChange={(text) => onChange({ text })}
+          />
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mt-5 size-7"
+          title="Remove this line"
+          onClick={onRemove}
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="text-xs text-muted-foreground">From:</span>
+        {bullet.factIds.length === 0 && (
+          <span className="text-xs text-amber-700 dark:text-amber-300">
+            no fact
+          </span>
+        )}
+        {bullet.factIds.map((id) => {
+          const fact = facts.find((f) => f.id === id)
+          return (
+            <Badge
+              key={id}
+              variant="secondary"
+              className="font-mono text-[10px]"
+              title={
+                fact
+                  ? `${fact.title}${
+                      fact.organization ? ` — ${fact.organization}` : ""
+                    }`
+                  : "Not in your profile prep"
+              }
+            >
+              {id}
+            </Badge>
+          )
+        })}
+      </div>
+      {bullet.stretch && (
+        <StretchBox
+          stretch={bullet.stretch}
+          onChange={(stretch) => onChange({ stretch })}
+        />
+      )}
+    </div>
+  )
+}
+
+/** A stretch: what goes beyond your documents and what to say if asked. */
+function StretchBox({
+  stretch,
+  onChange,
+}: {
+  stretch: Stretch
+  onChange: (stretch: Stretch | null) => void
+}) {
+  if (stretch.approved) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Check className="size-3.5 text-green-600" />
+        <span className="flex-1">
+          Stretch approved — if asked: {stretch.defense || "(no answer set)"}
+        </span>
+        <button
+          className="underline"
+          onClick={() => onChange({ ...stretch, approved: false })}
+        >
+          Undo
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-2 rounded-md border border-amber-500/70 bg-amber-500/5 p-2">
+      <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+        Stretch: {stretch.note}
+      </p>
+      <TextField
+        label="If asked, say"
+        multiline
+        value={stretch.defense}
+        placeholder="One or two honest sentences about what you really did"
+        onChange={(defense) => onChange({ ...stretch, defense })}
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7"
+          disabled={!stretch.defense.trim()}
+          title={
+            stretch.defense.trim()
+              ? "Keep this wording on the CV"
+              : "Write what you'd say if asked first"
+          }
+          onClick={() => onChange({ ...stretch, approved: true })}
+        >
+          <Check className="mr-1 size-3.5" />
+          Approve
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7"
+          title="You rewrote the line so it only says what your documents say"
+          onClick={() => onChange(null)}
+        >
+          <Eraser className="mr-1 size-3.5" />
+          Wording fixed
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** Close to the PDF (one column, A4 proportions); stretches are marked. */
+function CvPreview({
+  cv,
+  contact,
+}: {
+  cv: TailoredCv
+  contact: Contact | undefined
+}) {
+  const line = [contact?.email, contact?.phone, contact?.location]
+    .concat(contact?.links ?? [])
+    .filter(Boolean)
+    .join(" · ")
+  const mark = (stretch: Stretch | null) =>
+    stretch && !stretch.approved && "bg-amber-200/60 dark:bg-amber-500/30"
+  return (
+    <div className="aspect-[1/1.414] overflow-auto rounded-md border bg-white p-8 text-[11px] leading-relaxed text-neutral-900 shadow-sm">
+      <h2 className="text-lg font-semibold leading-tight">
+        {contact?.name || "Your name"}
+      </h2>
+      <p className="mt-1 text-xs text-neutral-700">{cv.headline}</p>
+      {line && <p className="mt-1 text-neutral-600">{line}</p>}
+
+      <PreviewHeading>Summary</PreviewHeading>
+      <p className={cn(mark(cv.summaryStretch))}>{cv.summary}</p>
+
+      {cv.skills.length > 0 && (
+        <>
+          <PreviewHeading>Skills</PreviewHeading>
+          {cv.skills.map((g) => (
+            <p key={g.group}>
+              <span className="font-semibold">{g.group}:</span>{" "}
+              {g.items.join(", ")}
+            </p>
+          ))}
+        </>
+      )}
+
+      {cv.experience.length > 0 && (
+        <>
+          <PreviewHeading>Experience</PreviewHeading>
+          <div className="space-y-2">
+            {cv.experience.map((e) => (
+              <div key={e.id}>
+                <div className="flex justify-between gap-3">
+                  <span className="font-semibold">
+                    {e.role} — {e.company}
+                  </span>
+                  <span className="shrink-0 text-neutral-600">{e.period}</span>
+                </div>
+                <ul className="list-disc pl-4">
+                  {e.bullets.map((b) => (
+                    <li key={b.id} className={cn(mark(b.stretch))}>
+                      {b.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {cv.education.length > 0 && (
+        <>
+          <PreviewHeading>Education</PreviewHeading>
+          {cv.education.map((e, i) => (
+            <div key={i}>
+              <div className="flex justify-between gap-3">
+                <span className="font-semibold">
+                  {e.degree} — {e.school}
+                </span>
+                <span className="shrink-0 text-neutral-600">{e.period}</span>
+              </div>
+              {e.note && <p>{e.note}</p>}
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+function PreviewHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mb-1 mt-3 border-b border-neutral-300 pb-0.5 text-[10px] font-semibold uppercase tracking-wider">
+      {children}
+    </h3>
+  )
+}

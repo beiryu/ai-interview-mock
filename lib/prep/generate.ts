@@ -125,6 +125,8 @@ export async function generateProfilePrep(
       ...EMPTY_PERSONAL,
       intro: claimsOut.output.intro,
     }),
+    // The CV header is only ever yours
+    contact: previous?.contact,
   }
 }
 
