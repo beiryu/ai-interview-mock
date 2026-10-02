@@ -11,7 +11,7 @@ Single-user by design: only emails listed in `ALLOWED_EMAILS` can sign in.
 ## Stack
 
 - Next.js 16 (App Router, Turbopack), React 19, Tailwind + shadcn/ui
-- Better Auth (email magic link via Resend)
+- Better Auth: sign in with an allowlisted email, local machine only (no email is sent)
 - Prisma 7 + PostgreSQL (`@prisma/adapter-pg`)
 - Soniox real-time speech-to-text (Vietnamese + English, per-word language ID, semantic end-of-turn)
 - Vercel AI SDK through the Vercel AI Gateway (DeepSeek by default; model per task in `config/defaults/ai.ts`): prep packs before the interview, then the live turn judge, answer coach, session ledger and chat
@@ -34,7 +34,6 @@ pnpm dev                     # http://localhost:3000
 | `NEXT_PUBLIC_APP_URL`, `BETTER_AUTH_URL` | App origin, e.g. `http://localhost:3000`                           |
 | `BETTER_AUTH_SECRET`                     | Random secret (`openssl rand -base64 32`)                          |
 | `ALLOWED_EMAILS`                         | Comma-separated emails allowed to sign in                          |
-| `SMTP_FROM`, `RESEND_API_KEY`            | Sender and API key for magic-link emails                           |
 | `DATABASE_URL`                           | PostgreSQL connection string                                       |
 | `AI_GATEWAY_API_KEY`                     | Vercel AI Gateway (every LLM call)                                 |
 | `SONIOX_API_KEY`                         | Soniox access (browser gets short-lived keys via `/api/stt/token`) |

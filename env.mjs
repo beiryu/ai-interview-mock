@@ -10,8 +10,6 @@ export const env = createEnv({
     // Comma-separated emails allowed to sign in (personal-use app)
     ALLOWED_EMAILS: z.string().min(1),
     DATABASE_URL: z.string().min(1),
-    SMTP_FROM: z.string().min(1),
-    RESEND_API_KEY: z.string().min(1),
     // Optional so the app boots without it; /api/stt/token reports it missing
     SONIOX_API_KEY: z.string().min(1).optional(),
     // Vercel AI Gateway: every LLM call (judge, coach, …) goes through it
@@ -26,8 +24,6 @@ export const env = createEnv({
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     ALLOWED_EMAILS: process.env.ALLOWED_EMAILS,
     DATABASE_URL: process.env.DATABASE_URL,
-    SMTP_FROM: process.env.SMTP_FROM,
-    RESEND_API_KEY: process.env.RESEND_API_KEY,
     SONIOX_API_KEY: process.env.SONIOX_API_KEY,
     AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
   },

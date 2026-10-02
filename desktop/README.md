@@ -23,9 +23,7 @@ pnpm desktop    # builds desktop/dist and opens the window (retries until Next i
 
 The first `pnpm desktop` downloads the Electron binary if the install skipped it.
 
-**Sign in:** the emailed magic link opens in your default browser, so the session
-would land there. Request the email from the desktop window, **copy** the link
-(don't open it) and paste it into "Sign in with link" on the login page.
+**Sign in:** enter your email (one in `ALLOWED_EMAILS`) — no email is sent.
 
 ## macOS permissions
 
