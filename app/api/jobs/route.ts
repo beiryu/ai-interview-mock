@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server"
 import * as z from "zod"
 
-import { TailoredCvSchema, pendingStretches } from "@/lib/cv/schema"
-import { startTailoredCv } from "@/lib/cv/service"
+import { CvContentSchema, pendingStretches } from "@/lib/cv/schema"
+import { startJobCv } from "@/lib/cv/service"
 import { db } from "@/lib/db"
+import { Prisma } from "@/lib/generated/prisma/client"
 import { extractJobInfo } from "@/lib/jobs/extract"
 import { getCurrentUser } from "@/lib/session"
 import { CreateJobRequestSchema } from "@/lib/validations/job"
 
 /**
- * POST: a new job from its description. Company and title are read from the
- * JD when you leave them blank, and the tailored CV starts right away.
+ * POST: a new job from its description and where its CV comes from (upload,
+ * one of your CVs, or a practice persona). Company and title are read from
+ * the JD when you leave them blank; the CV starts right away, and your
+ * personal answers start as those of your latest job.
  */
 export async function POST(req: Request) {
   try {
@@ -25,8 +28,15 @@ export async function POST(req: Request) {
         ? { company: body.company, title: body.title }
         : await extractJobInfo(body.jdText)
 
+    const latest = await db.job.findFirst({
+      where: { userId: user.id, answers: { not: Prisma.DbNull } },
+      orderBy: { createdAt: "desc" },
+      select: { answers: true },
+    })
+
     const job = await db.job.create({
       data: {
+        answers: latest?.answers ?? undefined,
         userId: user.id,
         jdText: body.jdText,
         sourceUrl: body.sourceUrl || null,
@@ -35,8 +45,7 @@ export async function POST(req: Request) {
       },
     })
 
-    // Blocked (no documents yet) is fine: the CV page says what's missing
-    await startTailoredCv(job.id, user.id)
+    await startJobCv(job.id, user.id, body.cv)
 
     return NextResponse.json(job)
   } catch (error) {
@@ -61,17 +70,19 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { sessions: true } },
-        cv: { select: { status: true, content: true } },
+        cv: { select: { id: true, origin: true, status: true, content: true } },
       },
     })
 
     // The list only needs the CV's status and how many stretches wait for you
     return NextResponse.json(
       jobs.map(({ cv, ...job }) => {
-        const content = cv && TailoredCvSchema.safeParse(cv.content)
+        const content = cv && CvContentSchema.safeParse(cv.content)
         return {
           ...job,
           cv: cv && {
+            id: cv.id,
+            origin: cv.origin,
             status: cv.status,
             pending: content?.success
               ? pendingStretches(content.data).length

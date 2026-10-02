@@ -1,33 +1,38 @@
 import { NextResponse } from "next/server"
 
 import { renderCvPdf } from "@/lib/cv/pdf"
-import { pendingStretches } from "@/lib/cv/schema"
-import { getTailoredCv } from "@/lib/cv/service"
-import { db } from "@/lib/db"
-import { EMPTY_CONTACT, ProfilePrepSchema } from "@/lib/prep/schema"
+import { EMPTY_CONTACT, pendingStretches } from "@/lib/cv/schema"
+import { getCv } from "@/lib/cv/service"
 import { getCurrentUser } from "@/lib/session"
 
 interface Params {
-  params: Promise<{ jobId: string }>
+  params: Promise<{ cvId: string }>
 }
 
 /**
- * GET: the tailored CV as a PDF. Refused while stretches are unapproved —
- * nothing goes to an employer that you haven't signed off.
+ * GET: the CV as a PDF. Refused for a practice persona (fictional, never
+ * sent to an employer) and while stretches are unapproved — nothing goes to
+ * an employer that you haven't signed off.
  */
 export async function GET(_req: Request, props: Params) {
   const user = await getCurrentUser()
   if (!user) return new NextResponse("Unauthorized", { status: 401 })
-  const { jobId } = await props.params
+  const { cvId } = await props.params
 
   let state
   try {
-    state = await getTailoredCv(jobId, user.id)
+    state = await getCv(cvId, user.id)
   } catch {
     return new NextResponse("Not found", { status: 404 })
   }
-  if (!state.content) {
+  if (!state.content || !state.cv) {
     return NextResponse.json({ error: "No CV yet" }, { status: 404 })
+  }
+  if (state.cv.origin === "GENERATED") {
+    return NextResponse.json(
+      { error: "A practice persona is fictional and can't be exported" },
+      { status: 409 }
+    )
   }
   const pending = pendingStretches(state.content).length
   if (pending > 0) {
@@ -41,29 +46,18 @@ export async function GET(_req: Request, props: Params) {
     )
   }
 
-  const [prep, job] = await Promise.all([
-    db.profilePrep.findUnique({
-      where: { userId: user.id },
-      select: { content: true },
-    }),
-    db.job.findFirst({
-      where: { id: jobId, userId: user.id },
-      select: { company: true },
-    }),
-  ])
-  const saved = ProfilePrepSchema.safeParse(prep?.content)
+  // Fields left blank on the CV fall back to your account
   const contact = {
     ...EMPTY_CONTACT,
     name: user.name || user.email,
     email: user.email,
-    ...(saved.success ? stripEmpty(saved.data.contact ?? {}) : {}),
+    ...stripEmpty(state.content.contact),
   }
 
   const pdf = await renderCvPdf(state.content, contact)
-  const fileName = `${contact.name} - ${job?.company || "CV"} CV.pdf`.replace(
-    /[^\p{L}\p{N} ._-]/gu,
-    ""
-  )
+  const fileName = `${contact.name} - ${
+    state.cv.job?.company || state.cv.title
+  } CV.pdf`.replace(/[^\p{L}\p{N} ._-]/gu, "")
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
@@ -74,7 +68,6 @@ export async function GET(_req: Request, props: Params) {
   })
 }
 
-/** Contact fields you left blank fall back to your account. */
 function stripEmpty<T extends Record<string, unknown>>(value: T) {
   return Object.fromEntries(
     Object.entries(value).filter(([, v]) => (Array.isArray(v) ? v.length : v))

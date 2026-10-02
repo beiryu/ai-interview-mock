@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { InterviewPrepSchema } from "@/lib/prep/schema"
+import { JobPrepSchema } from "@/lib/prep/schema"
 import { getJobPrep, saveJobPrep, startJobPrep } from "@/lib/prep/service"
 import { getCurrentUser } from "@/lib/session"
 
@@ -47,7 +47,7 @@ export async function POST(_req: Request, props: Params) {
 export async function PUT(req: Request, props: Params) {
   const ctx = await owned(props)
   if (!ctx) return new NextResponse("Unauthorized", { status: 401 })
-  const parsed = InterviewPrepSchema.safeParse(await req.json())
+  const parsed = JobPrepSchema.safeParse(await req.json())
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 422 })
   }

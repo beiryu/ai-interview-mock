@@ -4,12 +4,12 @@ import {
   MAX_UPLOAD_BYTES,
   UnsupportedFileError,
   extractDocumentText,
-} from "@/lib/documents/extract"
+} from "@/lib/files/extract"
 import { getCurrentUser } from "@/lib/session"
 
 /**
  * POST multipart { file }: returns the file's text ({ title, content }) for
- * the user to review in the upload dialog. Nothing is saved here.
+ * you to review before using it as a CV or a job description. Nothing is saved here.
  */
 export async function POST(req: Request) {
   const user = await getCurrentUser()

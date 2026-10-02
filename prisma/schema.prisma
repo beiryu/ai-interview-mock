@@ -72,9 +72,8 @@ model User {
   sessions          Session[]
   jobs              Job[]              @relation("UserJobs")
   interviewSessions InterviewSession[] @relation("UserInterviewSessions")
-  documents         Document[]         @relation("UserDocuments")
+  cvs               Cv[]               @relation("UserCvs")
   conversations     ChatConversation[] @relation("UserChatConversations")
-  profilePrep       ProfilePrep?
 
   @@map("users")
 }
@@ -108,7 +107,10 @@ model Job {
   notes       String?            @db.Text
   sessions    InterviewSession[]
   prep        JobPrep?
-  cv          TailoredCv?
+  /// The CV made for this job (refined from one of yours, or generated)
+  cv          Cv?                @relation("JobCv")
+  /// Personal answers for this job (salary, why this company, notice…)
+  answers     Json?
   chat        ChatConversation?
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at")
@@ -143,22 +145,6 @@ model InterviewSession {
 // Digested before the interview by a strong model, reviewed by the user;
 // the live coach reads them. `content` follows lib/prep/schema.ts.
 
-model ProfilePrep {
-  id         String    @id @default(cuid())
-  userId     String    @unique
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// "pending" | "ready" | "failed" ("stale" is computed from sourceHash)
-  status     String    @default("pending")
-  sourceHash String?   @map("source_hash")
-  content    Json?
-  error      String?   @db.Text
-  startedAt  DateTime? @map("started_at")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-
-  @@map("profile_preps")
-}
-
 model JobPrep {
   id          String    @id @default(cuid())
   jobId       String    @unique
@@ -176,36 +162,7 @@ model JobPrep {
 
 // A CV tailored to one interview's job (lib/cv), built from the profile prep
 // and the JD; `content` follows lib/cv/schema.ts.
-model TailoredCv {
-  id          String    @id @default(cuid())
-  jobId       String    @unique
-  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  status      String    @default("pending")
-  sourceHash  String?   @map("source_hash")
-  content     Json?
-  error       String?   @db.Text
-  startedAt   DateTime? @map("started_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  @@map("tailored_cvs")
-}
-
 // ─── Documents ────────────────────────────────────────────────────────────────
-
-model Document {
-  id        String       @id @default(cuid())
-  userId    String
-  user      User         @relation("UserDocuments", fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  type      DocumentType
-  content   String       @db.Text
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
-
-  @@index([userId])
-  @@map("documents")
-}
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
@@ -239,16 +196,47 @@ model ChatMessage {
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-enum DocumentType {
-  RESUME
-  COVER_LETTER
-  PORTFOLIO
-  NOTES
-  PROJECT_DOCUMENTATION
-}
-
 enum MessageRole {
   user
   assistant
   system
+}
+
+/// How a CV came to be
+enum CvOrigin {
+  /// You uploaded it (your real CV)
+  UPLOADED
+  /// Rewritten from another CV for one job's description
+  REFINED
+  /// Written from a job description alone: a fictional practice persona
+  GENERATED
+}
+
+/// A CV. Uploaded ones are yours; refined and generated ones are made for a
+/// job (jobId) and remember the CV they started from (basedOn).
+model Cv {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation("UserCvs", fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  origin     CvOrigin
+  basedOnId  String?   @map("based_on_id")
+  basedOn    Cv?       @relation("CvBasedOn", fields: [basedOnId], references: [id], onDelete: SetNull)
+  derived    Cv[]      @relation("CvBasedOn")
+  jobId      String?   @unique @map("job_id")
+  job        Job?      @relation("JobCv", fields: [jobId], references: [id], onDelete: Cascade)
+  /// The uploaded text (UPLOADED only): the truth refined CVs are checked against
+  rawText    String?   @map("raw_text") @db.Text
+  /// "pending" | "ready" | "failed" ("stale" is computed from sourceHash)
+  status     String    @default("pending")
+  sourceHash String?   @map("source_hash")
+  /// lib/cv/schema.ts CvContentSchema
+  content    Json?
+  error      String?   @db.Text
+  startedAt  DateTime? @map("started_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("cvs")
 }

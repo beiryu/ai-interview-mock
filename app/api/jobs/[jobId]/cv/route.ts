@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 
-import { TailoredCvSchema } from "@/lib/cv/schema"
-import {
-  getTailoredCv,
-  saveTailoredCv,
-  startTailoredCv,
-} from "@/lib/cv/service"
+import { handle } from "@/lib/api"
+import { getJobCv, startJobCv } from "@/lib/cv/service"
 import { getCurrentUser } from "@/lib/session"
+import { CvSourceSchema } from "@/lib/validations/job"
 
 interface Params {
   params: Promise<{ jobId: string }>
 }
 
-/** GET: status + CV · POST: (re)generate in the background · PUT: save edits */
+const StartSchema = z.object({ source: CvSourceSchema.optional() })
+
+/**
+ * GET: the job's CV with its status · POST: make it from a source, or
+ * rebuild it from the one it has ({} body)
+ */
 
 async function context(props: Params) {
   const user = await getCurrentUser()
@@ -20,45 +23,26 @@ async function context(props: Params) {
   return { userId: user.id, jobId: (await props.params).jobId }
 }
 
-function notFound(error: unknown) {
-  return error instanceof Error && error.message === "Job not found"
-}
-
-async function handle(run: () => Promise<Response>) {
-  try {
-    return await run()
-  } catch (error) {
-    if (notFound(error)) return new NextResponse("Not found", { status: 404 })
-    throw error
-  }
-}
-
 export async function GET(_req: Request, props: Params) {
   const ctx = await context(props)
   if (!ctx) return new NextResponse("Unauthorized", { status: 401 })
   return handle(async () =>
-    NextResponse.json(await getTailoredCv(ctx.jobId, ctx.userId))
+    NextResponse.json(await getJobCv(ctx.jobId, ctx.userId))
   )
 }
 
-export async function POST(_req: Request, props: Params) {
+export async function POST(req: Request, props: Params) {
   const ctx = await context(props)
   if (!ctx) return new NextResponse("Unauthorized", { status: 401 })
-  return handle(async () => {
-    const result = await startTailoredCv(ctx.jobId, ctx.userId)
-    return NextResponse.json(result, { status: result.blocked ? 409 : 202 })
-  })
-}
-
-export async function PUT(req: Request, props: Params) {
-  const ctx = await context(props)
-  if (!ctx) return new NextResponse("Unauthorized", { status: 401 })
-  const parsed = TailoredCvSchema.safeParse(await req.json().catch(() => null))
+  const parsed = StartSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 422 })
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid source" },
+      { status: 422 }
+    )
   }
   return handle(async () => {
-    await saveTailoredCv(ctx.jobId, ctx.userId, parsed.data)
-    return NextResponse.json(await getTailoredCv(ctx.jobId, ctx.userId))
+    const result = await startJobCv(ctx.jobId, ctx.userId, parsed.data.source)
+    return NextResponse.json(result, { status: 202 })
   })
 }

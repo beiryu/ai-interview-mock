@@ -4,15 +4,19 @@ import * as React from "react"
 import Link from "next/link"
 import { ClipboardList } from "lucide-react"
 
-import type { InterviewPrep, PrepStatus } from "@/lib/prep/schema"
+import { STORY_THEMES, type JobPrep, type PrepStatus } from "@/lib/prep/schema"
 import { cn } from "@/lib/utils"
-import {
-  useJobPrep,
-  useProfilePrep,
-  useTailoredCv,
-} from "@/hooks/api/prep/usePrep"
+import { useJobCv } from "@/hooks/api/cv/useCvs"
+import { useJobPrep } from "@/hooks/api/prep/usePrep"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Sheet,
   SheetContent,
@@ -96,49 +100,17 @@ export function InterviewPrepSheet({ jobId }: { jobId: string }) {
 }
 
 /**
- * The job's prep: the JD ↔ evidence map and likely questions, built from
- * the profile prep, this job's description and the CV sent for it.
+ * The job's prep: the JD ↔ evidence map, stories, likely questions and
+ * what not to claim, built from this job's CV and description.
  */
 export function JobPrepPanel({ jobId }: { jobId: string }) {
   const prep = useJobPrep(jobId)
-  const profile = useProfilePrep()
   useAutoPrep(prep)
 
   return (
     <div className="space-y-6">
-      <SourcesRow jobId={jobId} profileStatus={profile.data?.status} />
       <CvRow jobId={jobId} />
       <InterviewPrepEditor prep={prep} />
-    </div>
-  )
-}
-
-function SourcesRow({
-  jobId,
-  profileStatus,
-}: {
-  jobId: string
-  profileStatus?: PrepStatus
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs">
-      <span>
-        Profile prep:{" "}
-        <Link href="/dashboard/profile" className="font-medium underline">
-          {profileStatus
-            ? BUTTON_LABEL[profileStatus].replace("Prep ", "")
-            : "…"}
-        </Link>
-      </span>
-      <Link
-        href={`/dashboard/jobs/${jobId}?tab=jd`}
-        className="font-medium underline"
-      >
-        Job description & notes
-      </Link>
-      <span className="text-muted-foreground">
-        Requirements come from this job&apos;s description.
-      </span>
     </div>
   )
 }
@@ -153,11 +125,13 @@ const CV_LABEL: Record<PrepStatus, string> = {
 
 /** The CV sent for this job: the prep and the coach build on it. */
 function CvRow({ jobId }: { jobId: string }) {
-  const { data } = useTailoredCv(jobId)
+  const { data } = useJobCv(jobId)
   const pending = data?.pending ?? 0
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs">
-      <span>Tailored CV: {data ? CV_LABEL[data.status] : "…"}</span>
+      <span>
+        CV: {data ? (data.cv ? CV_LABEL[data.status] : "none yet") : "…"}
+      </span>
       <Link
         href={`/dashboard/jobs/${jobId}?tab=cv`}
         className={cn(
@@ -173,7 +147,7 @@ function CvRow({ jobId }: { jobId: string }) {
         </span>
       )}
       <span className="text-muted-foreground">
-        The coach stays consistent with what this CV says.
+        The prep is built from this CV; the coach stays consistent with it.
       </span>
     </div>
   )
@@ -185,7 +159,7 @@ function InterviewPrepEditor({
   prep: ReturnType<typeof useJobPrep>
 }) {
   const { data, generate, save } = prep
-  const { draft, dirty, update, reset } = useDraft<InterviewPrep>(
+  const { draft, dirty, update, reset } = useDraft<JobPrep>(
     data?.content ?? null
   )
 
@@ -222,11 +196,17 @@ function InterviewPrepEditor({
               value={draft.angle}
               onChange={(angle) => update((d) => ({ ...d, angle }))}
             />
+            <TextField
+              label="30-second intro"
+              multiline
+              value={draft.intro}
+              onChange={(intro) => update((d) => ({ ...d, intro }))}
+            />
           </Section>
 
           <Section
             title="Requirements → your evidence"
-            description="Evidence cites your facts/stories (P*, S*). Gaps get an honest bridge."
+            description="Evidence cites lines of this job's CV (B*). Gaps get an honest bridge."
           >
             <div className="space-y-3">
               {draft.requirements.map((req, i) => {
@@ -353,6 +333,115 @@ function InterviewPrepEditor({
                   ],
                 }))
               }
+            />
+          </Section>
+
+          <Section
+            title="Stories (STAR)"
+            description="For behavioral questions, from lines of the CV (B*). Edited stories (🔒) are kept when you regenerate."
+          >
+            <div className="space-y-3">
+              {draft.stories.map((story, i) => {
+                const set = (patch: Partial<typeof story>) =>
+                  update((d) => ({
+                    ...d,
+                    stories: patchAt(d.stories, i, patch),
+                  }))
+                return (
+                  <ItemCard
+                    key={story.id}
+                    id={story.id}
+                    locked={story.locked}
+                    title={`${story.title} · ${story.theme}`}
+                    onRemove={() =>
+                      update((d) => ({
+                        ...d,
+                        stories: d.stories.filter((_, j) => j !== i),
+                      }))
+                    }
+                  >
+                    <div className="grid gap-2 md:grid-cols-[1fr_160px]">
+                      <TextField
+                        label="Title"
+                        value={story.title}
+                        onChange={(title) => set({ title })}
+                      />
+                      <div className="grid gap-1">
+                        <span className="text-xs text-muted-foreground">
+                          Theme
+                        </span>
+                        <Select
+                          value={story.theme}
+                          onValueChange={(theme) =>
+                            set({ theme: theme as typeof story.theme })
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STORY_THEMES.map((t) => (
+                              <SelectItem key={t} value={t}>
+                                {t}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {(["situation", "task", "action", "result"] as const).map(
+                      (key) => (
+                        <TextField
+                          key={key}
+                          label={key[0].toUpperCase() + key.slice(1)}
+                          multiline
+                          value={story[key]}
+                          onChange={(value) => set({ [key]: value })}
+                        />
+                      )
+                    )}
+                    <ListField
+                      label="From CV lines"
+                      value={story.sourceIds}
+                      onChange={(sourceIds) => set({ sourceIds })}
+                      placeholder="B3, B7"
+                    />
+                  </ItemCard>
+                )
+              })}
+            </div>
+            <AddButton
+              label="Add story"
+              onClick={() =>
+                update((d) => ({
+                  ...d,
+                  stories: [
+                    ...d.stories,
+                    {
+                      id: nextId("S", d.stories),
+                      theme: "impact",
+                      title: "",
+                      situation: "",
+                      task: "",
+                      action: "",
+                      result: "",
+                      sourceIds: [],
+                      locked: true,
+                    },
+                  ],
+                }))
+              }
+            />
+          </Section>
+
+          <Section
+            title="Never claim"
+            description="Technologies this job may ask about that the CV doesn't show. The coach answers honestly and bridges to what you did use."
+          >
+            <LinesField
+              label="One per line"
+              value={draft.doNotClaim}
+              onChange={(doNotClaim) => update((d) => ({ ...d, doNotClaim }))}
             />
           </Section>
         </>

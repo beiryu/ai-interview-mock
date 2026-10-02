@@ -1,64 +1,82 @@
 import { describe, expect, it } from "vitest"
 
-import { notInDocuments } from "./claims"
-import {
-  mergeDoNotClaim,
-  mergeFacts,
-  mergeInterviewPrep,
-  mergePersonal,
-} from "./merge"
-import { renderPrepBrief, topHighlights } from "./render"
-import { EMPTY_PERSONAL, type Fact, type ProfilePrep } from "./schema"
-import { jobSourceHash, profileSourceHash } from "./source"
+import { EMPTY_CONTACT, type CvContent } from "@/lib/cv/schema"
 
-const fact = (over: Partial<Fact>): Fact => ({
-  id: "P1",
-  title: "Claynosaurs",
-  organization: "Gameloft",
-  period: "2024–now",
-  role: "Backend Engineer",
-  stack: ["NestJS", "Redis"],
-  highlights: ["Built PvP matchmaking"],
+import { notInDocuments } from "./claims"
+import { mergeDoNotClaim, mergeJobPrep, mergeStories } from "./merge"
+import { renderJobBrief } from "./render"
+import { EMPTY_ANSWERS, type JobPrep, type Story } from "./schema"
+import { jobCvHash, jobPrepHash } from "./source"
+
+const story = (over: Partial<Story>): Story => ({
+  id: "S1",
+  theme: "impact",
+  title: "Matchmaking",
+  situation: "s",
+  task: "t",
+  action: "a",
+  result: "r",
+  sourceIds: ["B1"],
   ...over,
 })
 
+const cv: CvContent = {
+  contact: EMPTY_CONTACT,
+  headline: "Full-stack Developer",
+  summary: "Builds web apps.",
+  summaryStretch: {
+    note: "Spring Boot not in your CV",
+    defense: "I used Spring; Boot is what I'd use today.",
+    approved: true,
+  },
+  skills: [{ group: "Backend", items: ["NestJS", "Spring"] }],
+  experience: [
+    {
+      id: "E1",
+      company: "Gameloft",
+      role: "Backend Engineer (Claynosaurs)",
+      period: "2024–now",
+      bullets: [
+        {
+          id: "B1",
+          text: "Built PvP matchmaking",
+          sourceIds: ["B7"],
+          stretch: null,
+        },
+      ],
+    },
+  ],
+  education: [],
+  learning: ["Kafka"],
+}
+
+const prep: JobPrep = {
+  angle: "Backend fit.",
+  intro: "I'm a backend engineer.",
+  requirements: [
+    { id: "R1", text: "NestJS", evidence: ["B1"], gap: null, bridge: null },
+  ],
+  stories: [story({})],
+  likelyQuestions: [{ question: "Why us?", points: ["Growth"], refs: ["R1"] }],
+  doNotClaim: ["Kafka"],
+}
+
 describe("merge", () => {
-  it("keeps locked facts and renumbers fresh ones after them", () => {
-    const previous = [
-      fact({
-        id: "P1",
-        title: "Claynosaurs",
-        highlights: ["edited by me"],
-        locked: true,
-      }),
-      fact({ id: "P2", title: "RockExchange" }),
-    ]
-    const generated = [
-      { ...fact({}), title: "Claynosaurs", highlights: ["regenerated"] },
-      { ...fact({}), title: "Stellar" },
-    ].map(({ id: _id, ...rest }) => rest)
-
-    const merged = mergeFacts(previous, generated)
-    expect(merged.map((f) => [f.id, f.title])).toEqual([
-      ["P1", "Claynosaurs"],
-      ["P2", "Stellar"],
-    ])
-    expect(merged[0].highlights).toEqual(["edited by me"])
-  })
-
-  it("never overwrites personal answers the candidate filled in", () => {
-    const merged = mergePersonal(
-      {
-        ...EMPTY_PERSONAL,
-        salaryExpectation: "2,500 USD",
-        intro: "old generated intro",
-        edited: ["salaryExpectation"],
-      },
-      { ...EMPTY_PERSONAL, salaryExpectation: "guess", intro: "I am…" }
+  it("keeps locked stories and renumbers fresh ones after them", () => {
+    const merged = mergeStories(
+      [
+        story({ id: "S1", title: "Matchmaking", locked: true }),
+        story({ id: "S2", title: "Old" }),
+      ],
+      [
+        { ...story({}), title: "matchmaking!" },
+        { ...story({}), title: "Deadline" },
+      ].map(({ id: _, ...s }) => s)
     )
-    expect(merged.salaryExpectation).toBe("2,500 USD")
-    // Not edited by the candidate: a fresh generated intro replaces it
-    expect(merged.intro).toBe("I am…")
+    expect(merged.map((s) => `${s.id} ${s.title}`)).toEqual([
+      "S1 Matchmaking",
+      "S2 Deadline",
+    ])
   })
 
   it("unions do-not-claim case-insensitively", () => {
@@ -69,33 +87,27 @@ describe("merge", () => {
   })
 
   it("keeps locked requirements and questions", () => {
-    const merged = mergeInterviewPrep(
+    const merged = mergeJobPrep(
       {
-        angle: "old",
-        requirements: [
-          {
-            id: "R1",
-            text: "Go",
-            evidence: ["P1"],
-            gap: null,
-            bridge: null,
-            locked: true,
-          },
-        ],
+        ...prep,
+        requirements: [{ ...prep.requirements[0], text: "Go", locked: true }],
         likelyQuestions: [
           { question: "Why us?", points: ["mine"], refs: [], locked: true },
         ],
       },
       {
         angle: "new",
+        intro: "hi",
         requirements: [
           { text: "Go", evidence: [], gap: "none", bridge: null },
           { text: "Kafka", evidence: [], gap: "no Kafka", bridge: "RabbitMQ" },
         ],
+        stories: [],
         likelyQuestions: [
           { question: "Why us?", points: ["generated"], refs: [] },
           { question: "Scale it?", points: [], refs: [] },
         ],
+        doNotClaim: [],
       }
     )
     expect(merged.angle).toBe("new")
@@ -106,65 +118,70 @@ describe("merge", () => {
   })
 })
 
-describe("renderPrepBrief", () => {
-  const profile: ProfilePrep = {
-    facts: [fact({})],
-    stories: [
-      {
-        id: "S1",
-        theme: "conflict",
-        title: "Matchmaking priority",
-        situation: "s",
-        task: "t",
-        action: "a",
-        result: "r",
-        factIds: ["P1"],
-      },
-    ],
-    doNotClaim: ["Kafka in production"],
-    personal: { ...EMPTY_PERSONAL, location: "District 7" },
+describe("renderJobBrief", () => {
+  const job = {
+    company: "Acme",
+    title: "Backend",
+    notes: null,
+    jdText: "Go, Kafka",
   }
 
-  it("renders ids, blanks and never-claim deterministically", () => {
+  it("renders the CV, prep, answers and never-claim deterministically", () => {
     const input = {
-      job: { company: "Acme", title: "Backend", notes: null },
-      profile,
-      interviewPrep: null,
-      documents: "",
+      job,
+      cv,
+      prep,
+      answers: { ...EMPTY_ANSWERS, salaryExpectation: "2000 USD" },
     }
-    const brief = renderPrepBrief(input)
+    const brief = renderJobBrief(input)
+    expect(brief).toMatch(/^## Interview\nRole: Backend\nCompany: Acme/)
+    expect(brief).toContain("## Candidate CV (sent to this employer")
+    expect(brief).toContain("  B1 Built PvP matchmaking (from B7)")
+    expect(brief).toContain("if asked: I used Spring")
+    expect(brief).toContain("R1 NestJS → B1")
+    expect(brief).toContain("S1 [impact] Matchmaking (B1)")
+    expect(brief).toContain("30-second intro: I'm a backend engineer.")
+    expect(brief).toContain("Salary expectation: 2000 USD")
+    expect(brief).toContain("Why this company: (blank)")
     expect(brief).toContain(
-      "P1 Claynosaurs — Gameloft, 2024–now, Backend Engineer"
+      "## Never claim (not in the candidate's experience)\n- Kafka"
     )
-    expect(brief).toContain("S1 [conflict] Matchmaking priority (P1)")
-    expect(brief).toContain("Salary expectation: (blank)")
-    expect(brief).toContain("Location / commute: District 7")
-    expect(brief).toContain("- Kafka in production")
-    expect(renderPrepBrief(input)).toBe(brief)
+    expect(brief).not.toContain("## Job description")
+    expect(renderJobBrief(input)).toBe(brief)
+  })
+
+  it("marks a practice persona, and shows the JD while there is no prep", () => {
+    const brief = renderJobBrief({
+      job,
+      cv,
+      practice: true,
+      prep: null,
+      answers: null,
+    })
+    expect(brief).toContain("## Candidate CV (a practice persona")
+    expect(brief).toContain("## Job description\nGo, Kafka")
   })
 })
 
 describe("source hashes", () => {
-  it("change when a document changes, not when order does", () => {
-    const a = { id: "a", updatedAt: "2026-01-01T00:00:00Z" }
-    const b = { id: "b", updatedAt: "2026-01-02T00:00:00Z" }
-    expect(profileSourceHash([a, b])).toBe(profileSourceHash([b, a]))
-    expect(profileSourceHash([a, b])).not.toBe(
-      profileSourceHash([a, { ...b, updatedAt: "2026-02-01T00:00:00Z" }])
+  const job = { title: "x", company: "", notes: null, jdText: "Go" }
+  const cvA = { id: "a", updatedAt: "2026-01-01T00:00:00Z" }
+
+  it("change with the JD and with the CV they were built from", () => {
+    expect(jobCvHash(job, cvA)).toBe(jobCvHash({ ...job }, { ...cvA }))
+    expect(jobCvHash(job, cvA)).not.toBe(
+      jobCvHash({ ...job, jdText: "Go, Kafka" }, cvA)
     )
-    const job = { title: "x", company: "", notes: null, jdText: "Go" }
-    expect(jobSourceHash({ job, profileHash: "1" })).not.toBe(
-      jobSourceHash({ job, profileHash: "2" })
+    expect(jobPrepHash(job, cvA)).not.toBe(
+      jobPrepHash(job, { ...cvA, updatedAt: "2026-02-01T00:00:00Z" })
     )
-    expect(jobSourceHash({ job, profileHash: "1" })).not.toBe(
-      jobSourceHash({ job: { ...job, jdText: "Go, Kafka" }, profileHash: "1" })
-    )
+    expect(jobCvHash(job, null)).not.toBe(jobCvHash(job, cvA))
   })
 })
 
 describe("notInDocuments", () => {
-  it("drops never-claim entries the documents mention, and notes", () => {
-    const cv =
+  it("drops never-claim entries the CV mentions, and notes", () => {
+    const text =
       "Skills: Spring, Angular, Go. Nytnorge: Java, Spring, PostgreSQL, Angular."
     expect(
       notInDocuments(
@@ -177,72 +194,8 @@ describe("notInDocuments", () => {
           "Team size for X (not specified)",
           "gRPC",
         ],
-        cv
+        text
       )
     ).toEqual(["Kafka", "Rust", "gRPC"])
-  })
-})
-
-describe("topHighlights", () => {
-  it("keeps the concrete (numbered) ones first, in original order", () => {
-    expect(
-      topHighlights(
-        [
-          "Built APIs",
-          "Cut load 40%",
-          "Mentored juniors",
-          "Sped up 2x",
-          "Wrote docs",
-        ],
-        3
-      )
-    ).toEqual(["Built APIs", "Cut load 40%", "Sped up 2x"])
-  })
-})
-
-describe("renderPrepBrief with a tailored CV", () => {
-  it("adds the CV with stretch defenses", () => {
-    const brief = renderPrepBrief({
-      job: { company: "Acme", title: "Full-stack", notes: null },
-      profile: {
-        facts: [],
-        stories: [],
-        doNotClaim: [],
-        personal: EMPTY_PERSONAL,
-      },
-      interviewPrep: null,
-      documents: "",
-      cv: {
-        headline: "Full-stack Developer",
-        summary: "React and Spring.",
-        summaryStretch: null,
-        skills: [{ group: "Backend", items: ["Spring"] }],
-        experience: [
-          {
-            id: "E1",
-            company: "Netpower",
-            role: "Fullstack",
-            period: "2023",
-            bullets: [
-              {
-                id: "B1",
-                text: "Spring Boot REST APIs",
-                factIds: ["P16"],
-                stretch: {
-                  note: "CV says Spring",
-                  defense: "I built REST APIs in Spring",
-                  approved: true,
-                },
-              },
-            ],
-          },
-        ],
-        education: [],
-        learning: [],
-      },
-    })
-    expect(brief).toContain("## CV sent to this employer")
-    expect(brief).toContain("B1 Spring Boot REST APIs (P16)")
-    expect(brief).toContain("if asked: I built REST APIs in Spring")
   })
 })

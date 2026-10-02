@@ -2,14 +2,14 @@
  * Evaluates the live AI calls with real models through the AI Gateway.
  * Run before and after changing a model or prompt (config/defaults/ai.ts,
  * lib/ai/*). Needs AI_GATEWAY_API_KEY and the database (briefs are built
- * from your documents).
+ * from a job: --job <id>, else your latest job with a CV).
  *
  *   pnpm ai:eval judge [--model deepseek/deepseek-v4.1-flash]
  *       labelled turn-judge cases: pass/fail + latency
  *   pnpm ai:eval coach [--model …] [--job <id>]
  *       a few coach answers twice: latency, prompt caching, format
  *   pnpm ai:eval prep [--job <id>]
- *       builds the profile prep (and that job's prep) now
+ *       builds the job's prep (and its CV if needed) now
  *   pnpm ai:eval generate --preset <name> [--job <id>] [--only <kind|id>]
  *       answers eval/coach-questions.json, saves eval/results/<run>.json
  *   pnpm ai:eval grade <run.json> [--grader <model>]
@@ -21,10 +21,10 @@ import { parseArgs } from "node:util"
 
 import { AI_TASKS } from "../config/defaults/ai"
 import { db } from "../lib/db"
-import { prepareJobPrepNow, prepareProfileNow } from "../lib/prep/service"
+import { prepareJobPrepNow } from "../lib/prep/service"
 import { generate } from "./eval/generate"
 import { compare, grade } from "./eval/grade"
-import { evalUserId, rawBrief } from "./eval/shared"
+import { evalJob, prepBrief } from "./eval/shared"
 import { evalCoach, evalJudge } from "./eval/smoke"
 
 const { values: args, positionals } = parseArgs({
@@ -48,17 +48,16 @@ try {
     case "coach":
       await evalCoach(
         args.model ?? AI_TASKS.coach.model,
-        await rawBrief(args.job)
+        await prepBrief(args.job)
       )
       break
     case "prep": {
-      const userId = await evalUserId()
+      const job = await evalJob(args.job)
       const started = performance.now()
-      if (args.job) await prepareJobPrepNow(args.job, userId)
-      else await prepareProfileNow(userId)
-      const row = await db.profilePrep.findUnique({ where: { userId } })
+      await prepareJobPrepNow(job.id, job.userId)
+      const row = await db.jobPrep.findUnique({ where: { jobId: job.id } })
       console.log(
-        `profile prep: ${row?.status}${
+        `job prep (${job.company}): ${row?.status}${
           row?.error ? ` (${row.error})` : ""
         } · ${Math.round((performance.now() - started) / 1000)}s`
       )

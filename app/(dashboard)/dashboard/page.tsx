@@ -35,25 +35,21 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const [upcoming, recentSessions, documentCount, profilePrep] =
-    await Promise.all([
-      db.job.findMany({
-        where: { userId: user.id, scheduledAt: { gte: new Date() } },
-        orderBy: { scheduledAt: "asc" },
-        take: 5,
-      }),
-      db.interviewSession.findMany({
-        where: { userId: user.id },
-        orderBy: { startedAt: "desc" },
-        take: 5,
-        include: { job: { select: { id: true, company: true, title: true } } },
-      }),
-      db.document.count({ where: { userId: user.id } }),
-      db.profilePrep.findUnique({
-        where: { userId: user.id },
-        select: { status: true },
-      }),
-    ])
+  const [upcoming, recentSessions, cvCount, jobCount] = await Promise.all([
+    db.job.findMany({
+      where: { userId: user.id, scheduledAt: { gte: new Date() } },
+      orderBy: { scheduledAt: "asc" },
+      take: 5,
+    }),
+    db.interviewSession.findMany({
+      where: { userId: user.id },
+      orderBy: { startedAt: "desc" },
+      take: 5,
+      include: { job: { select: { id: true, company: true, title: true } } },
+    }),
+    db.cv.count({ where: { userId: user.id } }),
+    db.job.count({ where: { userId: user.id } }),
+  ])
 
   return (
     <DashboardShell>
@@ -147,27 +143,23 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
-            <CardTitle className="text-lg">Documents</CardTitle>
+            <CardTitle className="text-lg">CVs</CardTitle>
             <CardDescription>
-              {documentCount === 0
-                ? "Upload your resume, portfolio and notes: every CV and the coach are built from them."
-                : `${documentCount} document${
-                    documentCount === 1 ? "" : "s"
-                  } · profile prep ${
-                    profilePrep?.status === "ready"
-                      ? "ready"
-                      : profilePrep?.status === "pending"
-                      ? "in progress"
-                      : "not prepared yet (Profile prep page)"
-                  }.`}
+              {cvCount === 0
+                ? "No CVs yet. Create a job: upload your CV there, or generate a practice persona from the JD."
+                : `${cvCount} CV${
+                    cvCount === 1 ? "" : "s"
+                  } for ${jobCount} job${
+                    jobCount === 1 ? "" : "s"
+                  }: your uploads and the versions made for each job.`}
             </CardDescription>
           </div>
           <Link
-            href="/dashboard/documents"
+            href="/dashboard/cvs"
             className={cn(buttonVariants({ variant: "outline" }), "gap-2")}
           >
             <FileText className="size-4" />
-            Manage
+            Open
           </Link>
         </CardHeader>
       </Card>

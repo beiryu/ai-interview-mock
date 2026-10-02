@@ -2,7 +2,7 @@
 
 A personal live-interview assistant. During a video interview it captures the
 meeting tab's audio and your microphone, transcribes both in real time, detects
-the interviewer's questions and suggests answers grounded in your own documents
+the interviewer's questions and suggests answers grounded in the CV you sent
 (resume, job descriptions, notes). Transcripts are saved so you can review
 sessions afterwards.
 
@@ -40,22 +40,21 @@ pnpm dev                     # http://localhost:3000
 
 ## Using it
 
-1. Upload your resume, portfolio and notes under **Documents** (PDF, DOCX,
-   TXT or MD — or paste the text; you review the extracted text before
-   saving). Documents are only about you.
-2. Open **Profile prep**, click Prepare, then review it: fix the STAR
-   stories, fill in your personal answers (salary, why leaving, …), check
-   the never-claim list, and fill in the CV header (name, phone, links) once.
-   The coach only says what's here.
-3. See a job you like? **Jobs → New job**, paste its description (or drop
-   the PDF). Company and role are read from it, and a **CV tailored to the
-   job** is written from your documents in about ten seconds. Wording that
-   goes a little beyond them is framed in amber with what to say if asked;
-   approve it, fix it or remove the line, then **Download PDF**. Track where
-   each application stands with its status.
+1. See a job you like? **Jobs → New job**: paste its description (or drop
+   the PDF) and pick where its CV comes from:
+   - **Upload a CV** (your real one) or **one of your CVs** → it is refined
+     for this job, true to your CV. Wording that goes a little beyond it is
+     framed in amber with what to say if asked; approve it, fix it or remove
+     the line, then **Download PDF**.
+   - **Generate from the JD** → a fictional practice persona, to rehearse
+     with. It can't be downloaded or sent to an employer.
+   Company and role are read from the JD. Every CV is under **CVs**.
+2. Fill in **your answers for this job** (salary, why this company, notice…)
+   in its Job description tab; the next job starts with them.
+3. Track where each application stands with its status.
 4. Invited? Open the job and click **Schedule interview**. It moves to
    Interviewing, shows on Home, and its **Prep** tab maps the JD to your
-   evidence (and to the CV you sent).
+   evidence on the CV you sent, with STAR stories and likely questions.
 5. On the day, **Launch interview**, click **Share the meeting tab** and
    pick the tab running the call (with "share tab audio" enabled). Turn on
    your mic to transcribe your own answers too. The coach stays consistent

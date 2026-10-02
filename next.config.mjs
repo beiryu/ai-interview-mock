@@ -4,9 +4,20 @@ import "./env.mjs"
 const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["@prisma/client"],
-  // Interviews became jobs (one interview per job): keep old links working
+  // Interviews became jobs (one interview per job), and documents + the
+  // profile prep became CVs: keep old links working
   async redirects() {
     return [
+      {
+        source: "/dashboard/documents",
+        destination: "/dashboard/cvs",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/profile",
+        destination: "/dashboard/cvs",
+        permanent: false,
+      },
       {
         source: "/dashboard/interviews",
         destination: "/dashboard/jobs",

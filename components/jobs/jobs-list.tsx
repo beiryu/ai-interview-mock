@@ -24,8 +24,8 @@ export function JobsList() {
       ) : jobs.length === 0 ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">
           No jobs yet. Click <b>New job</b> and paste a job description you
-          like: the CV for it is written from your documents in about ten
-          seconds.
+          like: its CV is refined from yours (or generated, to practise) in
+          about ten seconds.
         </Card>
       ) : (
         <DataTable data={jobs} columns={columns} />

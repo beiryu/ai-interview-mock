@@ -6,7 +6,8 @@ import { RotateCcw, X } from "lucide-react"
 
 import type { AnswerMetrics, QuestionAnalysis } from "@/types/interview-message"
 import { isAssumedStory, splitAnswer } from "@/lib/answer/format"
-import { useJobPrep, useProfilePrep } from "@/hooks/api/prep/usePrep"
+import { useJobCv } from "@/hooks/api/cv/useCvs"
+import { useJobPrep } from "@/hooks/api/prep/usePrep"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -54,21 +55,23 @@ function LatencyBadge({ metrics }: { metrics: AnswerMetrics }) {
   )
 }
 
-/** Prep ids → what they refer to, for the evidence chips' tooltips. */
+/** Cited ids → what they refer to, for the evidence chips' tooltips. */
 function useEvidenceLabels() {
-  const jobId = useInterviewSessionStore((s) => s.jobId)
-  const profile = useProfilePrep()
-  const jobPrep = useJobPrep(jobId ?? "")
+  const jobId = useInterviewSessionStore((s) => s.jobId) ?? ""
+  const cv = useJobCv(jobId)
+  const jobPrep = useJobPrep(jobId)
   return useMemo(() => {
     const labels = new Map<string, string>()
-    for (const f of profile.data?.content?.facts ?? [])
-      labels.set(f.id, f.title)
-    for (const s of profile.data?.content?.stories ?? [])
+    for (const e of cv.data?.content?.experience ?? []) {
+      labels.set(e.id, `${e.role} — ${e.company}`)
+      for (const b of e.bullets) labels.set(b.id, b.text)
+    }
+    for (const s of jobPrep.data?.content?.stories ?? [])
       labels.set(s.id, s.title)
     for (const r of jobPrep.data?.content?.requirements ?? [])
       labels.set(r.id, r.text)
     return labels
-  }, [profile.data, jobPrep.data])
+  }, [cv.data, jobPrep.data])
 }
 
 function EvidenceChip({ id, label }: { id: string; label?: string }) {

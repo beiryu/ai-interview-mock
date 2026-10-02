@@ -2,175 +2,119 @@ import { z } from "zod"
 
 import { runObject } from "@/lib/ai/run"
 import { cvBlock } from "@/lib/cv/render"
-import type { TailoredCv } from "@/lib/cv/schema"
+import { bulletIndex, cvText, type CvContent } from "@/lib/cv/schema"
 
 import { notInDocuments } from "./claims"
+import { mergeJobPrep } from "./merge"
 import {
-  mergeDoNotClaim,
-  mergeFacts,
-  mergeInterviewPrep,
-  mergePersonal,
-  mergeStories,
-} from "./merge"
-import {
-  EMPTY_PERSONAL,
-  FactSchema,
   LikelyQuestionSchema,
   RequirementSchema,
   StorySchema,
-  type InterviewPrep,
-  type ProfilePrep,
+  type JobPrep,
 } from "./schema"
 
 /**
- * Builds prep packs with the `prep` task (a strong model; latency doesn't
- * matter here). Split into small calls — facts first, then stories and
- * do-not-claim in parallel — so each output stays focused and one bad
- * section doesn't sink the rest. Every prompt forbids inventing: a missing
- * detail stays missing for the candidate to fill in.
+ * Builds a job's prep from its CV and description with the `prep` task (a
+ * strong model; latency doesn't matter here). Two calls in parallel — the
+ * job map (angle, requirements, likely questions) and the candidate's
+ * material (stories, intro, never-claim) — so each output stays focused.
+ * The CV is the truth: nothing beyond it is invented.
  */
 
-const TRUTH_RULES = `Use ONLY what the documents state. Never infer, embellish or generalize: no invented numbers, team sizes, dates, technologies, events or outcomes. Copy numbers and names verbatim. If something is not in the documents, leave it out. Write in the language the documents are written in.`
+const TRUTH_RULES = `Use ONLY what the candidate's CV states (and the source text, for details of the same work). Never infer, embellish or generalize: no invented numbers, team sizes, dates, technologies, events or outcomes. Copy numbers and names verbatim. If something is not there, leave it out. Write in the language of the job description.`
 
 // What the model writes: ids and lock flags are assigned by the merge
 const omitIds = { id: true, locked: true } as const
 
-const FactsOutput = z.object({ facts: z.array(FactSchema.omit(omitIds)) })
-const StoriesOutput = z.object({ stories: z.array(StorySchema.omit(omitIds)) })
-const ClaimsOutput = z.object({
-  doNotClaim: z
-    .array(z.string())
-    .describe(
-      'Technologies interviewers for these roles often ask about that are NOT mentioned anywhere in the documents (not in skills lists, not in any project). Names only, e.g. "Kafka". Never list something the documents mention, and no notes about missing details.'
-    ),
-  intro: z
-    .string()
-    .describe(
-      "A spoken 30-second self-introduction, first person, 3–4 short sentences: current role and focus, the 2 most relevant projects, one strength. Built only from the facts; don't list every employer"
-    ),
-})
-const InterviewOutput = z.object({
+const JobMapOutput = z.object({
   angle: z
     .string()
     .describe(
-      "2–3 sentences: why this candidate fits this role, from real evidence"
+      "2–3 sentences: why this candidate fits this role, from the CV's evidence"
     ),
   requirements: z.array(RequirementSchema.omit(omitIds)),
   likelyQuestions: z.array(LikelyQuestionSchema.omit({ locked: true })),
 })
 
-export function factsBlock(profile: Pick<ProfilePrep, "facts" | "stories">) {
-  const facts = profile.facts
-    .map(
-      (f) =>
-        `${f.id} ${f.title} (${[f.organization, f.period, f.role]
-          .filter(Boolean)
-          .join(", ")}) stack: ${f.stack.join(", ")}\n` +
-        f.highlights.map((h) => `  - ${h}`).join("\n")
-    )
-    .join("\n")
-  const stories = profile.stories
-    .map((s) => `${s.id} [${s.theme}] ${s.title} — ${s.result}`)
-    .join("\n")
-  return `FACTS:\n${facts}${stories ? `\n\nSTORIES:\n${stories}` : ""}`
-}
-
-export async function generateProfilePrep(
-  documents: string,
-  previous: ProfilePrep | null
-): Promise<ProfilePrep> {
-  const { output: factsOut } = await runObject("prep", FactsOutput, {
-    maxRetries: 1,
-    instructions: `You extract a candidate's work history for interview preparation. ${TRUTH_RULES}`,
-    prompt: `List every job, project and significant piece of work in these documents as a fact: title, organization, period, role, stack (only technologies named for it), highlights (concrete actions and results, numbers verbatim).\n\nDOCUMENTS:\n${documents}`,
-  })
-  const facts = mergeFacts(previous?.facts ?? [], factsOut.facts)
-
-  const [storiesOut, claimsOut] = await Promise.all([
-    runObject("prep", StoriesOutput, {
-      maxRetries: 1,
-      instructions: `You turn a candidate's documented work into STAR stories for behavioral interview questions. ${TRUTH_RULES} A story needs a documented situation and result; if the documents do not support a theme (e.g. no conflict is described), skip that theme — fewer true stories beat more invented ones. Each story lists the fact ids it comes from.`,
-      prompt: `Write up to 8 stories across themes (conflict, failure, leadership, deadline, learning, impact, ownership) using only these facts and documents.\n\n${factsBlock(
-        { facts, stories: [] }
-      )}\n\nDOCUMENTS:\n${documents}`,
-    }),
-    runObject("prep", ClaimsOutput, {
-      maxRetries: 1,
-      instructions: `You help a candidate avoid overclaiming in interviews. ${TRUTH_RULES}`,
-      prompt: `${factsBlock({
-        facts,
-        stories: [],
-      })}\n\nDOCUMENTS:\n${documents}`,
-    }),
-  ])
-  const stories = mergeStories(
-    previous?.stories ?? [],
-    storiesOut.output.stories.map((s) => ({
-      ...s,
-      factIds: s.factIds.filter((id) => facts.some((f) => f.id === id)),
-    }))
-  )
-
-  return {
-    facts,
-    stories,
-    doNotClaim: mergeDoNotClaim(
-      // Previous entries are re-checked too: an old run may have listed a
-      // skill the documents do mention
-      notInDocuments(previous?.doNotClaim ?? [], documents),
-      notInDocuments(claimsOut.output.doNotClaim, documents)
+const MaterialOutput = z.object({
+  stories: z.array(StorySchema.omit(omitIds)),
+  intro: z
+    .string()
+    .describe(
+      "A spoken 30-second self-introduction for this job, first person, 3–4 short sentences: current role and focus, the 2 most relevant projects, one strength"
     ),
-    // Only the intro is generated; the rest is the candidate's to fill in
-    personal: mergePersonal(previous?.personal, {
-      ...EMPTY_PERSONAL,
-      intro: claimsOut.output.intro,
-    }),
-    // The CV header is only ever yours
-    contact: previous?.contact,
-  }
-}
+  doNotClaim: z
+    .array(z.string())
+    .describe(
+      'Technologies interviewers for this job may ask about that the CV and source text never mention. Names only, e.g. "Kafka".'
+    ),
+})
 
-export async function generateInterviewPrep({
+export async function generateJobPrep({
   header,
   jobDescription,
-  profile,
   cv,
-  documents,
+  sourceText,
+  practice,
   previous,
 }: {
   header: string
   jobDescription: string
-  profile: ProfilePrep
-  /** The CV tailored to this job, if any: evidence should match it */
-  cv?: TailoredCv | null
-  /** The candidate's documents: skills lists live here, not in the facts */
-  documents: string
-  previous: InterviewPrep | null
-}): Promise<InterviewPrep> {
-  const { output } = await runObject("prep", InterviewOutput, {
-    maxRetries: 1,
-    instructions: `You prepare a candidate for a specific interview by mapping the job's requirements to the candidate's real evidence. ${TRUTH_RULES} Evidence must be fact/story ids from the list; count a technology as known when it appears in any fact's stack or highlights, including the skills list. When there is none, say so in "gap" and suggest an honest "bridge" to the closest real experience. Likely questions: 8–15, each with short answer points that cite ids in "refs".`,
-    prompt: `${header}\n\nJOB DESCRIPTION:\n${
-      jobDescription ||
-      "(none — infer typical requirements from the role title only, and mark every requirement's evidence honestly)"
-    }\n\n${factsBlock(profile)}${
-      cv
-        ? `\n\nCV SENT TO THIS EMPLOYER (bullets B* with their facts; prefer them as evidence and ask likely questions about them):\n${cvBlock(
-            cv
-          )}`
-        : ""
-    }\n\nCANDIDATE DOCUMENTS (a technology in a skills list counts as known):\n${documents}`,
-  })
-  const ids = new Set([...profile.facts, ...profile.stories].map((x) => x.id))
-  return mergeInterviewPrep(previous, {
-    ...output,
-    requirements: output.requirements.map((r) => ({
+  /** The job's CV (what the employer saw, or the practice persona) */
+  cv: CvContent
+  /** The candidate's own text behind it ("" for a practice persona) */
+  sourceText: string
+  /** The CV is a fictional practice persona */
+  practice: boolean
+  previous: JobPrep | null
+}): Promise<JobPrep> {
+  const persona = practice
+    ? " This CV is a fictional practice persona: treat it as the candidate's real history and stay consistent with it."
+    : ""
+  const cvPart = `CANDIDATE CV (bullets B* — cite them):\n${cvBlock(cv)}${
+    sourceText
+      ? `\n\nSOURCE TEXT (details of the same work):\n${sourceText}`
+      : ""
+  }`
+  const jobPart = `${header}\n\nJOB DESCRIPTION:\n${
+    jobDescription || "(none — infer typical requirements from the role title)"
+  }`
+
+  const [map, material] = await Promise.all([
+    runObject("prep", JobMapOutput, {
+      maxRetries: 1,
+      instructions: `You prepare a candidate for a specific interview by mapping the job's requirements to the evidence on their CV. ${TRUTH_RULES}${persona} Evidence is CV bullet ids (B*). When there is none, say so in "gap" and suggest an honest "bridge" to the closest real experience. Likely questions: 8–15, including questions about the CV's own lines, each with short answer points that cite ids in "refs".`,
+      prompt: `${jobPart}\n\n${cvPart}`,
+    }),
+    runObject("prep", MaterialOutput, {
+      maxRetries: 1,
+      instructions: `You turn a candidate's CV into interview material. ${TRUTH_RULES}${persona} STAR stories (up to 8, across conflict, failure, leadership, deadline, learning, impact, ownership) need a situation and result the CV supports; skip a theme it doesn't — fewer true stories beat more invented ones. Each story lists the CV bullet ids (B*) it comes from in "sourceIds".`,
+      prompt: `${jobPart}\n\n${cvPart}`,
+    }),
+  ])
+
+  const ids = new Set(bulletIndex(cv).keys())
+  const known = (list: string[]) => list.filter((id) => ids.has(id))
+  return mergeJobPrep(previous, {
+    ...map.output,
+    requirements: map.output.requirements.map((r) => ({
       ...r,
-      evidence: r.evidence.filter((id) => ids.has(id)),
+      evidence: known(r.evidence),
     })),
-    likelyQuestions: output.likelyQuestions.map((q) => ({
+    likelyQuestions: map.output.likelyQuestions.map((q) => ({
       ...q,
-      refs: q.refs.filter((id) => ids.has(id)),
+      refs: q.refs.filter((id) => ids.has(id) || /^[RS]\d+$/.test(id)),
     })),
+    stories: material.output.stories.map((s) => ({
+      ...s,
+      sourceIds: known(s.sourceIds),
+    })),
+    intro: material.output.intro,
+    // A never-claim entry the CV mentions would make the coach deny real work
+    doNotClaim: notInDocuments(
+      [...new Set([...material.output.doNotClaim, ...cv.learning])],
+      // (cvText leaves out the gaps list, which is exactly what's unknown)
+      `${sourceText}\n${cvText(cv)}`
+    ),
   })
 }

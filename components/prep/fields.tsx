@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { Lock, Plus, RefreshCw, Trash2 } from "lucide-react"
 
 import type { PrepStatus } from "@/lib/prep/schema"
@@ -45,6 +44,7 @@ export function PrepStatusBar({
   blocked,
   onGenerate,
   generating,
+  generateLabel,
   dirty,
   onSave,
   saving,
@@ -55,6 +55,8 @@ export function PrepStatusBar({
   blocked?: string | null
   onGenerate: () => void
   generating: boolean
+  /** The rebuild button's label once there is content (default Regenerate) */
+  generateLabel?: string
   dirty: boolean
   onSave: () => void
   saving: boolean
@@ -78,12 +80,7 @@ export function PrepStatusBar({
         <span className="text-xs text-destructive">{error}</span>
       )}
       {blocked && (
-        <span className="text-xs text-muted-foreground">
-          {blocked}{" "}
-          <Link href="/dashboard/documents" className="underline">
-            Documents
-          </Link>
-        </span>
+        <span className="text-xs text-muted-foreground">{blocked}</span>
       )}
       <div className="ml-auto flex gap-2">
         <Button
@@ -94,7 +91,7 @@ export function PrepStatusBar({
           onClick={onGenerate}
         >
           <RefreshCw className="mr-1 size-3.5" />
-          {status === "missing" ? "Prepare" : "Regenerate"}
+          {status === "missing" ? "Prepare" : generateLabel ?? "Regenerate"}
         </Button>
         <Button size="sm" disabled={!dirty || saving} onClick={onSave}>
           {saving && <Icons.spinner className="mr-1 size-3.5 animate-spin" />}

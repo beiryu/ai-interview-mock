@@ -4,7 +4,8 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Upload } from "lucide-react"
 
-import { useExtractDocument } from "@/hooks/api/document/useUploadDocument"
+import type { CvSource } from "@/lib/validations/job"
+import { useExtractFile } from "@/hooks/api/cv/useCvs"
 import { useCreateJob } from "@/hooks/api/job/useJobs"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,13 +21,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
+import { CvSourcePicker } from "@/components/cv/cv-source-picker"
 import { Icons } from "@/components/icons"
 
 const MIN_JD_CHARS = 50
 
 /**
- * A job starts from its description: paste it (or drop the PDF/DOCX). The
- * company and title are read from it, and the CV for it starts at once.
+ * A job starts from its description (pasted, or read from a PDF/DOCX) and
+ * where its CV comes from. The company and title are read from the JD, and
+ * the CV for it starts at once.
  */
 export function NewJobDialog() {
   const router = useRouter()
@@ -35,8 +38,9 @@ export function NewJobDialog() {
   const [sourceUrl, setSourceUrl] = React.useState("")
   const [company, setCompany] = React.useState("")
   const [title, setTitle] = React.useState("")
+  const [source, setSource] = React.useState<CvSource | null>(null)
   const create = useCreateJob()
-  const extract = useExtractDocument()
+  const extract = useExtractFile()
   const fileInput = React.useRef<HTMLInputElement>(null)
 
   const reset = () => {
@@ -59,8 +63,10 @@ export function NewJobDialog() {
     })
 
   const submit = () =>
+    source &&
     create.mutate(
       {
+        cv: source,
         jdText,
         sourceUrl: sourceUrl.trim() || undefined,
         company: company.trim() || undefined,
@@ -101,8 +107,8 @@ export function NewJobDialog() {
         <DialogHeader>
           <DialogTitle>New job</DialogTitle>
           <DialogDescription>
-            Paste the job description. A CV tailored to it starts right away,
-            built only from your documents.
+            Paste the job description and pick where its CV comes from. The CV
+            for this job is written right away.
           </DialogDescription>
         </DialogHeader>
 
@@ -181,12 +187,17 @@ export function NewJobDialog() {
           </div>
         </div>
 
+        <div className="grid gap-1.5">
+          <Label>CV for this job</Label>
+          <CvSourcePicker onChange={setSource} disabled={busy} />
+        </div>
+
         <DialogFooter>
-          <Button disabled={busy || tooShort} onClick={submit}>
+          <Button disabled={busy || tooShort || !source} onClick={submit}>
             {create.isPending && (
               <Icons.spinner className="mr-2 size-4 animate-spin" />
             )}
-            Create and tailor CV
+            Create job
           </Button>
         </DialogFooter>
       </DialogContent>

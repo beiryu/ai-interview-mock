@@ -10,9 +10,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer"
 
-import type { Contact } from "@/lib/prep/schema"
-
-import type { TailoredCv } from "./schema"
+import type { Contact, CvContent } from "./schema"
 
 /**
  * The tailored CV as a one-column PDF with real text (ATS-readable). Be
@@ -77,7 +75,7 @@ export function CvDocument({
   cv,
   contact,
 }: {
-  cv: TailoredCv
+  cv: CvContent
   contact: Contact
 }) {
   const contactItems = [
@@ -163,6 +161,6 @@ export function CvDocument({
   )
 }
 
-export function renderCvPdf(cv: TailoredCv, contact: Contact) {
+export function renderCvPdf(cv: CvContent, contact: Contact) {
   return renderToBuffer(<CvDocument cv={cv} contact={contact} />)
 }

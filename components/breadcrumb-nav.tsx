@@ -14,8 +14,7 @@ import {
 
 const SECTIONS: { path: string; title: string }[] = [
   { path: "/dashboard/jobs", title: "Jobs" },
-  { path: "/dashboard/documents", title: "Documents" },
-  { path: "/dashboard/profile", title: "Profile prep" },
+  { path: "/dashboard/cvs", title: "CVs" },
   { path: "/dashboard/settings", title: "Settings" },
 ]
 
@@ -35,12 +34,16 @@ export function BreadcrumbNav() {
     )
   }
 
-  // Deeper job pages: /dashboard/jobs/[id] and /[id]/live
+  // Deeper pages: /dashboard/jobs/[id], /[id]/live and /dashboard/cvs/[id]
   const sub =
-    section.path === "/dashboard/jobs" && pathname !== section.path
+    pathname === section.path
+      ? null
+      : section.path === "/dashboard/jobs"
       ? pathname.endsWith("/live")
         ? "Live interview"
         : "Job"
+      : section.path === "/dashboard/cvs"
+      ? "CV"
       : null
 
   return (

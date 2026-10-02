@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Podcast,
   Settings2,
-  UserRoundCheck,
 } from "lucide-react"
 
 import { siteConfig } from "@/config/defaults/site"
@@ -29,8 +28,7 @@ import { NavUser } from "@/components/nav-user"
 const NAV_ITEMS = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard, exact: true },
   { title: "Jobs", url: "/dashboard/jobs", icon: Briefcase },
-  { title: "Documents", url: "/dashboard/documents", icon: FileText },
-  { title: "Profile prep", url: "/dashboard/profile", icon: UserRoundCheck },
+  { title: "CVs", url: "/dashboard/cvs", icon: FileText },
   { title: "Settings", url: "/dashboard/settings", icon: Settings2 },
 ]
 

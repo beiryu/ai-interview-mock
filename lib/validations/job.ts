@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { AnswersSchema } from "@/lib/prep/schema"
+
 /** Where an application stands (mirrors the Prisma enum). */
 export const JOB_STATUSES = [
   "SAVED",
@@ -31,10 +33,16 @@ export const JobSchema = z.object({
   notes: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  answers: z.unknown().optional(),
   _count: z.object({ sessions: z.number() }).optional(),
   /** Tailored CV summary (list endpoint only) */
   cv: z
-    .object({ status: z.string(), pending: z.number() })
+    .object({
+      id: z.string(),
+      origin: z.enum(["UPLOADED", "REFINED", "GENERATED"]),
+      status: z.string(),
+      pending: z.number(),
+    })
     .nullable()
     .optional(),
 })
@@ -46,6 +54,26 @@ const optionalUrl = z
   .refine((v) => v === "" || /^https?:\/\//i.test(v), "Must be a link")
   .optional()
 
+/** Where a job's CV comes from. */
+export const CvSourceSchema = z.discriminatedUnion("type", [
+  /** Upload a CV (its text) and refine it for the job */
+  z.object({
+    type: z.literal("upload"),
+    title: z.string().trim().min(1).max(120),
+    rawText: z
+      .string()
+      .trim()
+      .min(200, "This doesn't look like a whole CV")
+      .max(100_000),
+  }),
+  /** Refine one of your CVs for the job */
+  z.object({ type: z.literal("cv"), cvId: z.string().min(1) }),
+  /** A practice persona written from the JD alone */
+  z.object({ type: z.literal("generate") }),
+])
+
+export type CvSource = z.infer<typeof CvSourceSchema>
+
 /** New job: the JD is what matters; company and title are read from it when blank. */
 export const CreateJobRequestSchema = z.object({
   jdText: z
@@ -56,6 +84,7 @@ export const CreateJobRequestSchema = z.object({
   company: z.string().trim().max(120).optional(),
   title: z.string().trim().max(160).optional(),
   sourceUrl: optionalUrl,
+  cv: CvSourceSchema,
 })
 
 export const UpdateJobRequestSchema = z
@@ -68,6 +97,7 @@ export const UpdateJobRequestSchema = z
     // ISO timestamp, or "" to clear the interview time
     scheduledAt: z.string(),
     notes: z.string().max(5000),
+    answers: AnswersSchema,
   })
   .partial()
 
@@ -91,6 +121,7 @@ export function toJobData(values: UpdateJobRequest) {
     sourceUrl: orNull(values.sourceUrl),
     status: values.status,
     notes: orNull(values.notes),
+    answers: values.answers,
     scheduledAt:
       values.scheduledAt === undefined
         ? undefined
