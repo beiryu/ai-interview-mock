@@ -31,7 +31,9 @@ import { ScheduleDialog, formatInterviewTime } from "./schedule-dialog"
 import { SessionsPanel } from "./sessions-panel"
 import { StatusSelect } from "./status-select"
 
-const TABS = ["cv", "prep", "jd", "sessions"] as const
+// In the order you work on a job: its description, the CV you send, the
+// prep once invited, the sessions after the interview
+const TABS = ["jd", "cv", "prep", "sessions"] as const
 type Tab = (typeof TABS)[number]
 
 /**
@@ -44,7 +46,6 @@ export function JobPage({ jobId, tab }: { jobId: string; tab?: string }) {
   const pathname = usePathname()
   const { data: job, isLoading, isError } = useGetJob(jobId)
   const cv = useJobCv(jobId)
-  const current: Tab = TABS.includes(tab as Tab) ? (tab as Tab) : "cv"
 
   if (isError) {
     return (
@@ -59,6 +60,9 @@ export function JobPage({ jobId, tab }: { jobId: string; tab?: string }) {
   if (isLoading || !job) return <Skeleton className="h-96 w-full" />
 
   const pending = cv.data?.pending ?? 0
+  const current: Tab = TABS.includes(tab as Tab)
+    ? (tab as Tab)
+    : defaultTab(job)
 
   return (
     <div className="grid gap-6">
@@ -123,6 +127,7 @@ export function JobPage({ jobId, tab }: { jobId: string; tab?: string }) {
         }
       >
         <TabsList>
+          <TabsTrigger value="jd">Job description</TabsTrigger>
           <TabsTrigger value="cv">
             CV
             {pending > 0 && (
@@ -132,7 +137,6 @@ export function JobPage({ jobId, tab }: { jobId: string; tab?: string }) {
             )}
           </TabsTrigger>
           <TabsTrigger value="prep">Prep</TabsTrigger>
-          <TabsTrigger value="jd">Job description</TabsTrigger>
           <TabsTrigger value="sessions">
             Sessions
             {job.sessions.length > 0 && (
@@ -142,14 +146,14 @@ export function JobPage({ jobId, tab }: { jobId: string; tab?: string }) {
             )}
           </TabsTrigger>
         </TabsList>
+        <TabsContent value="jd" className="mt-5">
+          <JobDetailsForm job={job} />
+        </TabsContent>
         <TabsContent value="cv" className="mt-5">
           <JobCvTab jobId={job.id} />
         </TabsContent>
         <TabsContent value="prep" className="mt-5">
           <JobPrepPanel jobId={job.id} />
-        </TabsContent>
-        <TabsContent value="jd" className="mt-5">
-          <JobDetailsForm job={job} />
         </TabsContent>
         <TabsContent value="sessions" className="mt-5">
           <SessionsPanel job={job} />
@@ -157,6 +161,21 @@ export function JobPage({ jobId, tab }: { jobId: string; tab?: string }) {
       </Tabs>
     </div>
   )
+}
+
+/** Opens on what you're working on: the CV until you're invited, then the
+ *  prep, then the sessions once it's over. */
+function defaultTab(job: JobWithSessions): Tab {
+  if (job.status === "INTERVIEWING") return "prep"
+  if (
+    (job.status === "OFFER" ||
+      job.status === "REJECTED" ||
+      job.status === "ARCHIVED") &&
+    job.sessions.length > 0
+  ) {
+    return "sessions"
+  }
+  return "cv"
 }
 
 /** The JD, company, title, link and notes; the CV and prep build on them. */
