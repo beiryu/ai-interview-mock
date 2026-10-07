@@ -58,7 +58,6 @@ export const AI_TASKS = {
     // interview thanks to the cached brief
     reasoning: "none",
     model: "deepseek/deepseek-v4-pro",
-    fallback: ["openai/gpt-4.1-mini"],
     maxTokens: 260,
     cacheKey: "answer-coach",
   },
@@ -66,7 +65,6 @@ export const AI_TASKS = {
   chat: {
     reasoning: "none",
     model: "deepseek/deepseek-v4-pro",
-    fallback: ["openai/gpt-4.1-mini"],
     maxTokens: 1200,
     temperature: 0.3,
     cacheKey: "interview-chat",
@@ -80,6 +78,20 @@ export const AI_TASKS = {
     temperature: 0,
     timeoutMs: 15_000,
   },
+  // Live: reads a coding problem from a screenshot and writes an approach +
+  // full solution. deepseek-v4.1-flash understands images (AI Gateway
+  // changelog, 2026). No provider pinning: not every DeepSeek host serves
+  // the vision variant, so let the gateway route to one that does. Flash can
+  // be shaky on hard coding problems — move the primary to a stronger vision
+  // model if `pnpm ai:eval` shows it failing.
+  screenshot: {
+    reasoning: "none",
+    model: "deepseek/deepseek-v4.1-flash",
+    maxTokens: 1600,
+    temperature: 0.2,
+    timeoutMs: 40_000,
+  },
+
   // Before the interview: digests documents into the prep pack (facts,
   // STAR stories, JD mapping). Quality over speed; runs in the background.
   prep: {
@@ -92,11 +104,13 @@ export const AI_TASKS = {
     timeoutMs: 180_000,
   },
 
-  // Scores answers in `pnpm ai:eval`; must be another model family than
-  // the ones it grades (self-preference bias)
+  // Scores answers in `pnpm ai:eval`. DeepSeek-first, so this uses V4 Pro
+  // too — note it then shares a model family with the coach/chat it grades,
+  // so scores may skew self-favorable; fine for relative/dev eval. Reasoning
+  // off: V4 Pro otherwise spends the whole budget thinking (see `prep`).
   grader: {
-    reasoning: "low",
-    model: "openai/gpt-5.5",
+    reasoning: "none",
+    model: "deepseek/deepseek-v4-pro",
     maxTokens: 800,
     temperature: 0,
     timeoutMs: 60_000,

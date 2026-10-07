@@ -5,6 +5,7 @@ import { env } from "@/env.mjs"
 import { siteConfig } from "@/config/defaults/site"
 import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/toaster"
+import { DesktopChrome } from "@/components/desktop-chrome"
 import { ThemeProvider } from "@/components/theme-provider"
 
 import { ReactQueryProvider } from "./_provider/react-query-provider"
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <ReactQueryProvider>
+            <DesktopChrome />
             {children}
             <Toaster />
           </ReactQueryProvider>

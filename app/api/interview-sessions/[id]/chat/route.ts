@@ -12,7 +12,7 @@ import { loadCoachContext } from "@/lib/interview/load-brief"
 import { getCurrentUser } from "@/lib/session"
 
 interface Params {
-  params: Promise<{ jobId: string }>
+  params: Promise<{ id: string }>
 }
 
 const RequestSchema = z.object({
@@ -26,25 +26,28 @@ const RequestSchema = z.object({
 const textOf = (message: UIMessage) =>
   message.parts.map((part) => (part.type === "text" ? part.text : "")).join("")
 
-async function ownedJob(props: Params) {
+/** Resolve the session (owned by the user) to its id + jobId. */
+async function ownedSession(props: Params) {
   const user = await getCurrentUser()
   if (!user) return null
-  const { jobId } = await props.params
-  const job = await db.job.findFirst({
-    where: { id: jobId, userId: user.id },
-    select: { id: true },
+  const { id } = await props.params
+  const session = await db.interviewSession.findFirst({
+    where: { id, userId: user.id },
+    select: { id: true, jobId: true },
   })
-  return job ? { userId: user.id, jobId } : undefined
+  return session
+    ? { userId: user.id, sessionId: session.id, jobId: session.jobId }
+    : undefined
 }
 
-/** GET: this job's saved chat, as UI messages. */
+/** GET: this session's saved chat, as UI messages. */
 export async function GET(_req: Request, props: Params) {
-  const ctx = await ownedJob(props)
+  const ctx = await ownedSession(props)
   if (ctx === null) return new NextResponse("Unauthorized", { status: 401 })
   if (!ctx) return new NextResponse("Not found", { status: 404 })
 
   const conversation = await db.chatConversation.findUnique({
-    where: { jobId: ctx.jobId },
+    where: { sessionId: ctx.sessionId },
     select: {
       messages: {
         orderBy: { createdAt: "asc" },
@@ -64,7 +67,7 @@ export async function GET(_req: Request, props: Params) {
 
 /** POST: answer the newest message (AI SDK UI message stream). */
 export async function POST(req: Request, props: Params) {
-  const ctx = await ownedJob(props)
+  const ctx = await ownedSession(props)
   if (ctx === null) return new NextResponse("Unauthorized", { status: 401 })
   if (!ctx) return new NextResponse("Not found", { status: 404 })
 
@@ -76,8 +79,12 @@ export async function POST(req: Request, props: Params) {
   const latest = messages.at(-1)!
 
   const conversation = await db.chatConversation.upsert({
-    where: { jobId: ctx.jobId },
-    create: { userId: ctx.userId, jobId: ctx.jobId },
+    where: { sessionId: ctx.sessionId },
+    create: {
+      userId: ctx.userId,
+      sessionId: ctx.sessionId,
+      jobId: ctx.jobId,
+    },
     update: {},
     select: { id: true },
   })

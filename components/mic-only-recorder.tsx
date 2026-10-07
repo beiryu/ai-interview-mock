@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect } from "react"
+import { useInterviewSessionStore } from "@/stores/interview-session.store"
 import { Mic, MicOff } from "lucide-react"
 
 import { useLiveTranscriber } from "@/hooks/use-live-transcriber"
@@ -15,6 +17,19 @@ export default function MicOnlyRecorder({
   const { active, start, stop } = useLiveTranscriber("candidate", {
     contextTerms,
   })
+
+  // The desktop overlay's mic button shows and toggles this
+  useEffect(() => {
+    useInterviewSessionStore.setState({
+      candidateMicActive: active,
+      toggleCandidateMic: active ? stop : start,
+    })
+    return () =>
+      useInterviewSessionStore.setState({
+        candidateMicActive: false,
+        toggleCandidateMic: null,
+      })
+  }, [active, start, stop])
 
   return (
     <Button

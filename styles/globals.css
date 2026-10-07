@@ -81,3 +81,68 @@
   width: 1rem;
   height: 1rem;
 }
+
+/* Desktop shell (desktop/main.ts, components/desktop-chrome.tsx).
+   macOS: the page sits under a 28px draggable title bar strip. */
+html[data-desktop="darwin"] {
+  --titlebar: 28px;
+}
+html[data-desktop="darwin"] body {
+  padding-top: var(--titlebar);
+}
+.app-drag {
+  -webkit-app-region: drag;
+}
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Compact overlay (components/compact-overlay.tsx): the page goes clear so
+   the window's frosted glass shows through, and only the overlay is drawn.
+   `visibility` (not `display`) keeps the hidden playground running. */
+html[data-compact],
+html[data-compact] body {
+  background: transparent;
+}
+/* next-themes sets an inline `color-scheme: dark`, which makes Chromium
+   paint a dark canvas behind a clear page: the window turns black instead
+   of see-through. */
+html[data-compact] {
+  color-scheme: normal !important;
+}
+html[data-compact] body {
+  padding-top: 0;
+  visibility: hidden;
+}
+html[data-compact] .compact-overlay {
+  visibility: visible;
+}
+
+/* Overlay live caption (components/compact-overlay.tsx) */
+@keyframes caption-chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
+  }
+}
+@keyframes caption-word-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(2px);
+  }
+}
+.caption-chip {
+  animation: caption-chip-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.caption-word {
+  display: inline-block;
+  white-space: pre;
+  animation: caption-word-in 280ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .caption-chip,
+  .caption-word {
+    animation: none;
+  }
+}

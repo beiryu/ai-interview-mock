@@ -7,14 +7,16 @@ export const metadata = {
 
 interface Props {
   params: Promise<{ jobId: string }>
+  searchParams: Promise<{ session?: string }>
 }
 
 export default async function LiveInterviewPage(props: Props) {
   const { jobId } = await props.params
+  const { session } = await props.searchParams
 
   return (
     <DashboardShell className="m-2 overscroll-none">
-      <LiveInterviewPlaygroundV2 jobId={jobId} />
+      <LiveInterviewPlaygroundV2 jobId={jobId} sessionId={session} />
     </DashboardShell>
   )
 }

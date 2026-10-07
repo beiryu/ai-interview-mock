@@ -5,6 +5,10 @@ interface DesktopBridge {
   onShortcut(callback: (action: string) => void): () => void
   onCompact(callback: (on: boolean) => void): () => void
   setCompact(on: boolean): Promise<void>
+  /** Bring the window to the front with keyboard focus */
+  focus(): Promise<void>
+  /** A screenshot of the screen behind the overlay, as a data URL */
+  screenshot(): Promise<string | null>
   systemAudio: {
     start(): Promise<void>
     stop(): Promise<void>

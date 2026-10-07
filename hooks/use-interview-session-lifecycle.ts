@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useInterviewSessionStore } from "@/stores/interview-session.store"
+import {
+  useInterviewSessionStore,
+  type ResumePayload,
+} from "@/stores/interview-session.store"
 
 import type { TranscriptEntry } from "@/lib/validations/interview-session"
 import { updateInterviewSession } from "@/hooks/api/interview-session/update-interview-session"
@@ -20,23 +23,30 @@ function snapshotTranscript(): TranscriptEntry[] {
 
 /**
  * Owns the DB InterviewSession for a playground visit:
- * - creates it lazily, once capture starts (not on page load)
- * - autosaves the transcript every 30s while it changes
- * - saves it on "End session", on leaving the page, and (best effort)
- *   via sendBeacon when the tab is closed
- * - clears the previous transcript/answers whenever the interview changes
+ * - on open, RESUMES the job's recent in-progress session (transcript +
+ *   answers + screenshots) if there is one; otherwise waits for an explicit
+ *   `start()` (a DB session is created and the timer runs from that press —
+ *   not implicitly on audio/transcript)
+ * - autosaves the transcript every 30s; answers and screenshots are saved
+ *   incrementally by the store as they happen
+ * - leaving the page / reloading only SAVES (keeps "in_progress"); only
+ *   "End session" marks it "completed", so the next visit can resume
  */
-export function useInterviewSessionLifecycle(jobId: string) {
+export function useInterviewSessionLifecycle(
+  jobId: string,
+  preferredSessionId?: string
+) {
   const { mutateAsync: createSession } = useCreateInterviewSession()
-  const microphoneStatus = useInterviewSessionStore((s) => s.microphoneStatus)
-  const messageCount = useInterviewSessionStore((s) => s.messages.length)
-  const startSession = useInterviewSessionStore((s) => s.startSession)
+  const startStore = useInterviewSessionStore((s) => s.startSession)
+  const hydrateSession = useInterviewSessionStore((s) => s.hydrateSession)
   const resetSession = useInterviewSessionStore((s) => s.resetSession)
 
   const sessionIdRef = useRef<string | null>(null)
-  const creatingRef = useRef(false)
   const savedCountRef = useRef(0)
   const [startedAt, setStartedAt] = useState<number | null>(null)
+  // While we check for a resumable session (so the UI doesn't flash "Start")
+  const [checking, setChecking] = useState(true)
+  const [starting, setStarting] = useState(false)
 
   const save = useCallback(
     async (id: string, transcript: TranscriptEntry[], final: boolean) => {
@@ -52,49 +62,85 @@ export function useInterviewSessionLifecycle(jobId: string) {
     []
   )
 
-  /** Saves the session as completed and clears local state. */
-  const finish = useCallback(async () => {
-    const id = sessionIdRef.current
-    const transcript = snapshotTranscript()
-    sessionIdRef.current = null
-    savedCountRef.current = 0
-    setStartedAt(null)
-    resetSession()
+  // Save the transcript and clear local state. `final` marks the session
+  // completed (End); without it the session stays in_progress (leaving the
+  // page) so it can be resumed next time.
+  const persist = useCallback(
+    async (final: boolean) => {
+      const id = sessionIdRef.current
+      const transcript = snapshotTranscript()
+      sessionIdRef.current = null
+      savedCountRef.current = 0
+      setStartedAt(null)
+      resetSession()
 
-    if (!id) return false
+      if (!id) return false
+      try {
+        await save(id, transcript, final)
+      } catch (error) {
+        console.error("Failed to save session:", error)
+      }
+      return true
+    },
+    [resetSession, save]
+  )
+
+  // Explicit "Start": create the DB session and run the timer from now.
+  const start = useCallback(async () => {
+    if (sessionIdRef.current || starting) return
+    setStarting(true)
     try {
-      await save(id, transcript, true)
+      const session = await createSession({ jobId })
+      sessionIdRef.current = session.id
+      startStore(session.id)
+      setStartedAt(Date.now())
     } catch (error) {
-      console.error("Failed to save session:", error)
+      console.error("Failed to start session:", error)
+    } finally {
+      setStarting(false)
     }
-    return true
-  }, [resetSession, save])
+  }, [createSession, jobId, startStore, starting])
 
-  // Fresh state per interview; finish the session when leaving the page
+  // "End session": finalize + clear
+  const finish = useCallback(() => persist(true), [persist])
+
+  // On open: reset, then resume the job's recent in-progress session if any.
+  // Leaving the page just saves (keeps in_progress) so it can be resumed.
   useEffect(() => {
+    let cancelled = false
     resetSession(jobId)
-    return () => {
-      void finish()
-    }
-  }, [jobId, resetSession, finish])
-
-  // Create the DB session only once something is actually being captured
-  useEffect(() => {
-    if (sessionIdRef.current || creatingRef.current) return
-    if (microphoneStatus !== "connected" && messageCount === 0) return
-
-    creatingRef.current = true
-    createSession({ jobId })
-      .then((session) => {
+    void (async () => {
+      try {
+        const sessionParam = preferredSessionId
+          ? `&session=${encodeURIComponent(preferredSessionId)}`
+          : ""
+        const res = await fetch(
+          `/api/interview-sessions/resume?jobId=${encodeURIComponent(
+            jobId
+          )}${sessionParam}`
+        )
+        const session = (res.ok ? await res.json() : null) as
+          | (ResumePayload & { startedAt?: string })
+          | null
+        if (cancelled || !session) return
+        hydrateSession(session)
         sessionIdRef.current = session.id
-        startSession(session.id)
-        setStartedAt(Date.now())
-      })
-      .catch((error) => console.error("Failed to start session:", error))
-      .finally(() => {
-        creatingRef.current = false
-      })
-  }, [microphoneStatus, messageCount, jobId, createSession, startSession])
+        savedCountRef.current = session.transcript?.length ?? 0
+        setStartedAt(
+          session.startedAt ? new Date(session.startedAt).getTime() : Date.now()
+        )
+      } catch (error) {
+        console.error("Failed to resume session:", error)
+      } finally {
+        if (!cancelled) setChecking(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      void persist(false)
+    }
+  }, [jobId, preferredSessionId, resetSession, hydrateSession, persist])
 
   // Periodic autosave while the transcript grows
   useEffect(() => {
@@ -110,16 +156,13 @@ export function useInterviewSessionLifecycle(jobId: string) {
     return () => clearInterval(timer)
   }, [save])
 
-  // Tab closed / reloaded: fetch may be cancelled, sendBeacon is not
+  // Tab closed / reloaded: fetch may be cancelled, sendBeacon is not. Save
+  // the transcript but keep in_progress so the session resumes next time.
   useEffect(() => {
     const onPageHide = () => {
       const id = sessionIdRef.current
       if (!id) return
-      const body = JSON.stringify({
-        transcript: snapshotTranscript(),
-        status: "completed",
-        endedAt: new Date().toISOString(),
-      })
+      const body = JSON.stringify({ transcript: snapshotTranscript() })
       navigator.sendBeacon(
         `/api/interview-sessions/${id}`,
         new Blob([body], { type: "application/json" })
@@ -129,5 +172,5 @@ export function useInterviewSessionLifecycle(jobId: string) {
     return () => window.removeEventListener("pagehide", onPageHide)
   }, [])
 
-  return { startedAt, finish }
+  return { startedAt, checking, starting, start, finish }
 }

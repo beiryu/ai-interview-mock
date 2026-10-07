@@ -32,6 +32,7 @@ export async function GET(req: Request, props: Params) {
             startedAt: true,
             endedAt: true,
             transcript: true,
+            answers: true,
           },
         },
       },

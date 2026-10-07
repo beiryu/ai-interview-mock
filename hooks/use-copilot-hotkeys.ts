@@ -56,6 +56,8 @@ export function useCopilotHotkeys() {
       if (action === "answer-now") answerNow()
       else if (action === "skip") skipCurrent()
       else if (action === "regenerate") regenerateLatest()
+      // "screenshot"/"capture"/view shortcuts are owned by the overlay
+      // (components/compact-overlay.tsx), not here
     })
 
     return () => {

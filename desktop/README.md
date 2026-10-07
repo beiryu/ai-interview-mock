@@ -6,8 +6,14 @@ A thin Electron window onto the Next app, adding what a browser tab can't do:
   taps ([`audiotee`](https://www.npmjs.com/package/audiotee), macOS 14.2+) — no
   tab sharing. Your mic still uses `getUserMedia`.
 - **Global shortcuts** that work while the meeting app has focus.
-- **Compact overlay**: a small always-on-top panel (status + latest answer),
-  visible over full-screen windows and on every Space.
+- **Compact overlay** (Parakeet-style): the window goes clear and frameless,
+  always on top, visible over full-screen windows and on every Space, leaving
+  three floating cards: controls (your mic on/off, Answer, Chat, timer,
+  full window, End — drag the bar to move the window), the live caption,
+  and one answer at a time (`⌘←`/`⌘→`, `⌘⌫` clears; while the
+  overlay has focus) or the chat. On macOS the normal window has a hidden
+  title bar; the page draws its own draggable strip
+  (`components/desktop-chrome.tsx`).
 - **Content protection** (`setContentProtection`) — see the caveat below.
 
 Everything else (turn engine, Soniox, coach, prep, DB) is the same code as the
@@ -34,6 +40,9 @@ returns zeros — no error.
 - System Settings → Privacy & Security → **Screen & System Audio Recording** →
   **System Audio Recording Only** (the lower section) → add your terminal app.
 - Privacy & Security → **Microphone** → allow the same terminal app.
+- For the **Screenshot** button (coding questions), Privacy & Security →
+  **Screen Recording** → add your terminal app (without it the capture is
+  blank; the app shows a message saying so).
 
 Restart the terminal after granting. A packaged, signed app would get its own
 entry instead (not built yet).
@@ -46,6 +55,10 @@ entry instead (not built yet).
 | `⌘⇧X`     | Skip the current answer      |
 | `⌘⇧E`     | Regenerate the latest answer |
 | `⌘⇧O`     | Toggle the compact overlay   |
+| `⌘⇧I`     | Interview mode               |
+| `⌘⇧S`     | Screenshot mode              |
+| `⌘⇧C`     | Chat mode                    |
+| `⌘⇧P`     | Capture a coding question    |
 
 In-page shortcuts from the web app (`Alt+Enter`, `Alt+S`, `Alt+R`) still work
 when the window has focus.

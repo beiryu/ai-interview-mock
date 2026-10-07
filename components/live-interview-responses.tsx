@@ -56,7 +56,7 @@ function LatencyBadge({ metrics }: { metrics: AnswerMetrics }) {
 }
 
 /** Cited ids → what they refer to, for the evidence chips' tooltips. */
-function useEvidenceLabels() {
+export function useEvidenceLabels() {
   const jobId = useInterviewSessionStore((s) => s.jobId) ?? ""
   const cv = useJobCv(jobId)
   const jobPrep = useJobPrep(jobId)
@@ -74,7 +74,7 @@ function useEvidenceLabels() {
   }, [cv.data, jobPrep.data])
 }
 
-function EvidenceChip({ id, label }: { id: string; label?: string }) {
+export function EvidenceChip({ id, label }: { id: string; label?: string }) {
   return (
     <span
       title={label ?? "Not in your prep — check this"}
@@ -191,7 +191,7 @@ function AnswerCard({
   )
 }
 
-function SkipButton({ messageId }: { messageId: string }) {
+export function SkipButton({ messageId }: { messageId: string }) {
   const messages = useInterviewSessionStore((s) => s.messages)
   const skipCurrent = useInterviewSessionStore((s) => s.skipCurrent)
   // Skip only applies to the newest card (the one being answered)
@@ -232,22 +232,4 @@ export function LiveInterviewResponses() {
       </div>
     </ScrollArea>
   )
-}
-
-/** The newest answer card alone (desktop compact overlay). */
-export function LatestAnswer() {
-  const messages = useInterviewSessionStore((s) => s.messages)
-  const evidence = useEvidenceLabels()
-  const latest = messages
-    .map((m) => m.questionAnalysis)
-    .filter((analysis) => analysis !== null)
-    .at(-1)
-  if (!latest) {
-    return (
-      <p className="p-4 text-sm text-muted-foreground">
-        Waiting for the interviewer&apos;s first question…
-      </p>
-    )
-  }
-  return <AnswerCard response={latest} evidence={evidence} />
 }

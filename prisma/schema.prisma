@@ -111,7 +111,7 @@ model Job {
   cv          Cv?                @relation("JobCv")
   /// Personal answers for this job (salary, why this company, notice…)
   answers     Json?
-  chat        ChatConversation?
+  chats       ChatConversation[]
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at")
 
@@ -131,6 +131,12 @@ model InterviewSession {
   transcript  Json?
   /// What happened so far (lib/ai/ledger.ts), read by the coach
   ledger      Json?
+  /// Saved AI answer cards: { messageId, question, answer, kind, language, issues, at }[]
+  answers     Json?
+  /// Captured screenshots (heavy images in a child table, not inline here)
+  screenshots InterviewScreenshot[]
+  /// This run's chat (per-session)
+  chat        ChatConversation?
   startedAt   DateTime  @default(now())
   endedAt     DateTime?
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -139,6 +145,26 @@ model InterviewSession {
   @@index([jobId])
   @@index([userId])
   @@map("interview_sessions")
+}
+
+/// One captured screenshot + its solution and Code Q&A thread. Images are
+/// base64 PNG data URLs (a few MB each) so they live in their own table and
+/// are never selected in list queries.
+model InterviewScreenshot {
+  id        String           @id @default(cuid())
+  sessionId String
+  session   InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  /// PNG data URL of the capture
+  image     String           @db.Text
+  /// Solution markdown
+  text      String           @db.Text
+  model     String?
+  /// Code Q&A turns: { id, question, source, answer, at }[]
+  thread    Json?
+  createdAt DateTime         @default(now())
+
+  @@index([sessionId])
+  @@map("interview_screenshots")
 }
 
 // ─── Prep packs (lib/prep) ────────────────────────────────────────────────────
@@ -170,15 +196,19 @@ model ChatConversation {
   id          String        @id @default(cuid())
   userId      String
   user        User          @relation("UserChatConversations", fields: [userId], references: [id], onDelete: Cascade)
-  /// The job whose interview chat this is (null: legacy Document Chat history)
-  jobId       String?       @unique @map("job_id")
+  /// Legacy: the job whose interview chat this is. New chats key off sessionId.
+  jobId       String?       @map("job_id")
   job         Job?          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// The interview run this chat belongs to (per-session chat)
+  sessionId   String?           @unique @map("session_id")
+  session     InterviewSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   title       String        @default("")
   messages    ChatMessage[]
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
   @@index([userId])
+  @@index([jobId])
   @@map("chat_conversations")
 }
 

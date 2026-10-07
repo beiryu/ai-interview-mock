@@ -2,8 +2,10 @@ import path from "node:path"
 import {
   BrowserWindow,
   app,
+  desktopCapturer,
   globalShortcut,
   ipcMain,
+  screen,
   session,
   shell,
   systemPreferences,
@@ -22,13 +24,31 @@ import { loadState, saveState } from "./window-state"
 
 const APP_URL = process.env.DESKTOP_URL ?? "http://localhost:3000"
 const ORIGIN = new URL(APP_URL).origin
-const COMPACT = { width: 440, height: 360 }
+// Wide enough for the overlay's control bar in one row
+const COMPACT = { width: 820, height: 480 }
+const COMPACT_MIN = { width: 760, height: 280 }
+// Saved bounds outside min..max (e.g. a double-click zoom) fall back to COMPACT
+const COMPACT_MAX = { width: 1000, height: 860 }
+const NORMAL_MIN = { width: 360, height: 220 }
+const MAC = process.platform === "darwin"
+
+// Next listens on 127.0.0.1 only, but "localhost" may resolve to ::1 first,
+// where another dev server can answer with its own 404s
+app.commandLine.appendSwitch("host-resolver-rules", "MAP localhost 127.0.0.1")
 
 // Global shortcuts → renderer actions (hooks/use-copilot-hotkeys.ts)
 const SHORTCUTS: Record<string, string> = {
   "CommandOrControl+Shift+Enter": "answer-now",
   "CommandOrControl+Shift+X": "skip",
   "CommandOrControl+Shift+E": "regenerate",
+  // Overlay chat (components/compact-overlay.tsx); overrides Chrome's
+  // inspect-element shortcut while the app runs
+  "CommandOrControl+Shift+C": "chat",
+  // Overlay mode group (components/compact-overlay.tsx): select a view
+  "CommandOrControl+Shift+I": "interview",
+  "CommandOrControl+Shift+S": "screenshot",
+  // ⌘⇧C "chat" is declared above; ⌘⇧P captures inside the Screenshot view
+  "CommandOrControl+Shift+P": "capture",
 }
 const TOGGLE_COMPACT = "CommandOrControl+Shift+O"
 
@@ -51,9 +71,18 @@ function setCompact(on: boolean) {
   if (compact) state.compact = bounds
   else state.normal = bounds
   compact = on
+  // Before resizing: the new size must fit the new min/max
+  setFloating(on)
 
   if (on) {
-    win.setBounds(state.compact ?? { ...bounds, ...COMPACT })
+    const saved = state.compact
+    const fits =
+      saved &&
+      saved.width >= COMPACT_MIN.width &&
+      saved.width <= COMPACT_MAX.width &&
+      saved.height >= COMPACT_MIN.height &&
+      saved.height <= COMPACT_MAX.height
+    win.setBounds(fits ? saved : { x: bounds.x, y: bounds.y, ...COMPACT })
     // Above full-screen meeting windows, on every Space
     win.setAlwaysOnTop(true, "screen-saver")
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
@@ -66,13 +95,49 @@ function setCompact(on: boolean) {
   win.webContents.send("desktop:compact", on)
 }
 
+/**
+ * macOS compact mode floats: the window itself is clear (created
+ * `transparent`), so only the overlay's cards show, with the meeting
+ * visible through and between them. No traffic lights, no window shadow.
+ */
+function setFloating(on: boolean) {
+  if (!win) return
+  // Double-clicking the drag bar would otherwise zoom the overlay to full size
+  win.setMaximizable(!on)
+  if (on) {
+    win.setMinimumSize(COMPACT_MIN.width, COMPACT_MIN.height)
+    win.setMaximumSize(COMPACT_MAX.width, COMPACT_MAX.height)
+  } else {
+    win.setMaximumSize(0, 0)
+    win.setMinimumSize(NORMAL_MIN.width, NORMAL_MIN.height)
+  }
+  if (!MAC) return
+  win.setWindowButtonVisibility(!on)
+  win.setHasShadow(!on)
+}
+
 function createWindow() {
+  // Default to full screen height (minus the menu bar / dock) on first launch
+  const workArea = screen.getPrimaryDisplay().workArea
+  const defaultWidth = Math.min(1400, workArea.width)
   win = new BrowserWindow({
-    width: state.normal?.width ?? 1400,
-    height: state.normal?.height ?? 900,
-    x: state.normal?.x,
-    y: state.normal?.y,
+    width: state.normal?.width ?? defaultWidth,
+    height: state.normal?.height ?? workArea.height,
+    x:
+      state.normal?.x ??
+      workArea.x + Math.round((workArea.width - defaultWidth) / 2),
+    y: state.normal?.y ?? workArea.y,
+    minWidth: NORMAL_MIN.width,
+    minHeight: NORMAL_MIN.height,
     title: "Interview Copilot",
+    // The page draws its own title bar strip (components/desktop-chrome.tsx),
+    // so compact mode can drop it entirely
+    ...(MAC && {
+      titleBarStyle: "hidden" as const,
+      trafficLightPosition: { x: 12, y: 8 },
+      // Clear so compact mode can float; the page paints the normal window
+      transparent: true,
+    }),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -124,6 +189,11 @@ function registerShortcuts() {
 
 function registerIpc() {
   ipcMain.handle("desktop:set-compact", (_event, on: boolean) => setCompact(on))
+  // Typing in the overlay's chat needs the window focused (not the meeting)
+  ipcMain.handle("desktop:focus", () => {
+    win?.show()
+    win?.focus()
+  })
   ipcMain.handle("desktop:audio-start", async () => {
     await audio.start(
       (pcm) => win?.webContents.send("desktop:audio-chunk", pcm),
@@ -131,6 +201,35 @@ function registerIpc() {
     )
   })
   ipcMain.handle("desktop:audio-stop", () => audio.stop())
+  // A screenshot of the screen under the overlay (coding-question capture).
+  // The overlay is briefly hidden so it isn't in the shot; needs macOS
+  // Screen Recording permission (same as system audio).
+  ipcMain.handle("desktop:screenshot", async () => {
+    if (!win) return null
+    // Fade the overlay out (not hide): it stays on its Space and keeps focus,
+    // but is invisible so it isn't in the shot. A short wait lets the
+    // compositor apply the opacity before the capture.
+    win.setOpacity(0)
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    try {
+      // Logical resolution (not × scaleFactor): plenty to read a coding
+      // problem, and keeps the data URL small enough for the model + route
+      const display = screen.getPrimaryDisplay()
+      const { width, height } = display.size
+      const sources = await desktopCapturer.getSources({
+        types: ["screen"],
+        thumbnailSize: { width, height },
+      })
+      const source =
+        sources.find((s) => String(s.display_id) === String(display.id)) ??
+        sources[0]
+      return source ? source.thumbnail.toDataURL() : null
+    } catch {
+      return null
+    } finally {
+      win.setOpacity(1)
+    }
+  })
 }
 
 void app.whenReady().then(() => {

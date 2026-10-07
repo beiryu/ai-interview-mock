@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld("desktop", {
   onCompact: (callback: (on: boolean) => void) =>
     subscribe("desktop:compact", callback),
   setCompact: (on: boolean) => ipcRenderer.invoke("desktop:set-compact", on),
+  focus: () => ipcRenderer.invoke("desktop:focus"),
+  screenshot: (): Promise<string | null> =>
+    ipcRenderer.invoke("desktop:screenshot"),
   systemAudio: {
     start: () => ipcRenderer.invoke("desktop:audio-start"),
     stop: () => ipcRenderer.invoke("desktop:audio-stop"),
