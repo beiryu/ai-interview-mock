@@ -18,6 +18,11 @@ export function languageModel(id: string): LanguageModel {
   return gateway(id)
 }
 
+/** Remaining AI Gateway credit balance + total spent (USD strings). */
+export function getGatewayCredits() {
+  return gateway.getCredits()
+}
+
 /**
  * Request options for a task: gateway routing (fallbacks, caching, usage
  * tags) plus provider-specific settings for whichever provider serves it.

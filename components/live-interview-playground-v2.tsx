@@ -27,6 +27,7 @@ import {
 } from "@/components/copilot-status"
 import { InterviewChat } from "@/components/interview-chat"
 import { LiveInterviewResponses } from "@/components/live-interview-responses"
+import { CreditButton } from "@/components/credit-button"
 import MicOnlyRecorder from "@/components/mic-only-recorder"
 import { MicrophoneConnectionStatus } from "@/components/microphone-connection-status"
 import { ScreenshotPanel } from "@/components/screenshot-solution"
@@ -130,6 +131,7 @@ export function LiveInterviewPlaygroundV2({
               <SessionTimer startedAt={startedAt} className="text-sm" />
             </div>
             <Separator orientation="vertical" className="h-5" />
+            <CreditButton />
             {desktop && (
               <Button
                 variant="outline"
