@@ -1,94 +1,272 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
+// ─── Auth (Better Auth) ───────────────────────────────────────────────────────
+
 model Account {
-  id                String   @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?  @db.Text
-  access_token      String?  @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?  @db.Text
-  session_state     String?
-  createdAt         DateTime @default(now()) @map(name: "created_at")
-  updatedAt         DateTime @default(now()) @map(name: "updated_at")
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String    @map("providerAccountId")
+  providerId            String    @map("provider")
+  accessToken           String?   @map("access_token") @db.Text
+  refreshToken          String?   @map("refresh_token") @db.Text
+  idToken               String?   @map("id_token") @db.Text
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([provider, providerAccountId])
-  @@map(name: "accounts")
+  @@unique([providerId, accountId])
+  @@map("accounts")
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map(name: "sessions")
+  @@index([userId])
+  @@map("sessions")
 }
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String   @db.Text
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  phone         String?
-  emailVerified DateTime?
+  id            String   @id @default(cuid())
+  name          String   @default("")
+  email         String   @unique
+  emailVerified Boolean  @default(false)
   image         String?
-  createdAt     DateTime  @default(now()) @map(name: "created_at")
-  updatedAt     DateTime  @default(now()) @map(name: "updated_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
-  accounts Account[]
-  sessions Session[]
-  Post     Post[]
+  accounts          Account[]
+  sessions          Session[]
+  jobs              Job[]              @relation("UserJobs")
+  interviewSessions InterviewSession[] @relation("UserInterviewSessions")
+  cvs               Cv[]               @relation("UserCvs")
+  conversations     ChatConversation[] @relation("UserChatConversations")
 
-  stripeCustomerId       String?   @unique @map(name: "stripe_customer_id")
-  stripeSubscriptionId   String?   @unique @map(name: "stripe_subscription_id")
-  stripePriceId          String?   @map(name: "stripe_price_id")
-  stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
-
-  // Momo fields
-  momoCustomerId       String?   @unique @map(name: "momo_customer_id")
-  momoSubscriptionId   String?   @unique @map(name: "momo_subscription_id")
-  momoPriceId         String?   @map(name: "momo_price_id") 
-  momoCurrentPeriodEnd DateTime? @map(name: "momo_current_period_end")
-
-  @@map(name: "users")
+  @@map("users")
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+// ─── Interviews ───────────────────────────────────────────────────────────────
 
-  @@unique([identifier, token])
-  @@map(name: "verification_tokens")
+/// Where a job application stands
+enum JobStatus {
+  SAVED
+  APPLIED
+  INTERVIEWING
+  OFFER
+  REJECTED
+  ARCHIVED
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   Json?
-  published Boolean  @default(false)
-  createdAt DateTime @default(now()) @map(name: "created_at")
-  updatedAt DateTime @default(now()) @map(name: "updated_at")
-  authorId  String
+/// A job you might apply to: its description, the CV you send for it and,
+/// once you're invited, the interview (one per job; sessions are its runs).
+model Job {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation("UserJobs", fields: [userId], references: [id], onDelete: Cascade)
+  company     String             @default("")
+  title       String             @default("")
+  /// The job description, as pasted or extracted
+  jdText      String             @default("") @map("jd_text") @db.Text
+  sourceUrl   String?            @map("source_url")
+  status      JobStatus          @default(SAVED)
+  /// When the interview is (null: not invited yet)
+  scheduledAt DateTime?
+  notes       String?            @db.Text
+  sessions    InterviewSession[]
+  prep        JobPrep?
+  /// The CV made for this job (refined from one of yours, or generated)
+  cv          Cv?                @relation("JobCv")
+  /// Personal answers for this job (salary, why this company, notice…)
+  answers     Json?
+  chats       ChatConversation[]
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at")
 
-  author User @relation(fields: [authorId], references: [id])
+  @@index([userId])
+  @@map("jobs")
+}
 
-  @@map(name: "posts")
+model InterviewSession {
+  id          String    @id @default(cuid())
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation("UserInterviewSessions", fields: [userId], references: [id], onDelete: Cascade)
+  /// "in_progress" | "completed"
+  status      String    @default("in_progress")
+  /// Array of { role: "interviewer" | "candidate", text: string, at: ISO string }
+  transcript  Json?
+  /// What happened so far (lib/ai/ledger.ts), read by the coach
+  ledger      Json?
+  /// Saved AI answer cards: { messageId, question, answer, kind, language, issues, at }[]
+  answers     Json?
+  /// Captured screenshots (heavy images in a child table, not inline here)
+  screenshots InterviewScreenshot[]
+  /// This run's chat (per-session)
+  chat        ChatConversation?
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([jobId])
+  @@index([userId])
+  @@map("interview_sessions")
+}
+
+/// One captured screenshot + its solution and Code Q&A thread. Images are
+/// base64 PNG data URLs (a few MB each) so they live in their own table and
+/// are never selected in list queries.
+model InterviewScreenshot {
+  id        String           @id @default(cuid())
+  sessionId String
+  session   InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  /// PNG data URL of the capture
+  image     String           @db.Text
+  /// Solution markdown
+  text      String           @db.Text
+  model     String?
+  /// Code Q&A turns: { id, question, source, answer, at }[]
+  thread    Json?
+  createdAt DateTime         @default(now())
+
+  @@index([sessionId])
+  @@map("interview_screenshots")
+}
+
+// ─── Prep packs (lib/prep) ────────────────────────────────────────────────────
+// Digested before the interview by a strong model, reviewed by the user;
+// the live coach reads them. `content` follows lib/prep/schema.ts.
+
+model JobPrep {
+  id          String    @id @default(cuid())
+  jobId       String    @unique
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status      String    @default("pending")
+  sourceHash  String?   @map("source_hash")
+  content     Json?
+  error       String?   @db.Text
+  startedAt   DateTime? @map("started_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("job_preps")
+}
+
+// A CV tailored to one interview's job (lib/cv), built from the profile prep
+// and the JD; `content` follows lib/cv/schema.ts.
+// ─── Documents ────────────────────────────────────────────────────────────────
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+model ChatConversation {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation("UserChatConversations", fields: [userId], references: [id], onDelete: Cascade)
+  /// Legacy: the job whose interview chat this is. New chats key off sessionId.
+  jobId       String?       @map("job_id")
+  job         Job?          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// The interview run this chat belongs to (per-session chat)
+  sessionId   String?           @unique @map("session_id")
+  session     InterviewSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  title       String        @default("")
+  messages    ChatMessage[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([jobId])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String           @db.Text
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  @@index([conversationId])
+  @@map("chat_messages")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+/// How a CV came to be
+enum CvOrigin {
+  /// You uploaded it (your real CV)
+  UPLOADED
+  /// Rewritten from another CV for one job's description
+  REFINED
+  /// Written from a job description alone: a fictional practice persona
+  GENERATED
+}
+
+/// A CV. Uploaded ones are yours; refined and generated ones are made for a
+/// job (jobId) and remember the CV they started from (basedOn).
+model Cv {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation("UserCvs", fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  origin     CvOrigin
+  basedOnId  String?   @map("based_on_id")
+  basedOn    Cv?       @relation("CvBasedOn", fields: [basedOnId], references: [id], onDelete: SetNull)
+  derived    Cv[]      @relation("CvBasedOn")
+  jobId      String?   @unique @map("job_id")
+  job        Job?      @relation("JobCv", fields: [jobId], references: [id], onDelete: Cascade)
+  /// The uploaded text (UPLOADED only): the truth refined CVs are checked against
+  rawText    String?   @map("raw_text") @db.Text
+  /// "pending" | "ready" | "failed" ("stale" is computed from sourceHash)
+  status     String    @default("pending")
+  sourceHash String?   @map("source_hash")
+  /// lib/cv/schema.ts CvContentSchema
+  content    Json?
+  error      String?   @db.Text
+  startedAt  DateTime? @map("started_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("cvs")
 }

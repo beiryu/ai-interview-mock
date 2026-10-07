@@ -1,90 +1,78 @@
-# Let's Talk Wise
+# Interview Copilot
 
-An open source application built using the new router, server components and everything new in Next.js 13.
+A personal live-interview assistant. During a video interview it captures the
+meeting tab's audio and your microphone, transcribes both in real time, detects
+the interviewer's questions and suggests answers grounded in the CV you sent
+(resume, job descriptions, notes). Transcripts are saved so you can review
+sessions afterwards.
 
-> **Warning**
-> This app is a work in progress. I'm building this in public. You can follow the progress on Twitter [@shadcn](https://twitter.com/shadcn).
-> See the roadmap below.
+Single-user by design: only emails listed in `ALLOWED_EMAILS` can sign in.
 
-## About this project
+## Stack
 
-This project as an experiment to see how a modern app (with features like authentication, subscriptions, API routes, static pages for docs ...etc) would work in Next.js 13 and server components.
+- Next.js 16 (App Router, Turbopack), React 19, Tailwind + shadcn/ui
+- Better Auth: sign in with an allowlisted email, local machine only (no email is sent)
+- Prisma 7 + PostgreSQL (`@prisma/adapter-pg`)
+- Soniox real-time speech-to-text (Vietnamese + English, per-word language ID, semantic end-of-turn)
+- Vercel AI SDK through the Vercel AI Gateway (DeepSeek by default; model per task in `config/defaults/ai.ts`): prep packs before the interview, then the live turn judge, answer coach, session ledger and chat
 
-**This is not a starter template.**
+## Getting started
 
-A few people have asked me to turn this into a starter. I think we could do that once the new features are out of beta.
+Requires Node 22 (`.nvmrc`), pnpm and Docker.
 
-## Note on Performance
-
-> **Warning**
-> This app is using the unstable releases for Next.js 13 and React 18. The new router and app dir is still in beta and not production-ready.
-> **Expect some performance hits when testing the dashboard**.
-> If you see something broken, you can ping me [@shadcn](https://twitter.com/shadcn).
-
-## Features
-
-- New `/app` dir,
-- Routing, Layouts, Nested Layouts and Layout Groups
-- Data Fetching, Caching and Mutation
-- Loading UI
-- Route handlers
-- Metadata files
-- Server and Client Components
-- API Routes and Middlewares
-- Authentication using **NextAuth.js**
-- ORM using **Prisma**
-- Database on **PlanetScale**
-- UI Components built using **Radix UI**
-- Documentation and blog using **MDX** and **Contentlayer**
-- Subscriptions using **Stripe**
-- Styled using **Tailwind CSS**
-- Validations using **Zod**
-- Written in **TypeScript**
-
-## Roadmap
-
-- [x] ~Add MDX support for basic pages~
-- [x] ~Build marketing pages~
-- [x] ~Subscriptions using Stripe~
-- [x] ~Responsive styles~
-- [x] ~Add OG image for blog using @vercel/og~
-- [x] Dark mode
-
-## Known Issues
-
-A list of things not working right now:
-
-1. ~GitHub authentication (use email)~
-2. ~[Prisma: Error: ENOENT: no such file or directory, open '/var/task/.next/server/chunks/schema.prisma'](https://github.com/prisma/prisma/issues/16117)~
-3. ~[Next.js 13: Client side navigation does not update head](https://github.com/vercel/next.js/issues/42414)~
-4. [Cannot use opengraph-image.tsx inside catch-all routes](https://github.com/vercel/next.js/issues/48162)
-
-## Why not tRPC, Turborepo or X?
-
-I might add this later. For now, I want to see how far we can get using Next.js only.
-
-If you have some suggestions, feel free to create an issue.
-
-## Running Locally
-
-1. Install dependencies using pnpm:
-
-```sh
-pnpm install
+```bash
+pnpm install                 # also generates the Prisma client
+cp .env.example .env         # fill in the values below
+docker compose up -d         # PostgreSQL on :5434
+pnpm prisma migrate deploy   # apply migrations
+pnpm prisma db seed          # create the account(s) in ALLOWED_EMAILS
+pnpm dev                     # http://localhost:3000
 ```
 
-2. Copy `.env.example` to `.env.local` and update the variables.
+| Variable                                 | Purpose                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| `NEXT_PUBLIC_APP_URL`, `BETTER_AUTH_URL` | App origin, e.g. `http://localhost:3000`                           |
+| `BETTER_AUTH_SECRET`                     | Random secret (`openssl rand -base64 32`)                          |
+| `ALLOWED_EMAILS`                         | Comma-separated emails allowed to sign in                          |
+| `DATABASE_URL`                           | PostgreSQL connection string                                       |
+| `AI_GATEWAY_API_KEY`                     | Vercel AI Gateway (every LLM call)                                 |
+| `SONIOX_API_KEY`                         | Soniox access (browser gets short-lived keys via `/api/stt/token`) |
 
-```sh
-cp .env.example .env.local
-```
+## Using it
 
-3. Start the development server:
+1. See a job you like? **Jobs → New job**: paste its description (or drop
+   the PDF) and pick where its CV comes from:
+   - **Upload a CV** (your real one) or **one of your CVs** → it is refined
+     for this job, true to your CV. Wording that goes a little beyond it is
+     framed in amber with what to say if asked; approve it, fix it or remove
+     the line, then **Download PDF**.
+   - **Generate from the JD** → a fictional practice persona, to rehearse
+     with; its PDF says "fictional, for practice" on every page.
+   Company and role are read from the JD. Every CV is under **CVs**.
+2. Fill in **your answers for this job** (salary, why this company, notice…)
+   in its Job description tab; the next job starts with them.
+3. Track where each application stands with its status.
+4. Invited? Open the job and click **Schedule interview**. It moves to
+   Interviewing, shows on Home, and its **Prep** tab maps the JD to your
+   evidence on the CV you sent, with STAR stories and likely questions.
+5. On the day, **Launch interview**, click **Share the meeting tab** and
+   pick the tab running the call (with "share tab audio" enabled). Turn on
+   your mic to transcribe your own answers too. The coach stays consistent
+   with the CV you sent.
+6. Suggested answers appear as the interviewer asks questions. **End session**
+   saves the transcript, viewable in the job's **Sessions** tab.
 
-```sh
-pnpm dev
+## Scripts
+
+```bash
+pnpm lint        # ESLint
+pnpm typecheck   # tsc --noEmit
+pnpm build       # production build
+pnpm test        # unit tests (turn detection)
+pnpm stt:smoke   # live Soniox + turn-engine check with synthesized VI/EN speech (macOS)
+pnpm ai:eval     # turn judge + answer coach against real models (latency, caching, accuracy)
 ```
 
 ## License
 
-Licensed under the [MIT license]().
+[MIT](LICENSE.md)

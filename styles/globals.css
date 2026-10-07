@@ -4,48 +4,64 @@
 
 @layer base {
   :root {
-    --background: 267 23% 95%;
-    --foreground: 267 5% 10%;
-    --card: 267 23% 90%;
-    --card-foreground: 267 5% 15%;
-    --popover: 267 23% 95%;
-    --popover-foreground: 267 95% 10%;
-    --primary: 267 43.5% 43.7%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 267 23% 82%;
-    --secondary-foreground: 0 0% 0%;
-    --muted: 229 23% 85%;
-    --muted-foreground: 267 5% 40%;
-    --accent: 229 23% 82%;
-    --accent-foreground: 267 5% 15%;
-    --destructive: 0 50% 50%;
-    --destructive-foreground: 267 5% 90%;
-    --border: 267 23% 82%;
-    --input: 267 23% 50%;
-    --ring: 267 43.5% 43.7%;
-    --radius: 1rem;
+    --background: 0 0% 100%;
+    --foreground: 224 71.4% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 262.1 83.3% 57.8%;
+    --radius: 0.5rem;
+    --sidebar-background: 262 20% 98%;
+    --sidebar-foreground: 262 40% 25%;
+    --sidebar-primary: 262 83% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 262 25% 95%;
+    --sidebar-accent-foreground: 262 40% 25%;
+    --sidebar-border: 262 20% 90%;
+    --sidebar-ring: 262 83% 58%;
   }
+
   .dark {
-    --background: 267 23% 10%;
-    --foreground: 267 5% 90%;
-    --card: 267 23% 10%;
-    --card-foreground: 267 5% 90%;
-    --popover: 267 23% 5%;
-    --popover-foreground: 267 5% 90%;
-    --primary: 267 43.5% 43.7%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 267 23% 20%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 229 23% 25%;
-    --muted-foreground: 267 5% 65%;
-    --accent: 229 23% 25%;
-    --accent-foreground: 267 5% 90%;
-    --destructive: 0 50% 50%;
-    --destructive-foreground: 267 5% 90%;
-    --border: 267 23% 50%;
-    --input: 267 23% 50%;
-    --ring: 267 43.5% 43.7%;
-    --radius: 1rem;
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 263.4 70% 50.4%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 263.4 70% 50.4%;
+    --sidebar-background: 262 45% 15%;
+    --sidebar-foreground: 262 30% 98%;
+    --sidebar-primary: 262 70% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 262 45% 22%;
+    --sidebar-accent-foreground: 262 30% 95%;
+    --sidebar-border: 262 40% 20%;
+    --sidebar-ring: 262 70% 50%;
   }
 }
 
@@ -56,5 +72,77 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Default lucide icons to 16px without beating size-* utilities
+   (:where() has zero specificity). */
+:where(svg.lucide) {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Desktop shell (desktop/main.ts, components/desktop-chrome.tsx).
+   macOS: the page sits under a 28px draggable title bar strip. */
+html[data-desktop="darwin"] {
+  --titlebar: 28px;
+}
+html[data-desktop="darwin"] body {
+  padding-top: var(--titlebar);
+}
+.app-drag {
+  -webkit-app-region: drag;
+}
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Compact overlay (components/compact-overlay.tsx): the page goes clear so
+   the window's frosted glass shows through, and only the overlay is drawn.
+   `visibility` (not `display`) keeps the hidden playground running. */
+html[data-compact],
+html[data-compact] body {
+  background: transparent;
+}
+/* next-themes sets an inline `color-scheme: dark`, which makes Chromium
+   paint a dark canvas behind a clear page: the window turns black instead
+   of see-through. */
+html[data-compact] {
+  color-scheme: normal !important;
+}
+html[data-compact] body {
+  padding-top: 0;
+  visibility: hidden;
+}
+html[data-compact] .compact-overlay {
+  visibility: visible;
+}
+
+/* Overlay live caption (components/compact-overlay.tsx) */
+@keyframes caption-chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
+  }
+}
+@keyframes caption-word-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(2px);
+  }
+}
+.caption-chip {
+  animation: caption-chip-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.caption-word {
+  display: inline-block;
+  white-space: pre;
+  animation: caption-word-in 280ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .caption-chip,
+  .caption-word {
+    animation: none;
   }
 }

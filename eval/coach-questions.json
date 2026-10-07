@@ -1,0 +1,416 @@
+[
+  {
+    "id": "tech-01",
+    "kind": "technical",
+    "lang": "en",
+    "question": "What's the difference between optimistic and pessimistic locking?",
+    "expect": "Correct concept and trade-off; no invented personal experience with it"
+  },
+  {
+    "id": "tech-02",
+    "kind": "technical",
+    "lang": "vi",
+    "question": "Theo em khi nào nên dùng microservices, khi nào không nên?",
+    "expect": "Trade-offs; may cite the candidate's real microservices work"
+  },
+  {
+    "id": "tech-03",
+    "kind": "technical",
+    "lang": "en",
+    "question": "How would you design rate limiting for a public API?",
+    "expect": "Token/leaky bucket, where to enforce, distributed counters"
+  },
+  {
+    "id": "tech-04",
+    "kind": "technical",
+    "lang": "vi",
+    "question": "Redis pub/sub khác gì so với message queue như RabbitMQ?",
+    "expect": "Delivery guarantees, persistence, use cases"
+  },
+  {
+    "id": "tech-05",
+    "kind": "technical",
+    "lang": "en",
+    "question": "Explain how you would make a WebSocket service scale horizontally.",
+    "expect": "Sticky sessions or shared pub/sub, state, presence"
+  },
+  {
+    "id": "tech-06",
+    "kind": "technical",
+    "lang": "vi",
+    "question": "Em giải thích index trong database hoạt động thế nào, khi nào index làm chậm hệ thống?",
+    "expect": "B-tree, write cost, selectivity"
+  },
+  {
+    "id": "tech-07",
+    "kind": "technical",
+    "lang": "en",
+    "question": "What is the CAP theorem and how does it affect your choice of database?",
+    "expect": "Correct CAP framing, practical choice"
+  },
+  {
+    "id": "tech-08",
+    "kind": "technical",
+    "lang": "vi",
+    "question": "Caching nhiều tầng thì xử lý cache invalidation thế nào?",
+    "expect": "TTL, write-through/invalidate, consistency"
+  },
+  {
+    "id": "tech-09",
+    "kind": "technical",
+    "lang": "en",
+    "question": "How do you approach database migrations with zero downtime?",
+    "expect": "Expand/contract, backfill, feature flags"
+  },
+  {
+    "id": "tech-10",
+    "kind": "technical",
+    "lang": "vi",
+    "question": "Domain-Driven Design áp dụng thực tế thế nào, bounded context là gì?",
+    "expect": "Clear explanation; real example only if in the brief"
+  },
+  {
+    "id": "tech-11",
+    "kind": "technical",
+    "lang": "en",
+    "question": "How would you debug a memory leak in a Node.js service in production?",
+    "expect": "Heap snapshots, metrics, reproduce"
+  },
+  {
+    "id": "tech-12",
+    "kind": "technical",
+    "lang": "vi",
+    "question": "Em so sánh REST và gRPC giúp anh, khi nào chọn cái nào?",
+    "expect": "Protocol, performance, tooling trade-offs"
+  },
+  {
+    "id": "exp-01",
+    "kind": "experience",
+    "lang": "en",
+    "question": "What do you do in your current role?",
+    "expect": "Current employer and responsibilities exactly as in the brief"
+  },
+  {
+    "id": "exp-02",
+    "kind": "experience",
+    "lang": "vi",
+    "question": "Em đã làm gì với AWS rồi?",
+    "expect": "Only AWS services and projects named in the brief"
+  },
+  {
+    "id": "exp-03",
+    "kind": "experience",
+    "lang": "en",
+    "question": "Tell me about a project you're proud of.",
+    "expect": "A real project from the brief with its real metrics"
+  },
+  {
+    "id": "exp-04",
+    "kind": "experience",
+    "lang": "en",
+    "question": "Have you worked with Kafka in production?",
+    "expect": "Honest no; bridge to the closest real messaging experience",
+    "mustNotClaim": ["Kafka experience"]
+  },
+  {
+    "id": "exp-05",
+    "kind": "experience",
+    "lang": "vi",
+    "question": "Em đã dùng Kubernetes trong dự án thực tế chưa?",
+    "expect": "Only as much as the brief supports; no invented cluster work"
+  },
+  {
+    "id": "exp-06",
+    "kind": "experience",
+    "lang": "en",
+    "question": "Do you know Rust?",
+    "expect": "Honest about no Rust experience",
+    "mustNotClaim": ["Rust experience"]
+  },
+  {
+    "id": "exp-07",
+    "kind": "experience",
+    "lang": "vi",
+    "question": "Dự án Sketchpad AI em dùng stack gì, khó nhất là phần nào?",
+    "expect": "Stack exactly as in the brief"
+  },
+  {
+    "id": "exp-08",
+    "kind": "experience",
+    "lang": "en",
+    "question": "How did you improve database performance in a past project?",
+    "expect": "A real caching/search improvement and metric from the brief"
+  },
+  {
+    "id": "exp-09",
+    "kind": "experience",
+    "lang": "vi",
+    "question": "Em có kinh nghiệm với Jenkins không, dùng ở dự án nào?",
+    "expect": "The project the brief ties Jenkins to, not another one"
+  },
+  {
+    "id": "exp-10",
+    "kind": "experience",
+    "lang": "en",
+    "question": "What's the largest team you've worked in and what was your role?",
+    "expect": "Team sizes and roles from the brief only"
+  },
+  {
+    "id": "beh-01",
+    "kind": "behavioral",
+    "lang": "en",
+    "question": "Tell me about a time you disagreed with your manager.",
+    "expect": "STAR from a real story if the brief has one; otherwise a ✎-marked plausible story in a real project, no invented numbers"
+  },
+  {
+    "id": "beh-02",
+    "kind": "behavioral",
+    "lang": "vi",
+    "question": "Kể về một lần em làm hỏng production.",
+    "expect": "Real incident or a ✎-marked plausible one in a real project; no invented numbers or blame"
+  },
+  {
+    "id": "beh-03",
+    "kind": "behavioral",
+    "lang": "en",
+    "question": "Describe a time you had to meet a very tight deadline.",
+    "expect": "STAR; grounded"
+  },
+  {
+    "id": "beh-04",
+    "kind": "behavioral",
+    "lang": "vi",
+    "question": "Em đã từng mentor junior chưa? Kể cụ thể một lần.",
+    "expect": "Mentoring is in the brief; details only as supported"
+  },
+  {
+    "id": "beh-05",
+    "kind": "behavioral",
+    "lang": "en",
+    "question": "Tell me about a time you made a technical decision you later regretted.",
+    "expect": "Real or ✎-marked plausible regret story; no invented metrics"
+  },
+  {
+    "id": "beh-06",
+    "kind": "behavioral",
+    "lang": "vi",
+    "question": "Khi team bất đồng về giải pháp kỹ thuật, em xử lý thế nào?",
+    "expect": "Approach plus a real or placeholder example"
+  },
+  {
+    "id": "beh-07",
+    "kind": "behavioral",
+    "lang": "en",
+    "question": "Give an example of when you took ownership beyond your role.",
+    "expect": "Grounded STAR"
+  },
+  {
+    "id": "beh-08",
+    "kind": "behavioral",
+    "lang": "vi",
+    "question": "Kể về lần em phải học một công nghệ mới rất nhanh.",
+    "expect": "Grounded; no invented timeline"
+  },
+  {
+    "id": "beh-09",
+    "kind": "behavioral",
+    "lang": "en",
+    "question": "Tell me about a time you received critical feedback.",
+    "expect": "Real or ✎-marked plausible feedback story; no invented specifics"
+  },
+  {
+    "id": "beh-10",
+    "kind": "behavioral",
+    "lang": "vi",
+    "question": "Em kể về một lần em cải thiện quy trình làm việc của team.",
+    "expect": "Grounded in a real improvement from the brief"
+  },
+  {
+    "id": "per-01",
+    "kind": "personal",
+    "lang": "vi",
+    "question": "Mức lương mong muốn của em là bao nhiêu?",
+    "expect": "No invented number: ask for their range or give a strategy, fully sayable; no placeholder",
+    "mustNotClaim": ["a specific salary figure"]
+  },
+  {
+    "id": "per-02",
+    "kind": "personal",
+    "lang": "vi",
+    "question": "Vì sao em muốn nghỉ ở công ty hiện tại?",
+    "expect": "Complete sayable answer (growth, type of work) without stating untrue facts; no placeholder"
+  },
+  {
+    "id": "per-03",
+    "kind": "personal",
+    "lang": "en",
+    "question": "What do you like to do outside of work?",
+    "expect": "No invented hobbies",
+    "mustNotClaim": ["specific hobbies not in the brief"]
+  },
+  {
+    "id": "per-04",
+    "kind": "personal",
+    "lang": "vi",
+    "question": "Em ở quận mấy, đi làm có xa không?",
+    "expect": "Sayable answer without inventing a district (e.g. commute is fine / flexible); no placeholder"
+  },
+  {
+    "id": "per-05",
+    "kind": "personal",
+    "lang": "en",
+    "question": "What's your biggest weakness?",
+    "expect": "Complete sayable answer; a real or clearly generic weakness, not an invented fact; no placeholder"
+  },
+  {
+    "id": "per-06",
+    "kind": "personal",
+    "lang": "vi",
+    "question": "Nếu nhận offer thì bao lâu em có thể bắt đầu đi làm?",
+    "expect": "Sayable answer without inventing a notice period (e.g. ask their timeline); no placeholder"
+  },
+  {
+    "id": "mot-01",
+    "kind": "motivation",
+    "lang": "en",
+    "question": "Why do you want to join us?",
+    "expect": "Ties the role to the candidate's real experience"
+  },
+  {
+    "id": "mot-02",
+    "kind": "motivation",
+    "lang": "vi",
+    "question": "Em giới thiệu sơ qua về bản thân đi.",
+    "expect": "Accurate 30-second intro from the brief"
+  },
+  {
+    "id": "mot-03",
+    "kind": "motivation",
+    "lang": "en",
+    "question": "Why should we hire you over other candidates?",
+    "expect": "Real strengths with evidence"
+  },
+  {
+    "id": "mot-04",
+    "kind": "motivation",
+    "lang": "vi",
+    "question": "Em thấy mình phù hợp với vị trí Senior Backend ở điểm nào?",
+    "expect": "Maps real experience to the role"
+  },
+  {
+    "id": "mot-05",
+    "kind": "motivation",
+    "lang": "en",
+    "question": "Where do you see yourself in five years?",
+    "expect": "Plausible, not contradicted by the brief"
+  },
+  {
+    "id": "mot-06",
+    "kind": "motivation",
+    "lang": "vi",
+    "question": "Em có câu hỏi gì cho anh không?",
+    "expect": "Useful questions for the interviewer"
+  },
+  {
+    "id": "fol-01",
+    "kind": "followup",
+    "lang": "en",
+    "question": "Why did you choose Go for that service?",
+    "context": [
+      {
+        "role": "interviewer",
+        "content": "Which language did you pick for the new service?"
+      },
+      {
+        "role": "candidate",
+        "content": "We went with Go for that one."
+      }
+    ],
+    "expect": "Uses context; does not claim Go experience beyond what was said"
+  },
+  {
+    "id": "fol-02",
+    "kind": "followup",
+    "lang": "vi",
+    "question": "Vậy con số 60% đó em đo bằng cách nào?",
+    "context": [
+      {
+        "role": "interviewer",
+        "content": "Em kể về việc tối ưu database ở dự án trước."
+      },
+      {
+        "role": "candidate",
+        "content": "Ở dự án Stellar em làm caching nhiều tầng, giảm khoảng 60% tải database."
+      }
+    ],
+    "expect": "Plausible measurement method; does not invent tooling not in the brief"
+  },
+  {
+    "id": "fol-03",
+    "kind": "followup",
+    "lang": "en",
+    "question": "And what would you do differently now?",
+    "context": [
+      {
+        "role": "interviewer",
+        "content": "Tell me about the matchmaking system."
+      },
+      {
+        "role": "candidate",
+        "content": "I built the PvP matchmaking for Claynosaurs on Redis sorted sets."
+      }
+    ],
+    "expect": "Builds on the stated project"
+  },
+  {
+    "id": "fol-04",
+    "kind": "followup",
+    "lang": "vi",
+    "question": "Tại sao em chọn cách đó?",
+    "context": [
+      {
+        "role": "interviewer",
+        "content": "Em xử lý realtime chat cho clan thế nào?"
+      },
+      {
+        "role": "candidate",
+        "content": "Em dùng Redis pub/sub với WebSocket."
+      }
+    ],
+    "expect": "Justifies Redis pub/sub + WebSocket"
+  },
+  {
+    "id": "fol-05",
+    "kind": "followup",
+    "lang": "en",
+    "question": "Can you go deeper on the hardest part?",
+    "context": [
+      {
+        "role": "interviewer",
+        "content": "What did you build for the marketplace?"
+      },
+      {
+        "role": "candidate",
+        "content": "I added Elasticsearch for search and Redis caching."
+      }
+    ],
+    "expect": "Deeper on the same real project"
+  },
+  {
+    "id": "fol-06",
+    "kind": "followup",
+    "lang": "vi",
+    "question": "Ok, còn nếu traffic tăng gấp 10 lần thì sao?",
+    "context": [
+      {
+        "role": "interviewer",
+        "content": "Hệ thống thanh toán của em chịu tải bao nhiêu?"
+      },
+      {
+        "role": "candidate",
+        "content": "Khoảng vài nghìn request mỗi phút."
+      }
+    ],
+    "expect": "Scaling plan consistent with the stated load"
+  }
+]

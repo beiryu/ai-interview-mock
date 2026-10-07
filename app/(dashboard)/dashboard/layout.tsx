@@ -1,11 +1,15 @@
 import { notFound } from "next/navigation"
 
-import { dashboardConfig } from "@/config/dashboard"
 import { getCurrentUser } from "@/lib/session"
-import { MainNav } from "@/components/main-nav"
-import { DashboardNav } from "@/components/nav"
-import { SiteFooter } from "@/components/site-footer"
-import { UserAccountNav } from "@/components/user-account-nav"
+import { Separator } from "@/components/ui/separator"
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/app-sidebar"
+import { BreadcrumbNav } from "@/components/breadcrumb-nav"
+import { ModeToggle } from "@/components/mode-toggle"
 
 interface DashboardLayoutProps {
   children?: React.ReactNode
@@ -21,28 +25,25 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col space-y-6">
-      <header className="sticky top-0 z-40 border-b bg-background">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <MainNav items={dashboardConfig.mainNav} />
-          <UserAccountNav
-            user={{
-              name: user.name,
-              image: user.image,
-              email: user.email,
-            }}
-          />
+    <SidebarProvider>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2">
+          <div className="flex items-center gap-2 px-4 w-full">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <BreadcrumbNav />
+            <div className="ml-auto">
+              <ModeToggle />
+            </div>
+          </div>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="min-h-screen flex-1 rounded-xl md:min-h-min">
+            {children}
+          </div>
         </div>
-      </header>
-      <div className="container grid flex-1 gap-12 md:grid-cols-[200px_1fr]">
-        <aside className="hidden w-[200px] flex-col md:flex">
-          <DashboardNav items={dashboardConfig.sidebarNav} />
-        </aside>
-        <main className="flex w-full flex-1 flex-col overflow-hidden">
-          {children}
-        </main>
-      </div>
-      <SiteFooter className="border-t" />
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

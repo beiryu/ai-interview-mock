@@ -2,48 +2,29 @@ import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
 export const env = createEnv({
+  // Treat `KEY=` lines in .env as unset
+  emptyStringAsUndefined: true,
   server: {
-    // This is optional because it's only used in development.
-    // See https://next-auth.js.org/deployment.
-    NEXTAUTH_URL: z.string().url().optional(),
-    NEXTAUTH_SECRET: z.string().min(1),
-    GITHUB_CLIENT_ID: z.string().min(1),
-    GITHUB_CLIENT_SECRET: z.string().min(1),
-    GITHUB_ACCESS_TOKEN: z.string().min(1),
+    BETTER_AUTH_URL: z.string().min(1),
+    BETTER_AUTH_SECRET: z.string().min(1),
+    // Comma-separated emails allowed to sign in (personal-use app)
+    ALLOWED_EMAILS: z.string().min(1),
     DATABASE_URL: z.string().min(1),
-    SMTP_FROM: z.string().min(1),
-    POSTMARK_API_TOKEN: z.string().min(1),
-    POSTMARK_SIGN_IN_TEMPLATE: z.string().min(1),
-    POSTMARK_ACTIVATION_TEMPLATE: z.string().min(1),
-    STRIPE_API_KEY: z.string().min(1),
-    STRIPE_WEBHOOK_SECRET: z.string().min(1),
-    STRIPE_PRO_MONTHLY_PLAN_ID: z.string().min(1),
-    MOMO_PARTNER_CODE: z.string().min(1),
-    MOMO_ACCESS_KEY: z.string().min(1),
-    MOMO_SECRET_KEY: z.string().min(1),
-    MOMO_MONTHLY_PLAN_ID: z.string().min(1),
+    // Optional so the app boots without it; /api/stt/token reports it missing
+    SONIOX_API_KEY: z.string().min(1).optional(),
+    // Vercel AI Gateway: every LLM call (judge, coach, …) goes through it
+    AI_GATEWAY_API_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().min(1),
   },
   runtimeEnv: {
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-    GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
-    GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
-    GITHUB_ACCESS_TOKEN: process.env.GITHUB_ACCESS_TOKEN,
-    DATABASE_URL: process.env.DATABASE_URL,
-    SMTP_FROM: process.env.SMTP_FROM,
-    POSTMARK_API_TOKEN: process.env.POSTMARK_API_TOKEN,
-    POSTMARK_SIGN_IN_TEMPLATE: process.env.POSTMARK_SIGN_IN_TEMPLATE,
-    POSTMARK_ACTIVATION_TEMPLATE: process.env.POSTMARK_ACTIVATION_TEMPLATE,
-    STRIPE_API_KEY: process.env.STRIPE_API_KEY,
-    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-    STRIPE_PRO_MONTHLY_PLAN_ID: process.env.STRIPE_PRO_MONTHLY_PLAN_ID,
-    MOMO_PARTNER_CODE: process.env.MOMO_PARTNER_CODE,
-    MOMO_ACCESS_KEY: process.env.MOMO_ACCESS_KEY,
-    MOMO_SECRET_KEY: process.env.MOMO_SECRET_KEY,
-    MOMO_MONTHLY_PLAN_ID: process.env.MOMO_MONTHLY_PLAN_ID,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    ALLOWED_EMAILS: process.env.ALLOWED_EMAILS,
+    DATABASE_URL: process.env.DATABASE_URL,
+    SONIOX_API_KEY: process.env.SONIOX_API_KEY,
+    AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
   },
 })
